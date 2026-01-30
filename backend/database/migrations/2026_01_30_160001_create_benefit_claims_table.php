@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip if dependency tables don't exist (for Railway fresh deploy)
+        if (!Schema::hasTable('senior_citizens') || !Schema::hasTable('benefit_types')) {
+            return;
+        }
+        
         Schema::create('benefit_claims', function (Blueprint $table) {
             $table->id();
             $table->foreignId('senior_id')->constrained('senior_citizens')->onDelete('cascade');
