@@ -26,14 +26,7 @@ use App\Http\Controllers\SeniorAuthController;
 // ===========================
 // PUBLIC ROUTES (No Auth Required)
 // ===========================
-
-// Handle CORS preflight for all routes
-Route::options('/{any}', function () {
-    return response('', 200)
-        ->header('Access-Control-Allow-Origin', '*')
-        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-})->where('any', '.*');
+// Note: CORS is handled in public/index.php
 
 Route::post('/login', [AuthController::class, 'login']);
 
