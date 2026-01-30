@@ -185,9 +185,9 @@ class PreRegistrationController extends Controller
     {
         $preReg = PreRegistration::with('barangay')->findOrFail($id);
 
-        // Allow conversion from approved or fo_verified (transmitted) status
-        if (!in_array($preReg->status, [PreRegistration::STATUS_APPROVED, PreRegistration::STATUS_FO_VERIFIED])) {
-            return response()->json(['message' => 'Only approved or transmitted applications can be converted'], 422);
+        // Allow conversion for any application that is not already converted or rejected
+        if (in_array($preReg->status, [PreRegistration::STATUS_CONVERTED, PreRegistration::STATUS_REJECTED])) {
+            return response()->json(['message' => 'This application has already been ' . $preReg->status], 422);
         }
 
         // Transform applicant_data from online form format to registration form format

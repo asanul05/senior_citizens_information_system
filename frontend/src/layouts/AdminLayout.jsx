@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Avatar, Dropdown, Typography, Space } from 'antd';
+import { Layout, Menu, Button, Avatar, Dropdown, Typography, Space, Drawer, Grid } from 'antd';
 import {
     DashboardOutlined,
     UserOutlined,
@@ -15,18 +15,31 @@ import {
     LogoutOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
+    MenuOutlined,
     GiftOutlined,
+    CloseOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 const AdminLayout = () => {
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const { user, logout, isMainAdmin } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const screens = useBreakpoint();
+
+    // Determine if mobile view
+    const isMobile = !screens.md;
+
+    // Close mobile menu on route change
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
 
     const handleLogout = async () => {
         await logout();
@@ -135,60 +148,106 @@ const AdminLayout = () => {
         }
     };
 
+    // Sidebar content (shared between desktop sider and mobile drawer)
+    const SidebarContent = () => (
+        <>
+            {/* Logo */}
+            <div style={{
+                height: 64,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            }}>
+                <img
+                    src="/images/osca_logo.jpg"
+                    alt="OSCA Logo"
+                    style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+                />
+                {(!collapsed || isMobile) && (
+                    <Text strong style={{ color: '#fff', fontSize: 18 }}>
+                        SCIS Admin
+                    </Text>
+                )}
+            </div>
+
+            {/* Navigation Menu */}
+            <Menu
+                theme="dark"
+                mode="inline"
+                selectedKeys={[location.pathname]}
+                defaultOpenKeys={['/admin/registration']}
+                items={menuItems}
+                onClick={({ key }) => {
+                    navigate(key);
+                    if (isMobile) setMobileMenuOpen(false);
+                }}
+                style={{
+                    background: 'transparent',
+                    borderRight: 0,
+                    marginTop: 8,
+                }}
+            />
+        </>
+    );
+
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider
-                trigger={null}
-                collapsible
-                collapsed={collapsed}
-                width={260}
-                style={{
-                    background: 'linear-gradient(180deg, #312e81 0%, #4338ca 100%)',
-                    boxShadow: '2px 0 8px rgba(0, 0, 0, 0.15)',
+            {/* Desktop Sidebar */}
+            {!isMobile && (
+                <Sider
+                    trigger={null}
+                    collapsible
+                    collapsed={collapsed}
+                    width={260}
+                    collapsedWidth={80}
+                    style={{
+                        background: 'linear-gradient(180deg, #312e81 0%, #4338ca 100%)',
+                        boxShadow: '2px 0 8px rgba(0, 0, 0, 0.15)',
+                        position: 'fixed',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        zIndex: 101,
+                        overflow: 'auto',
+                    }}
+                >
+                    <SidebarContent />
+                </Sider>
+            )}
+
+            {/* Mobile Drawer */}
+            <Drawer
+                placement="left"
+                open={mobileMenuOpen}
+                onClose={() => setMobileMenuOpen(false)}
+                width={280}
+                styles={{
+                    body: { padding: 0, background: 'linear-gradient(180deg, #312e81 0%, #4338ca 100%)' },
+                    header: { display: 'none' },
                 }}
             >
-                {/* Logo */}
                 <div style={{
-                    height: 64,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 10,
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                    position: 'absolute',
+                    top: 16,
+                    right: 16,
+                    zIndex: 10,
                 }}>
-                    <img
-                        src="/osca_logo.jpg"
-                        alt="OSCA Logo"
-                        style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+                    <Button
+                        type="text"
+                        icon={<CloseOutlined style={{ color: 'white' }} />}
+                        onClick={() => setMobileMenuOpen(false)}
                     />
-                    {!collapsed && (
-                        <Text strong style={{ color: '#fff', fontSize: 18 }}>
-                            SCIS Admin
-                        </Text>
-                    )}
                 </div>
+                <SidebarContent />
+            </Drawer>
 
-                {/* Navigation Menu */}
-                <Menu
-                    theme="dark"
-                    mode="inline"
-                    selectedKeys={[location.pathname]}
-                    defaultOpenKeys={['/registration']}
-                    items={menuItems}
-                    onClick={({ key }) => navigate(key)}
-                    style={{
-                        background: 'transparent',
-                        borderRight: 0,
-                        marginTop: 8,
-                    }}
-                />
-            </Sider>
-
-            <Layout>
+            <Layout style={{ marginLeft: isMobile ? 0 : (collapsed ? 80 : 260), transition: 'margin-left 0.2s' }}>
                 {/* Header */}
                 <Header style={{
-                    padding: '0 24px',
+                    padding: isMobile ? '0 12px' : '0 24px',
                     background: '#fff',
                     display: 'flex',
                     alignItems: 'center',
@@ -197,13 +256,23 @@ const AdminLayout = () => {
                     position: 'sticky',
                     top: 0,
                     zIndex: 100,
+                    height: 64,
                 }}>
-                    <Button
-                        type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() => setCollapsed(!collapsed)}
-                        style={{ fontSize: 18 }}
-                    />
+                    {isMobile ? (
+                        <Button
+                            type="text"
+                            icon={<MenuOutlined />}
+                            onClick={() => setMobileMenuOpen(true)}
+                            style={{ fontSize: 18 }}
+                        />
+                    ) : (
+                        <Button
+                            type="text"
+                            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            onClick={() => setCollapsed(!collapsed)}
+                            style={{ fontSize: 18 }}
+                        />
+                    )}
 
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                         <Space style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: 8, transition: 'background 0.2s' }}>
@@ -213,26 +282,29 @@ const AdminLayout = () => {
                                 }}
                                 icon={<UserOutlined />}
                             />
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.3 }}>
-                                <Text strong style={{ fontSize: 13 }}>{user?.full_name || 'User'}</Text>
-                                <Text type="secondary" style={{ fontSize: 11 }}>{user?.role_name || 'Admin'}</Text>
-                            </div>
+                            {!isMobile && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.3 }}>
+                                    <Text strong style={{ fontSize: 13 }}>{user?.full_name || 'User'}</Text>
+                                    <Text type="secondary" style={{ fontSize: 11 }}>{user?.role_name || 'Admin'}</Text>
+                                </div>
+                            )}
                         </Space>
                     </Dropdown>
                 </Header>
 
                 {/* Main Content */}
                 <Content style={{
-                    margin: 24,
-                    padding: 24,
+                    margin: isMobile ? 8 : 24,
+                    padding: isMobile ? 12 : 24,
                     background: '#fff',
                     borderRadius: 8,
                     minHeight: 'calc(100vh - 112px)',
+                    overflow: 'auto',
                 }}>
                     <Outlet />
                 </Content>
             </Layout>
-        </Layout >
+        </Layout>
     );
 };
 

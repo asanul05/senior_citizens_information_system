@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Row, Col, Button, Card, Statistic, Typography, Spin } from 'antd';
 import {
@@ -9,126 +9,242 @@ import {
     CalendarOutlined,
     SafetyCertificateOutlined,
     RightOutlined,
+    LeftOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Paragraph, Text } = Typography;
 
-// Hero Section
-const HeroSection = () => (
-    <section style={{
-        background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #818cf8 100%)',
-        color: 'white',
-        padding: '100px 24px 120px',
-        position: 'relative',
-        overflow: 'hidden',
-    }}>
-        {/* Decorative circles */}
-        <div style={{
-            position: 'absolute',
-            top: '-100px',
-            right: '-100px',
-            width: '400px',
-            height: '400px',
-            background: 'rgba(255,255,255,0.08)',
-            borderRadius: '50%',
-        }} />
-        <div style={{
-            position: 'absolute',
-            bottom: '-150px',
-            left: '-50px',
-            width: '300px',
-            height: '300px',
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: '50%',
-        }} />
+// Carousel images
+const carouselImages = [
+    '/images/img_carousel1.jpg',
+    '/images/img_carousel2.jpg',
+    '/images/img_carousel3.jpg',
+    '/images/img_carousel4.jpg',
+    '/images/img_carousel5.jpg',
+    '/images/img_carousel6.jpg',
+];
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-            <Row gutter={[48, 48]} align="middle">
-                <Col xs={24} lg={14}>
-                    <div style={{
-                        display: 'inline-block',
-                        padding: '6px 16px',
-                        background: 'rgba(255,255,255,0.15)',
-                        borderRadius: 20,
-                        fontSize: 13,
-                        marginBottom: 24,
-                    }}>
-                        🏛️ Office of Senior Citizens Affairs
-                    </div>
-                    <Title level={1} style={{
-                        color: 'white',
-                        fontSize: 'clamp(32px, 5vw, 52px)',
-                        lineHeight: 1.2,
-                        marginBottom: 24,
-                    }}>
-                        Serving Our Beloved <br />Senior Citizens
-                    </Title>
-                    <Paragraph style={{
-                        color: 'rgba(255,255,255,0.9)',
-                        fontSize: 18,
-                        lineHeight: 1.7,
-                        maxWidth: 500,
-                        marginBottom: 32,
-                    }}>
-                        Dedicated to protecting and promoting the rights, dignity, and welfare
-                        of senior citizens in Zamboanga City. Register now and enjoy your benefits.
-                    </Paragraph>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <Link to="/apply">
-                            <Button
-                                size="large"
+// Hero Section with Image Carousel
+const HeroSection = () => {
+    const [currentImage, setCurrentImage] = useState(0);
+
+    // Auto-rotate images every 4 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentImage((prev) => (prev + 1) % carouselImages.length);
+        }, 4000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const goToPrev = useCallback(() => {
+        setCurrentImage((prev) => (prev - 1 + carouselImages.length) % carouselImages.length);
+    }, []);
+
+    const goToNext = useCallback(() => {
+        setCurrentImage((prev) => (prev + 1) % carouselImages.length);
+    }, []);
+
+    return (
+        <section style={{
+            background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 50%, #818cf8 100%)',
+            color: 'white',
+            padding: '100px 24px 120px',
+            position: 'relative',
+            overflow: 'hidden',
+        }}>
+            {/* Decorative circles */}
+            <div style={{
+                position: 'absolute',
+                top: '-100px',
+                right: '-100px',
+                width: '400px',
+                height: '400px',
+                background: 'rgba(255,255,255,0.08)',
+                borderRadius: '50%',
+            }} />
+            <div style={{
+                position: 'absolute',
+                bottom: '-150px',
+                left: '-50px',
+                width: '300px',
+                height: '300px',
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: '50%',
+            }} />
+
+            <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+                <Row gutter={[48, 48]} align="middle">
+                    <Col xs={24} lg={14}>
+                        <div style={{
+                            display: 'inline-block',
+                            padding: '6px 16px',
+                            background: 'rgba(255,255,255,0.15)',
+                            borderRadius: 20,
+                            fontSize: 13,
+                            marginBottom: 24,
+                        }}>
+                            🏛️ Office of Senior Citizens Affairs
+                        </div>
+                        <Title level={1} style={{
+                            color: 'white',
+                            fontSize: 'clamp(32px, 5vw, 52px)',
+                            lineHeight: 1.2,
+                            marginBottom: 24,
+                        }}>
+                            Serving Our Beloved <br />Senior Citizens
+                        </Title>
+                        <Paragraph style={{
+                            color: 'rgba(255,255,255,0.9)',
+                            fontSize: 18,
+                            lineHeight: 1.7,
+                            maxWidth: 500,
+                            marginBottom: 32,
+                        }}>
+                            Dedicated to protecting and promoting the rights, dignity, and welfare
+                            of senior citizens in Zamboanga City. Register now and enjoy your benefits.
+                        </Paragraph>
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                            <Link to="/apply">
+                                <Button
+                                    size="large"
+                                    style={{
+                                        background: 'white',
+                                        color: '#4338ca',
+                                        border: 'none',
+                                        height: 50,
+                                        paddingInline: 32,
+                                        fontWeight: 600,
+                                        borderRadius: 10,
+                                    }}
+                                >
+                                    Apply for ID <ArrowRightOutlined />
+                                </Button>
+                            </Link>
+                            <Link to="/services">
+                                <Button
+                                    size="large"
+                                    ghost
+                                    style={{
+                                        color: 'white',
+                                        borderColor: 'rgba(255,255,255,0.5)',
+                                        height: 50,
+                                        paddingInline: 32,
+                                        fontWeight: 500,
+                                        borderRadius: 10,
+                                    }}
+                                >
+                                    View Services
+                                </Button>
+                            </Link>
+                        </div>
+                    </Col>
+                    <Col xs={24} lg={10} style={{ textAlign: 'center' }}>
+                        {/* Image Carousel */}
+                        <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            maxWidth: 400,
+                            margin: '0 auto',
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                height: 300,
+                                borderRadius: 20,
+                                overflow: 'hidden',
+                                boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                                position: 'relative',
+                            }}>
+                                {carouselImages.map((img, index) => (
+                                    <img
+                                        key={index}
+                                        src={img}
+                                        alt={`Senior Citizens Event ${index + 1}`}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                            opacity: currentImage === index ? 1 : 0,
+                                            transition: 'opacity 0.8s ease-in-out',
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                            {/* Navigation arrows */}
+                            <button
+                                onClick={goToPrev}
                                 style={{
-                                    background: 'white',
-                                    color: '#4338ca',
+                                    position: 'absolute',
+                                    left: -20,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'rgba(255,255,255,0.9)',
                                     border: 'none',
-                                    height: 50,
-                                    paddingInline: 32,
-                                    fontWeight: 600,
-                                    borderRadius: 10,
+                                    borderRadius: '50%',
+                                    width: 40,
+                                    height: 40,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                                 }}
                             >
-                                Apply for ID <ArrowRightOutlined />
-                            </Button>
-                        </Link>
-                        <Link to="/services">
-                            <Button
-                                size="large"
-                                ghost
+                                <LeftOutlined style={{ color: '#4338ca' }} />
+                            </button>
+                            <button
+                                onClick={goToNext}
                                 style={{
-                                    color: 'white',
-                                    borderColor: 'rgba(255,255,255,0.5)',
-                                    height: 50,
-                                    paddingInline: 32,
-                                    fontWeight: 500,
-                                    borderRadius: 10,
+                                    position: 'absolute',
+                                    right: -20,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'rgba(255,255,255,0.9)',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: 40,
+                                    height: 40,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                                 }}
                             >
-                                View Services
-                            </Button>
-                        </Link>
-                    </div>
-                </Col>
-                <Col xs={24} lg={10} style={{ textAlign: 'center' }}>
-                    <div style={{
-                        width: '100%',
-                        maxWidth: 350,
-                        height: 300,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 20,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto',
-                        backdropFilter: 'blur(10px)',
-                    }}>
-                        <TeamOutlined style={{ fontSize: 120, opacity: 0.5 }} />
-                    </div>
-                </Col>
-            </Row>
-        </div>
-    </section>
-);
+                                <RightOutlined style={{ color: '#4338ca' }} />
+                            </button>
+                            {/* Dots indicator */}
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                gap: 8,
+                                marginTop: 16,
+                            }}>
+                                {carouselImages.map((_, index) => (
+                                    <div
+                                        key={index}
+                                        onClick={() => setCurrentImage(index)}
+                                        style={{
+                                            width: currentImage === index ? 24 : 8,
+                                            height: 8,
+                                            borderRadius: 4,
+                                            background: currentImage === index ? 'white' : 'rgba(255,255,255,0.4)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.3s ease',
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+        </section>
+    );
+};
 
 // Stats Section
 const StatsSection = () => {
