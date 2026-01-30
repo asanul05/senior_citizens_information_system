@@ -12,7 +12,7 @@ import axios from 'axios';
 
 const { Title, Paragraph, Text } = Typography;
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const SeniorLogin = () => {
     const [step, setStep] = useState(0); // 0: OSCA ID, 1: OTP, 2: PIN Setup/Login
