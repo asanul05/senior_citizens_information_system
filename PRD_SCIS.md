@@ -492,6 +492,6 @@ The system includes all 98 barangays of Zamboanga City, grouped into field offic
 
 ---
 
-**Document Prepared By:** AI Assistant  
+**Document Prepared By:** Development Team  
 **For:** Software Engineering Course Project  
 **Client:** OSCA Zamboanga City

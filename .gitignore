@@ -50,3 +50,7 @@ coverage/
 # Misc
 *.bak
 *.tmp
+
+# Deployment docs (local only)
+DEPLOYMENT.md
+*.production.example
