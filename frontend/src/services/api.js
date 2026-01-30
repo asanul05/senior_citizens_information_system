@@ -1,0 +1,240 @@
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add token to requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Handle 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const authApi = {
+  login: (username, password) =>
+    api.post('/login', { username, password }),
+
+  logout: () =>
+    api.post('/logout'),
+
+  me: () =>
+    api.get('/me'),
+};
+
+// Dashboard API
+export const dashboardApi = {
+  getStats: () =>
+    api.get('/dashboard/stats'),
+
+  getUpcomingEvents: () =>
+    api.get('/dashboard/upcoming-events'),
+
+  getAgeDistribution: () =>
+    api.get('/dashboard/age-distribution'),
+
+  getGenderDistribution: () =>
+    api.get('/dashboard/gender-distribution'),
+};
+
+// Seniors API
+export const seniorsApi = {
+  getList: (params) =>
+    api.get('/seniors', { params }),
+
+  getById: (id) =>
+    api.get(`/seniors/${id}`),
+
+  getStatistics: () =>
+    api.get('/seniors/statistics'),
+
+  export: () =>
+    api.get('/seniors/export', { responseType: 'blob' }),
+};
+
+// Applications API
+export const applicationsApi = {
+  getList: (params) =>
+    api.get('/applications', { params }),
+
+  getById: (id) =>
+    api.get(`/applications/${id}`),
+
+  getStatistics: () =>
+    api.get('/applications/statistics'),
+
+  updateStatus: (id, data) =>
+    api.patch(`/applications/${id}/status`, data),
+};
+
+// ID Printing API
+export const idPrintingApi = {
+  getList: (params) =>
+    api.get('/id-printing', { params }),
+
+  getStatistics: () =>
+    api.get('/id-printing/statistics'),
+
+  getAvailableSeniors: (search = '') =>
+    api.get('/id-printing/available-seniors', { params: { search } }),
+
+  addToQueue: (data) =>
+    api.post('/id-printing/add', data),
+
+  getCardData: (id) =>
+    api.get(`/id-printing/${id}/card-data`),
+
+  getBatchCardData: (ids) =>
+    api.post('/id-printing/batch-card-data', { ids }),
+
+  updateStatus: (id, data) =>
+    api.patch(`/id-printing/${id}/status`, data),
+
+  bulkPrint: (ids) =>
+    api.post('/id-printing/bulk-print', { ids }),
+
+  bulkClaim: (ids) =>
+    api.post('/id-printing/bulk-claim', { ids }),
+};
+
+// Announcements API
+export const announcementsApi = {
+  getList: (params) =>
+    api.get('/announcements', { params }),
+
+  getById: (id) =>
+    api.get(`/announcements/${id}`),
+
+  getTypes: () =>
+    api.get('/announcements/types'),
+
+  create: (data) =>
+    api.post('/announcements', data),
+
+  update: (id, data) =>
+    api.put(`/announcements/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/announcements/${id}`),
+};
+
+// Registration API
+export const registrationApi = {
+  getLookupOptions: () =>
+    api.get('/registration/lookup-options'),
+
+  getBarangays: () =>
+    api.get('/registration/barangays'),
+
+  checkDuplicate: (data) =>
+    api.post('/registration/check-duplicate', data),
+
+  submitNew: (data) =>
+    api.post('/registration/new', data),
+
+  getById: (id) =>
+    api.get(`/registration/${id}`),
+
+  update: (id, data) =>
+    api.put(`/registration/${id}`, data),
+
+  getDocuments: (id) =>
+    api.get(`/registration/${id}/documents`),
+
+  uploadDocument: (formData) =>
+    api.post('/registration/upload-document', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  deleteDocument: (documentId) =>
+    api.delete(`/registration/document/${documentId}`),
+};
+
+// Public API (No authentication required)
+export const publicApi = {
+  getBarangays: () =>
+    api.get('/public/barangays'),
+
+  apply: (data) =>
+    api.post('/public/apply', data),
+
+  checkStatus: (referenceNumber) =>
+    api.get(`/public/status/${referenceNumber}`),
+};
+
+// Pre-Registration Admin API
+export const preRegistrationApi = {
+  list: (params) =>
+    api.get('/pre-registrations', { params }),
+
+  statistics: () =>
+    api.get('/pre-registrations/statistics'),
+
+  getById: (id) =>
+    api.get(`/pre-registrations/${id}`),
+
+  markUnderReview: (id) =>
+    api.post(`/pre-registrations/${id}/mark-review`),
+
+  foReview: (id, data) =>
+    api.post(`/pre-registrations/${id}/fo-review`, data),
+
+  mainReview: (id, data) =>
+    api.post(`/pre-registrations/${id}/main-review`, data),
+
+  convert: (id) =>
+    api.post(`/pre-registrations/${id}/convert`),
+};
+
+// Benefits API (PRD 4.3)
+export const benefitsApi = {
+  getTypes: () =>
+    api.get('/benefits/types'),
+
+  getClaims: (params) =>
+    api.get('/benefits/claims', { params }),
+
+  exportClaims: (params) =>
+    api.get('/benefits/claims/export', { params, responseType: 'blob' }),
+
+  getEligible: (params) =>
+    api.get('/benefits/eligible', { params }),
+
+  getStatistics: () =>
+    api.get('/benefits/statistics'),
+
+  createClaim: (data) =>
+    api.post('/benefits/claims', data),
+
+  updateStatus: (id, data) =>
+    api.patch(`/benefits/claims/${id}/status`, data),
+
+  getSeniorClaims: (seniorId) =>
+    api.get(`/seniors/${seniorId}/benefits`),
+};
+
+export default api;
