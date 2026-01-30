@@ -29,15 +29,20 @@ class PublicController extends Controller
             'first_name' => 'required|string|max:100',
             'middle_name' => 'nullable|string|max:100',
             'last_name' => 'required|string|max:100',
-            'suffix' => 'nullable|string|max:10',
+            'extension' => 'nullable|string|max:10',
             'birthdate' => 'required|date|before:-60 years',
-            'sex' => 'required|in:male,female',
-            'civil_status' => 'required|in:single,married,widowed,separated,divorced',
-            'contact_number' => 'required|string|max:20',
-            'email' => 'nullable|email|max:100',
-            'address' => 'required|string|max:255',
-            'emergency_contact_name' => 'nullable|string|max:100',
-            'emergency_contact_number' => 'nullable|string|max:20',
+            'gender_id' => 'required|integer|in:1,2',
+            'house_number' => 'nullable|string|max:50',
+            'street' => 'nullable|string|max:255',
+            'mobile_number' => 'nullable|string|max:20',
+            'telephone_number' => 'nullable|string|max:20',
+            'educational_attainment_id' => 'nullable|integer',
+            'monthly_salary' => 'nullable|numeric',
+            'occupation' => 'nullable|string|max:100',
+            'other_skills' => 'nullable|string|max:255',
+            'family_members' => 'nullable|array',
+            'target_sectors' => 'nullable|array',
+            'sub_categories' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -83,23 +88,33 @@ class PublicController extends Controller
             ], 409);
         }
 
-        // Create pre-registration
+        // Create pre-registration with expanded data structure
         $preRegistration = PreRegistration::create([
             'reference_number' => PreRegistration::generateReferenceNumber(),
             'barangay_id' => $request->barangay_id,
             'applicant_data' => [
+                // Personal info
                 'first_name' => $request->first_name,
                 'middle_name' => $request->middle_name,
                 'last_name' => $request->last_name,
-                'suffix' => $request->suffix,
+                'extension' => $request->extension,
                 'birthdate' => $request->birthdate,
-                'sex' => $request->sex,
-                'civil_status' => $request->civil_status,
-                'contact_number' => $request->contact_number,
-                'email' => $request->email,
-                'address' => $request->address,
-                'emergency_contact_name' => $request->emergency_contact_name,
-                'emergency_contact_number' => $request->emergency_contact_number,
+                'gender_id' => $request->gender_id,
+                // Address
+                'house_number' => $request->house_number,
+                'street' => $request->street,
+                // Contact
+                'mobile_number' => $request->mobile_number,
+                'telephone_number' => $request->telephone_number,
+                // Background
+                'educational_attainment_id' => $request->educational_attainment_id,
+                'monthly_salary' => $request->monthly_salary,
+                'occupation' => $request->occupation,
+                'other_skills' => $request->other_skills,
+                // Family & Associations
+                'family_members' => $request->family_members ?? [],
+                'target_sectors' => $request->target_sectors ?? [],
+                'sub_categories' => $request->sub_categories ?? [],
             ],
             'status' => PreRegistration::STATUS_PENDING,
         ]);
@@ -108,7 +123,7 @@ class PublicController extends Controller
             'message' => 'Application submitted successfully',
             'reference_number' => $preRegistration->reference_number,
             'status' => $preRegistration->status,
-            'next_steps' => 'Your application will be reviewed by the Branch/FO Admin. You can track your application status using your reference number.',
+            'next_steps' => 'Your application will be reviewed by the Admin. Visit the OSCA office with your documents to complete registration.',
         ], 201);
     }
 

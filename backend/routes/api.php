@@ -123,14 +123,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [PreRegistrationController::class, 'show']);
         Route::post('/{id}/mark-review', [PreRegistrationController::class, 'markUnderReview']);
         Route::post('/{id}/fo-review', [PreRegistrationController::class, 'foReview']);
+        // Convert to application (available to FO and Main Admin)
+        Route::post('/{id}/convert', [PreRegistrationController::class, 'convert']);
+        Route::post('/{id}/complete-conversion', [PreRegistrationController::class, 'completeConversion']);
     });
 
     // Main Admin only routes (role_id = 1)
     Route::middleware('role:1')->group(function () {
-        // Pre-registration main review & conversion
+        // Pre-registration main review (for rejecting)
         Route::post('/pre-registrations/{id}/main-review', [PreRegistrationController::class, 'mainReview']);
-        Route::post('/pre-registrations/{id}/convert', [PreRegistrationController::class, 'convert']);
-        Route::post('/pre-registrations/{id}/complete-conversion', [PreRegistrationController::class, 'completeConversion']);
     });
 
     // Main Admin and Branch Admin routes (role_id = 1 or 2)

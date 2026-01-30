@@ -211,29 +211,31 @@ const PreRegistrations = () => {
                     <Button icon={<EyeOutlined />} size="small" onClick={() => openDetailModal(record)}>
                         View
                     </Button>
-                    {/* FO Admin actions - Transmit or Reject */}
-                    {(isFOAdmin || isBarangayAdmin) && ['pending', 'fo_review'].includes(record.status) && (
-                        <Button
-                            type="primary"
-                            icon={<SendOutlined />}
-                            size="small"
-                            onClick={() => openReviewModal(record, 'fo')}
-                        >
-                            Transmit / Reject
-                        </Button>
-                    )}
-                    {/* Main Admin - Convert to Application (opens registration form) */}
-                    {isMainAdmin && ['fo_verified', 'main_review', 'approved'].includes(record.status) && (
-                        <Button
-                            type="primary"
-                            icon={<FormOutlined />}
-                            style={{ background: '#059669' }}
-                            size="small"
-                            onClick={() => handleConvert(record)}
-                        >
-                            Convert to Application
-                        </Button>
-                    )}
+                    {/* Both FO Admin and Main Admin can convert pending applications to registration form */}
+                    {(isFOAdmin || isBarangayAdmin || isMainAdmin) &&
+                        ['pending', 'fo_review', 'fo_verified', 'main_review', 'approved'].includes(record.status) &&
+                        record.status !== 'converted' && record.status !== 'rejected' && (
+                            <Button
+                                type="primary"
+                                icon={<FormOutlined />}
+                                style={{ background: '#059669' }}
+                                size="small"
+                                onClick={() => handleConvert(record)}
+                            >
+                                Convert to Application
+                            </Button>
+                        )}
+                    {/* Reject button for admins */}
+                    {(isFOAdmin || isBarangayAdmin || isMainAdmin) &&
+                        ['pending', 'fo_review', 'fo_verified'].includes(record.status) && (
+                            <Button
+                                danger
+                                size="small"
+                                onClick={() => openReviewModal(record, isFOAdmin || isBarangayAdmin ? 'fo' : 'main')}
+                            >
+                                Reject
+                            </Button>
+                        )}
                 </Space>
             ),
         },
@@ -436,36 +438,17 @@ const PreRegistrations = () => {
                             </div>
                         </div>
 
-                        <Form.Item
-                            name="action"
-                            label="Decision"
-                            rules={[{ required: true, message: 'Select an action' }]}
-                        >
-                            <Select placeholder="Select action">
-                                <Option value={reviewModal.type === 'fo' ? 'transmit' : 'approve'}>
-                                    <SendOutlined style={{ color: '#52c41a' }} /> {reviewModal.type === 'fo' ? 'Transmit to Main Admin' : 'Approve'}
-                                </Option>
-                                <Option value="reject">
-                                    <CloseCircleOutlined style={{ color: '#ff4d4f' }} /> Reject
-                                </Option>
-                            </Select>
+                        {/* Hidden field to set action to reject */}
+                        <Form.Item name="action" initialValue="reject" hidden>
+                            <input />
                         </Form.Item>
 
                         <Form.Item
-                            noStyle
-                            shouldUpdate={(prev, curr) => prev.action !== curr.action}
+                            name="rejection_reason"
+                            label="Rejection Reason"
+                            rules={[{ required: true, message: 'Please provide a rejection reason' }]}
                         >
-                            {({ getFieldValue }) =>
-                                getFieldValue('action') === 'reject' && (
-                                    <Form.Item
-                                        name="rejection_reason"
-                                        label="Rejection Reason"
-                                        rules={[{ required: true, message: 'Please provide a rejection reason' }]}
-                                    >
-                                        <TextArea rows={3} placeholder="Explain why this application is being rejected..." />
-                                    </Form.Item>
-                                )
-                            }
+                            <TextArea rows={3} placeholder="Explain why this application is being rejected..." />
                         </Form.Item>
 
                         <Form.Item name="notes" label="Notes (Optional)">

@@ -1,20 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin } from 'antd';
+import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin, InputNumber } from 'antd';
 import {
     UserOutlined,
-    HomeOutlined,
+    UsergroupAddOutlined,
+    ApartmentOutlined,
     FileTextOutlined,
     CheckCircleOutlined,
     ArrowLeftOutlined,
     ArrowRightOutlined,
     SearchOutlined,
+    PlusOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { publicApi } from '../../services/api';
 
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
+const { TextArea } = Input;
 
 const Apply = () => {
     const [currentStep, setCurrentStep] = useState(0);
@@ -25,6 +29,8 @@ const Apply = () => {
     const [barangays, setBarangays] = useState([]);
     const [loadingBarangays, setLoadingBarangays] = useState(true);
     const [form] = Form.useForm();
+    const [calculatedAge, setCalculatedAge] = useState(null);
+    const [familyMembers, setFamilyMembers] = useState([]);
 
     // Status check state
     const [checkMode, setCheckMode] = useState(false);
@@ -32,9 +38,47 @@ const Apply = () => {
     const [checkLoading, setCheckLoading] = useState(false);
     const [statusData, setStatusData] = useState(null);
 
+    // Lookup options (simplified for public form)
+    const genders = [
+        { id: 1, name: 'Male' },
+        { id: 2, name: 'Female' },
+    ];
+
+    const educationalAttainments = [
+        { id: 1, name: 'No Formal Education' },
+        { id: 2, name: 'Elementary Level' },
+        { id: 3, name: 'Elementary Graduate' },
+        { id: 4, name: 'High School Level' },
+        { id: 5, name: 'High School Graduate' },
+        { id: 6, name: 'Vocational' },
+        { id: 7, name: 'College Level' },
+        { id: 8, name: 'College Graduate' },
+        { id: 9, name: 'Post Graduate' },
+    ];
+
+    const targetSectors = [
+        { value: 'PNGNA', label: 'PNGNA', description: 'Member of national senior citizens organization' },
+        { value: 'WEPC', label: 'WEPC', description: 'Female senior citizens in empowerment programs' },
+        { value: 'PWD', label: 'PWD', description: 'Senior with recognized disability' },
+        { value: 'YNSP', label: 'YNSP', description: 'Special care program' },
+        { value: 'PASP', label: 'PASP', description: 'Hope and support program members' },
+        { value: 'KIA/WIA', label: 'KIA/WIA', description: '' },
+    ];
+
+    const subCategories = [
+        { value: 'Solo Parents', label: 'Solo Parents' },
+        { value: 'Indigenous Person (IP)', label: 'Indigenous Person (IP)' },
+        { value: 'Recovering Person who used drugs', label: 'Recovering Person who used drugs' },
+        { value: "4P's DSWD Beneficiaries", label: "4P's DSWD Beneficiaries" },
+        { value: 'Street Dwellers', label: 'Street Dwellers' },
+        { value: 'Psychosocial/Mental/Learning Disability', label: 'Psychosocial/Mental/Learning Disability' },
+        { value: 'Stateless Person/Asylum', label: 'Stateless Person/Asylum' },
+    ];
+
     const steps = [
         { title: 'Personal Info', icon: <UserOutlined /> },
-        { title: 'Address', icon: <HomeOutlined /> },
+        { title: 'Family Composition', icon: <UsergroupAddOutlined /> },
+        { title: 'Association', icon: <ApartmentOutlined /> },
         { title: 'Review', icon: <FileTextOutlined /> },
     ];
 
@@ -48,21 +92,47 @@ const Apply = () => {
             setBarangays(response.data.data || []);
         } catch (error) {
             console.error('Failed to load barangays:', error);
-            // Fallback to static list
             setBarangays([
                 { id: 1, name: 'Arena Blanco' }, { id: 2, name: 'Ayala' }, { id: 3, name: 'Baliwasan' },
                 { id: 4, name: 'Calarian' }, { id: 5, name: 'Camino Nuevo' }, { id: 6, name: 'Canelar' },
-                { id: 7, name: 'Divisoria' }, { id: 8, name: 'Guiwan' }, { id: 9, name: 'Kasanyangan' },
-                { id: 10, name: 'La Paz' }, { id: 11, name: 'Lunzuran' }, { id: 12, name: 'Pasonanca' },
-                { id: 13, name: 'Putik' }, { id: 14, name: 'Recodo' }, { id: 15, name: 'Rio Hondo' },
-                { id: 16, name: 'San Jose Cawa-Cawa' }, { id: 17, name: 'Santa Barbara' },
-                { id: 18, name: 'Santa Maria' }, { id: 19, name: 'Talon-Talon' }, { id: 20, name: 'Tetuan' },
-                { id: 21, name: 'Tumaga' }, { id: 22, name: 'Zone I' }, { id: 23, name: 'Zone II' },
-                { id: 24, name: 'Zone III' }, { id: 25, name: 'Zone IV' },
             ]);
         } finally {
             setLoadingBarangays(false);
         }
+    };
+
+    const calculateAge = useCallback((birthdate) => {
+        if (!birthdate) {
+            setCalculatedAge(null);
+            return;
+        }
+        const birth = dayjs(birthdate);
+        const today = dayjs();
+        const age = today.diff(birth, 'year');
+        setCalculatedAge(age >= 0 ? age : null);
+    }, []);
+
+    const handleBirthdateChange = (date) => {
+        calculateAge(date);
+        form.setFieldValue('birthdate', date);
+    };
+
+    // Family member management
+    const addFamilyMember = () => {
+        setFamilyMembers([
+            ...familyMembers,
+            { id: Date.now(), first_name: '', middle_name: '', last_name: '', relationship: '', age: '', monthly_salary: '' },
+        ]);
+    };
+
+    const removeFamilyMember = (id) => {
+        setFamilyMembers(familyMembers.filter((m) => m.id !== id));
+    };
+
+    const updateFamilyMember = (id, field, value) => {
+        setFamilyMembers(
+            familyMembers.map((m) => (m.id === id ? { ...m, [field]: value } : m))
+        );
     };
 
     const handleNext = async () => {
@@ -78,6 +148,9 @@ const Apply = () => {
     };
 
     const handlePrev = () => {
+        // Save current values before going back
+        const values = form.getFieldsValue();
+        setFormData({ ...formData, ...values });
         setCurrentStep(currentStep - 1);
     };
 
@@ -86,12 +159,35 @@ const Apply = () => {
         try {
             // Prepare data for API
             const submitData = {
-                ...formData,
-                barangay_id: formData.barangay_id,
+                // Personal info
+                first_name: formData.first_name,
+                middle_name: formData.middle_name,
+                last_name: formData.last_name,
+                extension: formData.extension,
                 birthdate: formData.birthdate ? dayjs(formData.birthdate).format('YYYY-MM-DD') : null,
-                sex: formData.gender?.toLowerCase() || formData.sex,
-                civil_status: formData.civil_status?.toLowerCase(),
-                address: formData.street_address || formData.address,
+                gender_id: formData.gender_id,
+
+                // Address
+                barangay_id: formData.barangay_id,
+                house_number: formData.house_number,
+                street: formData.street,
+
+                // Contact
+                mobile_number: formData.mobile_number,
+                telephone_number: formData.telephone_number,
+
+                // Background
+                educational_attainment_id: formData.educational_attainment_id,
+                monthly_salary: formData.monthly_salary,
+                occupation: formData.occupation,
+                other_skills: formData.other_skills,
+
+                // Family
+                family_members: familyMembers.filter(m => m.first_name),
+
+                // Associations
+                target_sectors: formData.target_sectors || [],
+                sub_categories: formData.sub_categories || [],
             };
 
             const response = await publicApi.apply(submitData);
@@ -101,7 +197,6 @@ const Apply = () => {
         } catch (error) {
             const errorMsg = error.response?.data?.message || 'Failed to submit application. Please try again.';
             if (error.response?.status === 409) {
-                // Duplicate application
                 setReferenceNumber(error.response.data.reference_number);
                 message.warning(`You already have an application: ${error.response.data.reference_number}`);
             } else {
@@ -137,7 +232,6 @@ const Apply = () => {
     if (checkMode) {
         return (
             <div>
-                {/* Hero */}
                 <section style={{
                     background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)',
                     color: 'white',
@@ -208,28 +302,6 @@ const Apply = () => {
                                             <Text type="secondary">Barangay</Text>
                                             <div><Text strong>{statusData.barangay || '-'}</Text></div>
                                         </Col>
-                                        <Col xs={12}>
-                                            <Text type="secondary">Submitted</Text>
-                                            <div><Text>{statusData.submitted_at}</Text></div>
-                                        </Col>
-                                        {statusData.fo_reviewed_at && (
-                                            <Col xs={12}>
-                                                <Text type="secondary">Branch Reviewed</Text>
-                                                <div><Text>{statusData.fo_reviewed_at}</Text></div>
-                                            </Col>
-                                        )}
-                                        {statusData.rejection_reason && (
-                                            <Col span={24}>
-                                                <Text type="secondary">Rejection Reason</Text>
-                                                <div><Text type="danger">{statusData.rejection_reason}</Text></div>
-                                            </Col>
-                                        )}
-                                        {statusData.notes && (
-                                            <Col span={24}>
-                                                <Text type="secondary">Notes</Text>
-                                                <div><Text>{statusData.notes}</Text></div>
-                                            </Col>
-                                        )}
                                     </Row>
                                 </Card>
                             )}
@@ -269,7 +341,7 @@ const Apply = () => {
                                         </Text>
                                     </div>
                                     <Paragraph type="secondary">
-                                        Your application will be reviewed by the Branch/FO Admin. You can track your status using the reference number above.
+                                        Your application will be reviewed by the Admin. Visit the OSCA office with your documents to complete registration.
                                     </Paragraph>
                                 </div>
                             }
@@ -320,7 +392,7 @@ const Apply = () => {
 
             {/* Form */}
             <section style={{ padding: '60px 24px', background: '#f9fafb' }}>
-                <div style={{ maxWidth: 700, margin: '0 auto' }}>
+                <div style={{ maxWidth: 800, margin: '0 auto' }}>
                     <Card style={{ borderRadius: 16 }}>
                         <Steps
                             current={currentStep}
@@ -332,174 +404,377 @@ const Apply = () => {
                             form={form}
                             layout="vertical"
                             initialValues={formData}
-                            preserve={false}
+                            preserve={true}
                         >
-                            {/* Step 1: Personal Info */}
+                            {/* Step 1: Personal Information */}
                             {currentStep === 0 && (
                                 <div>
-                                    <Title level={4} style={{ marginBottom: 24 }}>Personal Information</Title>
+                                    <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
+                                        Personal Na Impormasyon
+                                    </Title>
+
                                     <Row gutter={16}>
-                                        <Col xs={24} sm={8}>
+                                        <Col xs={24} sm={12}>
                                             <Form.Item
                                                 name="first_name"
-                                                label="First Name"
-                                                rules={[{ required: true, message: 'Required' }]}
+                                                label={<span>First Name <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'First name is required' }]}
                                             >
-                                                <Input size="large" placeholder="Juan" style={{ borderRadius: 8 }} />
+                                                <Input placeholder="Enter first name" size="large" />
                                             </Form.Item>
                                         </Col>
-                                        <Col xs={24} sm={8}>
-                                            <Form.Item name="middle_name" label="Middle Name">
-                                                <Input size="large" placeholder="Santos" style={{ borderRadius: 8 }} />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col xs={24} sm={8}>
-                                            <Form.Item
-                                                name="last_name"
-                                                label="Last Name"
-                                                rules={[{ required: true, message: 'Required' }]}
-                                            >
-                                                <Input size="large" placeholder="Dela Cruz" style={{ borderRadius: 8 }} />
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="middle_name" label="Middle Name/Middle Initial">
+                                                <Input placeholder="Enter middle name" size="large" />
                                             </Form.Item>
                                         </Col>
                                     </Row>
+
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item
+                                                name="last_name"
+                                                label={<span>Last Name <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'Last name is required' }]}
+                                            >
+                                                <Input placeholder="Enter last name" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="extension" label="Extension">
+                                                <Input placeholder="Jr., Sr., III, etc." size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="house_number" label="House No.">
+                                                <Input placeholder="House number" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="street" label="Street">
+                                                <Input placeholder="Street name" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item
+                                                name="barangay_id"
+                                                label={<span>Barangay <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'Barangay is required' }]}
+                                            >
+                                                {loadingBarangays ? (
+                                                    <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>
+                                                ) : (
+                                                    <Select
+                                                        placeholder="Select Barangay"
+                                                        size="large"
+                                                        showSearch
+                                                        filterOption={(input, option) =>
+                                                            option.children.toLowerCase().includes(input.toLowerCase())
+                                                        }
+                                                    >
+                                                        {barangays.map((b) => (
+                                                            <Option key={b.id} value={b.id}>
+                                                                {b.name}
+                                                            </Option>
+                                                        ))}
+                                                    </Select>
+                                                )}
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="City, Province, Postal Code">
+                                                <Input
+                                                    value="Zamboanga City, Philippines, 7000"
+                                                    disabled
+                                                    size="large"
+                                                    style={{ backgroundColor: '#f5f5f5', color: '#000' }}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+
                                     <Row gutter={16}>
                                         <Col xs={24} sm={12}>
                                             <Form.Item
                                                 name="birthdate"
-                                                label="Date of Birth"
-                                                rules={[{ required: true, message: 'Required' }]}
+                                                label={<span>Date of Birth <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[
+                                                    { required: true, message: 'Birthdate is required' },
+                                                    {
+                                                        validator: (_, value) => {
+                                                            if (value && dayjs().diff(value, 'year') < 60) {
+                                                                return Promise.reject('Must be at least 60 years old');
+                                                            }
+                                                            return Promise.resolve();
+                                                        },
+                                                    },
+                                                ]}
                                             >
                                                 <DatePicker
                                                     size="large"
-                                                    style={{ width: '100%', borderRadius: 8 }}
-                                                    format="YYYY-MM-DD"
-                                                    placeholder="YYYY-MM-DD (e.g. 1960-05-15)"
+                                                    style={{ width: '100%' }}
+                                                    placeholder="Select date (YYYY-MM-DD)"
+                                                    format={['YYYY-MM-DD', 'MM/DD/YYYY']}
+                                                    onChange={handleBirthdateChange}
                                                     showToday={false}
-                                                    disabledDate={(current) => current && current > dayjs().subtract(60, 'year')}
                                                     allowClear
                                                 />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
+                                            <Form.Item label="Age">
+                                                <Input
+                                                    value={calculatedAge !== null ? `${calculatedAge} years old` : ''}
+                                                    readOnly
+                                                    size="large"
+                                                    style={{ backgroundColor: '#f5f5f5' }}
+                                                    placeholder="Calculated from birthdate"
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
                                             <Form.Item
-                                                name="gender"
-                                                label="Gender"
-                                                rules={[{ required: true, message: 'Required' }]}
+                                                name="gender_id"
+                                                label={<span>Sex <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'Sex is required' }]}
                                             >
-                                                <Select size="large" placeholder="Select" style={{ borderRadius: 8 }}>
-                                                    <Option value="Male">Male</Option>
-                                                    <Option value="Female">Female</Option>
+                                                <Select placeholder="Select Sex" size="large">
+                                                    {genders.map((g) => (
+                                                        <Option key={g.id} value={g.id}>
+                                                            {g.name}
+                                                        </Option>
+                                                    ))}
                                                 </Select>
                                             </Form.Item>
                                         </Col>
                                     </Row>
+
+                                    <Divider />
+                                    <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
+                                        Contact &amp; Background Information
+                                    </Title>
+
                                     <Row gutter={16}>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item
-                                                name="civil_status"
-                                                label="Civil Status"
-                                                rules={[{ required: true, message: 'Required' }]}
-                                            >
-                                                <Select size="large" placeholder="Select" style={{ borderRadius: 8 }}>
-                                                    <Option value="Single">Single</Option>
-                                                    <Option value="Married">Married</Option>
-                                                    <Option value="Widowed">Widowed</Option>
-                                                    <Option value="Separated">Separated</Option>
+                                            <Form.Item name="educational_attainment_id" label="Educational Attainment">
+                                                <Select placeholder="Select Educational Attainment" size="large" allowClear>
+                                                    {educationalAttainments.map((ea) => (
+                                                        <Option key={ea.id} value={ea.id}>
+                                                            {ea.name}
+                                                        </Option>
+                                                    ))}
                                                 </Select>
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item
-                                                name="contact_number"
-                                                label="Contact Number"
-                                                rules={[{ required: true, message: 'Required' }]}
-                                            >
-                                                <Input size="large" placeholder="09XX XXX XXXX" style={{ borderRadius: 8 }} />
+                                            <Form.Item name="mobile_number" label="Mobile Number">
+                                                <Input placeholder="09XX-XXX-XXXX" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="telephone_number" label="Telephone Number">
+                                                <Input placeholder="(062) XXX-XXXX" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="monthly_salary" label="Monthly Salary">
+                                                <InputNumber
+                                                    placeholder="0.00"
+                                                    size="large"
+                                                    style={{ width: '100%' }}
+                                                    min={0}
+                                                    step={0.01}
+                                                    formatter={(value) => `₱ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                                    parser={(value) => value.replace(/₱\s?|(,*)/g, '')}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="occupation" label="Occupation">
+                                                <Input placeholder="Current or previous occupation" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="other_skills" label="Other Skills">
+                                                <Input placeholder="Additional skills" size="large" />
                                             </Form.Item>
                                         </Col>
                                     </Row>
                                 </div>
                             )}
 
-                            {/* Step 2: Address */}
+                            {/* Step 2: Family Composition */}
                             {currentStep === 1 && (
                                 <div>
-                                    <Title level={4} style={{ marginBottom: 24 }}>Address Information</Title>
-                                    <Form.Item
-                                        name="barangay_id"
-                                        label="Barangay"
-                                        rules={[{ required: true, message: 'Required' }]}
+                                    <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
+                                        Family Composition (Optional)
+                                    </Title>
+                                    <Paragraph type="secondary" style={{ marginBottom: 24 }}>
+                                        Add members of your household if applicable.
+                                    </Paragraph>
+
+                                    {familyMembers.map((member, index) => (
+                                        <Card
+                                            key={member.id}
+                                            size="small"
+                                            style={{ marginBottom: 16, background: '#fafafa' }}
+                                            extra={
+                                                <Button
+                                                    type="text"
+                                                    danger
+                                                    icon={<DeleteOutlined />}
+                                                    onClick={() => removeFamilyMember(member.id)}
+                                                />
+                                            }
+                                            title={`Family Member ${index + 1}`}
+                                        >
+                                            <Row gutter={12}>
+                                                <Col xs={24} sm={8}>
+                                                    <Form.Item label="First Name" style={{ marginBottom: 8 }}>
+                                                        <Input
+                                                            value={member.first_name}
+                                                            onChange={(e) => updateFamilyMember(member.id, 'first_name', e.target.value)}
+                                                            placeholder="First name"
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={8}>
+                                                    <Form.Item label="Last Name" style={{ marginBottom: 8 }}>
+                                                        <Input
+                                                            value={member.last_name}
+                                                            onChange={(e) => updateFamilyMember(member.id, 'last_name', e.target.value)}
+                                                            placeholder="Last name"
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={8}>
+                                                    <Form.Item label="Relationship" style={{ marginBottom: 8 }}>
+                                                        <Select
+                                                            value={member.relationship}
+                                                            onChange={(val) => updateFamilyMember(member.id, 'relationship', val)}
+                                                            placeholder="Select"
+                                                        >
+                                                            <Option value="Spouse">Spouse</Option>
+                                                            <Option value="Son">Son</Option>
+                                                            <Option value="Daughter">Daughter</Option>
+                                                            <Option value="Grandchild">Grandchild</Option>
+                                                            <Option value="Sibling">Sibling</Option>
+                                                            <Option value="Other">Other</Option>
+                                                        </Select>
+                                                    </Form.Item>
+                                                </Col>
+                                            </Row>
+                                        </Card>
+                                    ))}
+
+                                    <Button
+                                        type="dashed"
+                                        onClick={addFamilyMember}
+                                        icon={<PlusOutlined />}
+                                        style={{ width: '100%', marginTop: 8 }}
                                     >
-                                        {loadingBarangays ? (
-                                            <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>
-                                        ) : (
-                                            <Select
-                                                size="large"
-                                                placeholder="Select barangay"
-                                                showSearch
-                                                optionFilterProp="children"
-                                                style={{ borderRadius: 8 }}
-                                            >
-                                                {barangays.map(b => (
-                                                    <Option key={b.id} value={b.id}>{b.name}</Option>
-                                                ))}
-                                            </Select>
-                                        )}
-                                    </Form.Item>
-                                    <Form.Item
-                                        name="street_address"
-                                        label="Street/Purok/House No."
-                                        rules={[{ required: true, message: 'Required' }]}
-                                    >
-                                        <Input size="large" placeholder="e.g., Purok 3, Blk 5 Lot 10" style={{ borderRadius: 8 }} />
-                                    </Form.Item>
-                                    <Row gutter={16}>
-                                        <Col xs={24} sm={12}>
-                                            <Form.Item name="emergency_contact_name" label="Emergency Contact Name">
-                                                <Input size="large" placeholder="Contact person name" style={{ borderRadius: 8 }} />
-                                            </Form.Item>
-                                        </Col>
-                                        <Col xs={24} sm={12}>
-                                            <Form.Item name="emergency_contact_number" label="Emergency Contact Number">
-                                                <Input size="large" placeholder="09XX XXX XXXX" style={{ borderRadius: 8 }} />
-                                            </Form.Item>
-                                        </Col>
-                                    </Row>
+                                        Add Family Member
+                                    </Button>
                                 </div>
                             )}
 
-                            {/* Step 3: Review */}
+                            {/* Step 3: Association / Target Sectors */}
                             {currentStep === 2 && (
+                                <div>
+                                    <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
+                                        Association / Target Sectors (Optional)
+                                    </Title>
+
+                                    <Form.Item
+                                        name="target_sectors"
+                                        label="Target Sectors"
+                                    >
+                                        <Select
+                                            mode="multiple"
+                                            placeholder="Select applicable sectors"
+                                            size="large"
+                                            allowClear
+                                        >
+                                            {targetSectors.map((ts) => (
+                                                <Option key={ts.value} value={ts.value}>
+                                                    {ts.label} {ts.description && `- ${ts.description}`}
+                                                </Option>
+                                            ))}
+                                        </Select>
+                                    </Form.Item>
+
+                                    <Form.Item
+                                        name="sub_categories"
+                                        label="Sub Categories"
+                                    >
+                                        <Select
+                                            mode="multiple"
+                                            placeholder="Select applicable sub-categories"
+                                            size="large"
+                                            allowClear
+                                        >
+                                            {subCategories.map((sc) => (
+                                                <Option key={sc.value} value={sc.value}>
+                                                    {sc.label}
+                                                </Option>
+                                            ))}
+                                        </Select>
+                                    </Form.Item>
+                                </div>
+                            )}
+
+                            {/* Step 4: Review */}
+                            {currentStep === 3 && (
                                 <div>
                                     <Title level={4} style={{ marginBottom: 24 }}>Review Your Information</Title>
                                     <Card style={{ background: '#f9fafb', borderRadius: 12, marginBottom: 24 }}>
                                         <Row gutter={[16, 16]}>
                                             <Col span={24}>
                                                 <Text type="secondary">Full Name</Text>
-                                                <div><Text strong>{`${formData.first_name || ''} ${formData.middle_name || ''} ${formData.last_name || ''}`}</Text></div>
+                                                <div><Text strong>{`${formData.first_name || ''} ${formData.middle_name || ''} ${formData.last_name || ''} ${formData.extension || ''}`}</Text></div>
                                             </Col>
                                             <Col xs={12}>
                                                 <Text type="secondary">Birthdate</Text>
                                                 <div><Text strong>{formData.birthdate ? dayjs(formData.birthdate).format('MMMM D, YYYY') : '-'}</Text></div>
                                             </Col>
                                             <Col xs={12}>
-                                                <Text type="secondary">Gender</Text>
-                                                <div><Text strong>{formData.gender || '-'}</Text></div>
+                                                <Text type="secondary">Age</Text>
+                                                <div><Text strong>{calculatedAge ? `${calculatedAge} years old` : '-'}</Text></div>
                                             </Col>
                                             <Col xs={12}>
-                                                <Text type="secondary">Civil Status</Text>
-                                                <div><Text strong>{formData.civil_status || '-'}</Text></div>
+                                                <Text type="secondary">Sex</Text>
+                                                <div><Text strong>{genders.find(g => g.id === formData.gender_id)?.name || '-'}</Text></div>
                                             </Col>
                                             <Col xs={12}>
-                                                <Text type="secondary">Contact</Text>
-                                                <div><Text strong>{formData.contact_number || '-'}</Text></div>
+                                                <Text type="secondary">Mobile</Text>
+                                                <div><Text strong>{formData.mobile_number || '-'}</Text></div>
                                             </Col>
                                             <Divider style={{ margin: '12px 0' }} />
                                             <Col span={24}>
                                                 <Text type="secondary">Address</Text>
-                                                <div><Text strong>{`${formData.street_address || ''}, ${barangays.find(b => b.id === formData.barangay_id)?.name || ''}, Zamboanga City`}</Text></div>
+                                                <div><Text strong>{`${formData.house_number || ''} ${formData.street || ''}, ${barangays.find(b => b.id === formData.barangay_id)?.name || ''}, Zamboanga City`}</Text></div>
                                             </Col>
+                                            {familyMembers.length > 0 && (
+                                                <Col span={24}>
+                                                    <Text type="secondary">Family Members</Text>
+                                                    <div><Text strong>{familyMembers.filter(m => m.first_name).length} members listed</Text></div>
+                                                </Col>
+                                            )}
                                         </Row>
                                     </Card>
                                     <Card style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 12 }}>

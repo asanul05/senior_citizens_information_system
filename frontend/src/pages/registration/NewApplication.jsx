@@ -145,14 +145,17 @@ const NewApplication = () => {
             // Store in formData state
             setFormData(prefillData);
 
-            // Calculate age if birthdate exists
+            // Calculate age if birthdate exists (inline to avoid dependency issue)
             if (prefillData.birthdate) {
-                calculateAge(dayjs(prefillData.birthdate));
+                const birth = dayjs(prefillData.birthdate);
+                const today = dayjs();
+                const age = today.diff(birth, 'year');
+                setCalculatedAge(age >= 0 ? age : null);
             }
 
             message.info(`Pre-filling data from online application: ${referenceNumber}`);
         }
-    }, [location.state, form, calculateAge]);
+    }, [location.state, form]);
 
     const loadApplicationData = async (id) => {
         try {
