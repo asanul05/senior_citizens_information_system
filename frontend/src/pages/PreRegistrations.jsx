@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Card, Table, Tag, Button, Space, Input, Select, Row, Col,
     Statistic, Modal, Form, message, Typography, Descriptions, Badge, Divider,
@@ -6,7 +7,7 @@ import {
 import {
     SearchOutlined, ReloadOutlined, EyeOutlined, CheckCircleOutlined,
     CloseCircleOutlined, SyncOutlined, ClockCircleOutlined, FileTextOutlined,
-    UserOutlined, EnvironmentOutlined,
+    UserOutlined, EnvironmentOutlined, SendOutlined, FormOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { preRegistrationApi, registrationApi } from '../services/api';
@@ -16,6 +17,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 const PreRegistrations = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState([]);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
@@ -124,22 +126,25 @@ const PreRegistrations = () => {
     };
 
     const handleConvert = async (item) => {
-        Modal.confirm({
-            title: 'Convert to Full Application?',
-            content: 'This will create a new application record and mark this pre-registration as converted.',
-            okText: 'Convert',
-            okType: 'primary',
-            onOk: async () => {
-                try {
-                    await preRegistrationApi.convert(item.id);
-                    message.success('Successfully converted to application!');
-                    fetchItems(pagination.current);
-                    fetchStats();
-                } catch (error) {
-                    message.error(error.response?.data?.message || 'Conversion failed');
-                }
-            },
-        });
+        try {
+            message.loading({ content: 'Loading application data...', key: 'convert' });
+            const response = await preRegistrationApi.convert(item.id);
+            message.destroy('convert');
+
+            const { registration_data, pre_registration_id, reference_number } = response.data.data;
+
+            // Navigate to registration form with pre-filled data
+            navigate('/admin/registration/new', {
+                state: {
+                    prefillData: registration_data,
+                    preRegistrationId: pre_registration_id,
+                    referenceNumber: reference_number,
+                    fromPreRegistration: true,
+                },
+            });
+        } catch (error) {
+            message.error({ content: error.response?.data?.message || 'Failed to load data', key: 'convert' });
+        }
     };
 
     const getStatusTag = (status) => {
@@ -206,22 +211,27 @@ const PreRegistrations = () => {
                     <Button icon={<EyeOutlined />} size="small" onClick={() => openDetailModal(record)}>
                         View
                     </Button>
-                    {/* FO Admin actions */}
+                    {/* FO Admin actions - Transmit or Reject */}
                     {(isFOAdmin || isBarangayAdmin) && ['pending', 'fo_review'].includes(record.status) && (
-                        <Button type="primary" size="small" onClick={() => openReviewModal(record, 'fo')}>
-                            Review
+                        <Button
+                            type="primary"
+                            icon={<SendOutlined />}
+                            size="small"
+                            onClick={() => openReviewModal(record, 'fo')}
+                        >
+                            Transmit / Reject
                         </Button>
                     )}
-                    {/* Main Admin actions */}
-                    {isMainAdmin && ['fo_verified', 'main_review'].includes(record.status) && (
-                        <Button type="primary" size="small" onClick={() => openReviewModal(record, 'main')}>
-                            Review
-                        </Button>
-                    )}
-                    {/* Convert button */}
-                    {isMainAdmin && record.status === 'approved' && (
-                        <Button type="primary" style={{ background: '#059669' }} size="small" onClick={() => handleConvert(record)}>
-                            Convert
+                    {/* Main Admin - Convert to Application (opens registration form) */}
+                    {isMainAdmin && ['fo_verified', 'main_review', 'approved'].includes(record.status) && (
+                        <Button
+                            type="primary"
+                            icon={<FormOutlined />}
+                            style={{ background: '#059669' }}
+                            size="small"
+                            onClick={() => handleConvert(record)}
+                        >
+                            Convert to Application
                         </Button>
                     )}
                 </Space>
@@ -432,8 +442,8 @@ const PreRegistrations = () => {
                             rules={[{ required: true, message: 'Select an action' }]}
                         >
                             <Select placeholder="Select action">
-                                <Option value={reviewModal.type === 'fo' ? 'verify' : 'approve'}>
-                                    <CheckCircleOutlined style={{ color: '#52c41a' }} /> {reviewModal.type === 'fo' ? 'Verify & Forward' : 'Approve'}
+                                <Option value={reviewModal.type === 'fo' ? 'transmit' : 'approve'}>
+                                    <SendOutlined style={{ color: '#52c41a' }} /> {reviewModal.type === 'fo' ? 'Transmit to Main Admin' : 'Approve'}
                                 </Option>
                                 <Option value="reject">
                                     <CloseCircleOutlined style={{ color: '#ff4d4f' }} /> Reject

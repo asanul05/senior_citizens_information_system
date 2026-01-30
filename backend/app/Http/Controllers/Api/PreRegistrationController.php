@@ -91,12 +91,12 @@ class PreRegistrationController extends Controller
     }
 
     /**
-     * Update status (FO review)
+     * Update status (FO review) - transmit to Main or reject
      */
     public function foReview(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'action' => 'required|in:verify,reject',
+            'action' => 'required|in:verify,transmit,reject',
             'notes' => 'nullable|string|max:500',
             'rejection_reason' => 'required_if:action,reject|nullable|string|max:500',
         ]);
@@ -109,14 +109,15 @@ class PreRegistrationController extends Controller
 
         $user = $request->user();
 
-        if ($request->action === 'verify') {
+        // 'verify' and 'transmit' do the same thing - forward to Main
+        if (in_array($request->action, ['verify', 'transmit'])) {
             $preReg->update([
                 'status' => PreRegistration::STATUS_FO_VERIFIED,
                 'fo_reviewed_by' => $user->id,
                 'fo_reviewed_at' => now(),
                 'notes' => $request->notes,
             ]);
-            $message = 'Application verified and forwarded to Main Admin';
+            $message = 'Application transmitted to Main Admin';
         } else {
             $preReg->update([
                 'status' => PreRegistration::STATUS_REJECTED,
@@ -177,49 +178,78 @@ class PreRegistrationController extends Controller
     }
 
     /**
-     * Convert approved pre-registration to full application
+     * Convert approved/transmitted pre-registration to full application.
+     * Returns data formatted for the registration form (Option A - pre-fill form).
      */
     public function convert(Request $request, int $id): JsonResponse
     {
-        $preReg = PreRegistration::findOrFail($id);
+        $preReg = PreRegistration::with('barangay')->findOrFail($id);
 
-        if ($preReg->status !== PreRegistration::STATUS_APPROVED) {
-            return response()->json(['message' => 'Only approved applications can be converted'], 422);
+        // Allow conversion from approved or fo_verified (transmitted) status
+        if (!in_array($preReg->status, [PreRegistration::STATUS_APPROVED, PreRegistration::STATUS_FO_VERIFIED])) {
+            return response()->json(['message' => 'Only approved or transmitted applications can be converted'], 422);
         }
 
-        try {
-            DB::beginTransaction();
-
-            // Create application from pre-registration data
-            $application = Application::create([
-                'applicant_data' => $preReg->applicant_data,
-                'barangay_id' => $preReg->barangay_id,
-                'application_type_id' => 1, // New registration
-                'status_id' => 2, // Approved
-                'processed_by' => $request->user()->id,
-                'processed_at' => now(),
-                'notes' => "Converted from pre-registration: {$preReg->reference_number}",
-            ]);
-
-            // Update pre-registration
-            $preReg->update([
-                'status' => PreRegistration::STATUS_CONVERTED,
-                'application_id' => $application->id,
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Successfully converted to application',
-                'data' => [
-                    'pre_registration' => $preReg->fresh(),
-                    'application' => $application,
-                ],
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Conversion failed: ' . $e->getMessage()], 500);
+        // Transform applicant_data from online form format to registration form format
+        $onlineData = $preReg->applicant_data;
+        
+        // Map sex to gender_id (1=Male, 2=Female based on typical setup)
+        $genderId = null;
+        if (isset($onlineData['sex'])) {
+            $gender = \App\Models\Gender::whereRaw('LOWER(name) = ?', [strtolower($onlineData['sex'])])->first();
+            $genderId = $gender ? $gender->id : null;
         }
+
+        // Build registration form data structure
+        $registrationData = [
+            // Personal Info
+            'first_name' => $onlineData['first_name'] ?? '',
+            'middle_name' => $onlineData['middle_name'] ?? '',
+            'last_name' => $onlineData['last_name'] ?? '',
+            'extension' => $onlineData['suffix'] ?? '',
+            'birthdate' => $onlineData['birthdate'] ?? '',
+            'gender_id' => $genderId,
+            'barangay_id' => $preReg->barangay_id,
+            
+            // Contact Info - parse address field
+            'house_number' => '',
+            'street' => $onlineData['address'] ?? '',
+            'mobile_number' => $onlineData['contact_number'] ?? '',
+            'telephone_number' => '',
+            
+            // Background (not collected in online form, leave empty)
+            'educational_attainment_id' => null,
+            'monthly_salary' => null,
+            'occupation' => '',
+            'other_skills' => '',
+            
+            // Family/emergency contact
+            'emergency_contact' => [
+                'name' => $onlineData['emergency_contact_name'] ?? '',
+                'contact_number' => $onlineData['emergency_contact_number'] ?? '',
+            ],
+            
+            // Additional online data for reference
+            'civil_status' => $onlineData['civil_status'] ?? '',
+            'email' => $onlineData['email'] ?? '',
+        ];
+
+        // Mark as being converted (optional status update)
+        $preReg->update([
+            'status' => PreRegistration::STATUS_MAIN_REVIEW,
+            'main_reviewed_by' => $request->user()->id,
+            'main_reviewed_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Pre-registration data retrieved for conversion',
+            'data' => [
+                'pre_registration_id' => $preReg->id,
+                'reference_number' => $preReg->reference_number,
+                'registration_data' => $registrationData,
+                'barangay' => $preReg->barangay,
+            ],
+        ]);
     }
 
     /**
@@ -238,6 +268,33 @@ class PreRegistrationController extends Controller
 
         return response()->json([
             'message' => 'Status updated',
+            'data' => $preReg->fresh(),
+        ]);
+    }
+
+    /**
+     * Complete the conversion - mark pre-registration as converted and link to application.
+     * Called after registration form is successfully saved.
+     */
+    public function completeConversion(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'application_id' => 'required|exists:applications,id',
+        ]);
+
+        $preReg = PreRegistration::findOrFail($id);
+
+        if ($preReg->status === PreRegistration::STATUS_CONVERTED) {
+            return response()->json(['message' => 'Already converted'], 422);
+        }
+
+        $preReg->update([
+            'status' => PreRegistration::STATUS_CONVERTED,
+            'application_id' => $request->application_id,
+        ]);
+
+        return response()->json([
+            'message' => 'Pre-registration marked as converted',
             'data' => $preReg->fresh(),
         ]);
     }

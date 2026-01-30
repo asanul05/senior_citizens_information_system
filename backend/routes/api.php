@@ -130,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Pre-registration main review & conversion
         Route::post('/pre-registrations/{id}/main-review', [PreRegistrationController::class, 'mainReview']);
         Route::post('/pre-registrations/{id}/convert', [PreRegistrationController::class, 'convert']);
+        Route::post('/pre-registrations/{id}/complete-conversion', [PreRegistrationController::class, 'completeConversion']);
     });
 
     // Main Admin and Branch Admin routes (role_id = 1 or 2)

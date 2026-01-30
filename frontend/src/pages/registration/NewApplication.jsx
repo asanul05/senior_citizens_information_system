@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
     Card,
     Steps,
@@ -39,7 +39,7 @@ import {
     DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { registrationApi } from '../../services/api';
+import { registrationApi, preRegistrationApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
@@ -48,6 +48,7 @@ const { TextArea } = Input;
 
 const NewApplication = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const { user } = useAuth();
     const isFO = user?.role_id === 2;
@@ -72,6 +73,10 @@ const NewApplication = () => {
     const [documentUploading, setDocumentUploading] = useState({});
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
     const [pendingNextStep, setPendingNextStep] = useState(false);
+
+    // Pre-registration conversion state
+    const [preRegistrationId, setPreRegistrationId] = useState(null);
+    const [preRegistrationRef, setPreRegistrationRef] = useState(null);
 
     // Target sectors from original form
     const targetSectors = [
@@ -108,6 +113,46 @@ const NewApplication = () => {
             loadApplicationData(editId);
         }
     }, [searchParams]);
+
+    // Handle pre-registration conversion prefill
+    useEffect(() => {
+        if (location.state?.fromPreRegistration && location.state?.prefillData) {
+            const { prefillData, preRegistrationId: preRegId, referenceNumber } = location.state;
+
+            // Store pre-registration info
+            setPreRegistrationId(preRegId);
+            setPreRegistrationRef(referenceNumber);
+
+            // Pre-fill form with data from online application
+            form.setFieldsValue({
+                first_name: prefillData.first_name,
+                middle_name: prefillData.middle_name,
+                last_name: prefillData.last_name,
+                extension: prefillData.extension,
+                birthdate: prefillData.birthdate ? dayjs(prefillData.birthdate) : null,
+                gender_id: prefillData.gender_id,
+                barangay_id: prefillData.barangay_id,
+                house_number: prefillData.house_number,
+                street: prefillData.street,
+                mobile_number: prefillData.mobile_number,
+                telephone_number: prefillData.telephone_number,
+                educational_attainment_id: prefillData.educational_attainment_id,
+                monthly_salary: prefillData.monthly_salary,
+                occupation: prefillData.occupation,
+                other_skills: prefillData.other_skills,
+            });
+
+            // Store in formData state
+            setFormData(prefillData);
+
+            // Calculate age if birthdate exists
+            if (prefillData.birthdate) {
+                calculateAge(dayjs(prefillData.birthdate));
+            }
+
+            message.info(`Pre-filling data from online application: ${referenceNumber}`);
+        }
+    }, [location.state, form, calculateAge]);
 
     const loadApplicationData = async (id) => {
         try {
@@ -539,6 +584,16 @@ const NewApplication = () => {
 
             setSubmitResult(response.data.data);
             setCurrentStep(4); // Show success
+
+            // If this was a pre-registration conversion, mark it as completed
+            if (preRegistrationId && response.data.data?.application_id) {
+                try {
+                    await preRegistrationApi.completeConversion(preRegistrationId, response.data.data.application_id);
+                } catch (convErr) {
+                    console.error('Failed to mark pre-registration as converted:', convErr);
+                    // Don't fail the whole operation, just log
+                }
+            }
 
             const actionType = isEditMode ? 'updated' : (saveAsDraft ? 'saved as draft' : 'submitted');
             message.success(response.data.message || `Application ${actionType} successfully!`);

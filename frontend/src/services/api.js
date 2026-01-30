@@ -208,6 +208,9 @@ export const preRegistrationApi = {
 
   convert: (id) =>
     api.post(`/pre-registrations/${id}/convert`),
+
+  completeConversion: (id, applicationId) =>
+    api.post(`/pre-registrations/${id}/complete-conversion`, { application_id: applicationId }),
 };
 
 // Benefits API (PRD 4.3)
