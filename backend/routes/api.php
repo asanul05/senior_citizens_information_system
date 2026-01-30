@@ -26,7 +26,7 @@ use App\Http\Controllers\SeniorAuthController;
 // ===========================
 // PUBLIC ROUTES (No Auth Required)
 // ===========================
-// Note: CORS is handled in public/index.php
+// Note: CORS is handled by App\Http\Middleware\HandleCors
 
 Route::post('/login', [AuthController::class, 'login']);
 
