@@ -172,23 +172,35 @@ class RegistrationController extends Controller
 
         // 2. Check pending/approved applications (not yet rejected)
         // Only check applications that have applicant_data (to avoid JSON errors)
-        $existingApplication = Application::where('status', '!=', 'Rejected')
-            ->whereNotNull('applicant_data')
-            ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.first_name')))) = ?", [$firstName])
-            ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.last_name')))) = ?", [$lastName])
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.birthdate')) = ?", [$birthdate])
-            ->first();
+        // Wrapped in try-catch to handle potential JSON query issues on different MySQL versions
+        try {
+            $existingApplication = Application::where('status', '!=', 'Rejected')
+                ->whereNotNull('applicant_data')
+                ->where('applicant_data', '!=', '')
+                ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.first_name')))) = ?", [$firstName])
+                ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.last_name')))) = ?", [$lastName])
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.birthdate')) = ?", [$birthdate])
+                ->first();
 
-        if ($existingApplication) {
-            return response()->json([
-                'success' => false,
-                'message' => 'An application for this person already exists.',
-                'duplicate_type' => 'application',
-                'existing_record' => [
-                    'application_number' => $existingApplication->application_number,
-                    'status' => $existingApplication->status,
-                ],
-            ], 409);
+            if ($existingApplication) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An application for this person already exists.',
+                    'duplicate_type' => 'application',
+                    'existing_record' => [
+                        'application_number' => $existingApplication->application_number,
+                        'status' => $existingApplication->status,
+                    ],
+                ], 409);
+            }
+        } catch (\Exception $jsonQueryException) {
+            // Log the error but continue - don't block registration due to JSON query issues
+            \Log::warning('JSON duplicate check failed', [
+                'error' => $jsonQueryException->getMessage(),
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+            ]);
+            // Continue with registration - the senior citizen duplicate check already passed
         }
         // ==============================================
 
