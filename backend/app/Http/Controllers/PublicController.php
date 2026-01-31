@@ -25,7 +25,7 @@ class PublicController extends Controller
         
         // IDs issued this year (claimed from id_printing_queue)
         $idsIssuedThisYear = IdPrintingQueue::where('status', 'claimed')
-            ->whereYear('claimed_at', $currentYear)
+            ->whereYear('claimed_date', $currentYear)
             ->count();
         
         // Total benefit claims

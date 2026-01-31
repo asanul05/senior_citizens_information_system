@@ -178,6 +178,33 @@ const Benefits = () => {
         }
     };
 
+    const handleExportEligible = async () => {
+        try {
+            message.loading({ content: 'Exporting eligible seniors...', key: 'exportEligible' });
+            const params = {};
+            if (eligibleSearch) params.search = eligibleSearch;
+            if (eligibleTypeFilter) params.benefit_type_id = eligibleTypeFilter;
+
+            const response = await benefitsApi.exportEligible(params);
+
+            // Create download link
+            const blob = new Blob([response.data], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `eligible_seniors_${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            message.success({ content: 'Export completed!', key: 'exportEligible' });
+        } catch (error) {
+            console.error('Failed to export eligible seniors:', error);
+            message.error({ content: 'Failed to export eligible seniors', key: 'exportEligible' });
+        }
+    };
+
     const handleStatusUpdate = async (claimId, newStatus) => {
         Modal.confirm({
             title: `${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)} Claim?`,
@@ -635,6 +662,15 @@ const Benefits = () => {
                                         </Select.Option>
                                     ))}
                                 </Select>
+                            </Col>
+                            <Col xs={24} sm={12} md={4}>
+                                <Button
+                                    icon={<DownloadOutlined />}
+                                    onClick={handleExportEligible}
+                                    style={{ width: '100%' }}
+                                >
+                                    Export CSV
+                                </Button>
                             </Col>
                         </Row>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>

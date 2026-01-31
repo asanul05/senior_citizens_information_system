@@ -227,6 +227,9 @@ export const benefitsApi = {
   getEligible: (params) =>
     api.get('/benefits/eligible', { params }),
 
+  exportEligible: (params) =>
+    api.get('/benefits/eligible/export', { params, responseType: 'blob' }),
+
   getStatistics: () =>
     api.get('/benefits/statistics'),
 

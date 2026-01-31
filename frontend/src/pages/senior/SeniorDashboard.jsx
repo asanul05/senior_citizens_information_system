@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Card, Row, Col, Typography, Button, Statistic, Divider, Avatar, Tag, Space } from 'antd';
+import { Card, Row, Col, Typography, Button, Statistic, Divider, Avatar, Tag, Space, Spin } from 'antd';
 import {
     UserOutlined,
     SafetyOutlined,
@@ -14,11 +14,16 @@ import {
     CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import axios from 'axios';
 
 const { Title, Paragraph, Text } = Typography;
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
 const SeniorDashboard = () => {
     const [senior, setSenior] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -27,8 +32,23 @@ const SeniorDashboard = () => {
             navigate('/senior/login');
             return;
         }
-        setSenior(JSON.parse(storedSenior));
+        const seniorData = JSON.parse(storedSenior);
+        setSenior(seniorData);
+        fetchDashboardStats(seniorData.id);
     }, [navigate]);
+
+    const fetchDashboardStats = async (seniorId) => {
+        try {
+            const response = await axios.get(`${API_URL}/senior/dashboard-stats`, {
+                params: { senior_id: seniorId },
+            });
+            setStats(response.data.data);
+        } catch (error) {
+            console.error('Failed to fetch dashboard stats:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('senior_token');
@@ -93,22 +113,39 @@ const SeniorDashboard = () => {
                 <Row gutter={16} style={{ marginBottom: 24 }}>
                     <Col xs={12} sm={6}>
                         <Card style={{ borderRadius: 12, textAlign: 'center' }}>
-                            <Statistic title="ID Status" value="Active" valueStyle={{ color: '#52c41a', fontSize: 20 }} />
+                            <Statistic
+                                title="ID Status"
+                                value={loading ? '-' : (stats?.id_status || 'Active')}
+                                valueStyle={{ color: stats?.id_status === 'Active' ? '#52c41a' : '#faad14', fontSize: 20 }}
+                            />
                         </Card>
                     </Col>
                     <Col xs={12} sm={6}>
                         <Card style={{ borderRadius: 12, textAlign: 'center' }}>
-                            <Statistic title="Benefits" value={2} suffix="/ 5" valueStyle={{ fontSize: 20 }} />
+                            <Statistic
+                                title="Benefits"
+                                value={loading ? '-' : (stats?.eligible_benefits || 0)}
+                                suffix={`/ ${stats?.total_benefits || 3}`}
+                                valueStyle={{ fontSize: 20 }}
+                            />
                         </Card>
                     </Col>
                     <Col xs={12} sm={6}>
                         <Card style={{ borderRadius: 12, textAlign: 'center' }}>
-                            <Statistic title="Announcements" value={3} valueStyle={{ fontSize: 20, color: '#faad14' }} />
+                            <Statistic
+                                title="Announcements"
+                                value={loading ? '-' : (stats?.announcements || 0)}
+                                valueStyle={{ fontSize: 20, color: '#faad14' }}
+                            />
                         </Card>
                     </Col>
                     <Col xs={12} sm={6}>
                         <Card style={{ borderRadius: 12, textAlign: 'center' }}>
-                            <Statistic title="Complaints" value={0} valueStyle={{ fontSize: 20 }} />
+                            <Statistic
+                                title="Complaints"
+                                value={loading ? '-' : (stats?.complaints || 0)}
+                                valueStyle={{ fontSize: 20 }}
+                            />
                         </Card>
                     </Col>
                 </Row>

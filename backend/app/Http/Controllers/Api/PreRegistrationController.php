@@ -40,8 +40,9 @@ class PreRegistrationController extends Controller
 
         // Role-based filtering
         $user = $request->user();
-        if ($user->role_id == 3) { // Barangay Admin
-            $query->where('barangay_id', $user->barangay_id);
+        if (!$user->isMainAdmin()) {
+            $barangayIds = $user->getAccessibleBarangayIds();
+            $query->whereIn('barangay_id', $barangayIds);
         }
 
         $preRegistrations = $query->orderBy('created_at', 'desc')
@@ -193,9 +194,12 @@ class PreRegistrationController extends Controller
         // Transform applicant_data from online form format to registration form format
         $onlineData = $preReg->applicant_data;
         
-        // Map sex to gender_id (1=Male, 2=Female based on typical setup)
+        // Handle gender_id - form sends it directly as integer
         $genderId = null;
-        if (isset($onlineData['sex'])) {
+        if (isset($onlineData['gender_id'])) {
+            $genderId = (int) $onlineData['gender_id'];
+        } elseif (isset($onlineData['sex'])) {
+            // Fallback: Map sex string to gender_id
             $gender = \App\Models\Gender::whereRaw('LOWER(name) = ?', [strtolower($onlineData['sex'])])->first();
             $genderId = $gender ? $gender->id : null;
         }
@@ -206,22 +210,22 @@ class PreRegistrationController extends Controller
             'first_name' => $onlineData['first_name'] ?? '',
             'middle_name' => $onlineData['middle_name'] ?? '',
             'last_name' => $onlineData['last_name'] ?? '',
-            'extension' => $onlineData['suffix'] ?? '',
+            'extension' => $onlineData['extension'] ?? $onlineData['suffix'] ?? '',
             'birthdate' => $onlineData['birthdate'] ?? '',
             'gender_id' => $genderId,
             'barangay_id' => $preReg->barangay_id,
             
-            // Contact Info - parse address field
-            'house_number' => '',
-            'street' => $onlineData['address'] ?? '',
-            'mobile_number' => $onlineData['contact_number'] ?? '',
-            'telephone_number' => '',
+            // Contact Info
+            'house_number' => $onlineData['house_number'] ?? '',
+            'street' => $onlineData['street'] ?? $onlineData['address'] ?? '',
+            'mobile_number' => $onlineData['mobile_number'] ?? $onlineData['contact_number'] ?? '',
+            'telephone_number' => $onlineData['telephone_number'] ?? '',
             
-            // Background (not collected in online form, leave empty)
-            'educational_attainment_id' => null,
-            'monthly_salary' => null,
-            'occupation' => '',
-            'other_skills' => '',
+            // Background
+            'educational_attainment_id' => $onlineData['educational_attainment_id'] ?? null,
+            'monthly_salary' => $onlineData['monthly_salary'] ?? null,
+            'occupation' => $onlineData['occupation'] ?? '',
+            'other_skills' => $onlineData['other_skills'] ?? '',
             
             // Family/emergency contact
             'emergency_contact' => [

@@ -280,4 +280,55 @@ class SeniorAuthController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Get senior dashboard stats (for quick stats cards)
+     */
+    public function dashboardStats(Request $request): JsonResponse
+    {
+        $seniorId = $request->input('senior_id');
+        
+        $senior = SeniorCitizen::with(['benefitClaims'])->find($seniorId);
+
+        if (!$senior) {
+            return response()->json(['message' => 'Senior not found'], 404);
+        }
+
+        $age = $senior->age;
+        
+        // Get benefit types (exclude sexa/septua)
+        $benefitTypes = \App\Models\BenefitType::active()
+            ->whereNotIn('name', ['Sexagenarian', 'Septuagenarian'])
+            ->get();
+        
+        $totalBenefits = $benefitTypes->count();
+        $eligibleBenefits = 0;
+        
+        foreach ($benefitTypes as $type) {
+            if ($type->isEligibleForAge($age)) {
+                $eligibleBenefits++;
+            }
+        }
+
+        // Count announcements (for the senior's barangay)
+        $announcements = \App\Models\Announcement::where('is_published', true)
+            ->where(function ($q) use ($senior) {
+                $q->whereNull('barangay_id')
+                    ->orWhere('barangay_id', $senior->barangay_id);
+            })
+            ->count();
+
+        // Count complaints
+        $complaints = \App\Models\Complaint::where('complainant_id', $seniorId)->count();
+
+        return response()->json([
+            'data' => [
+                'id_status' => $senior->is_active ? 'Active' : 'Inactive',
+                'eligible_benefits' => $eligibleBenefits,
+                'total_benefits' => $totalBenefits,
+                'announcements' => $announcements,
+                'complaints' => $complaints,
+            ],
+        ]);
+    }
 }

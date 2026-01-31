@@ -254,6 +254,96 @@ class BenefitController extends Controller
     }
 
     /**
+     * Export eligible seniors as CSV.
+     */
+    public function exportEligible(Request $request)
+    {
+        $user = $request->user();
+        $currentYear = now()->year;
+
+        // Get benefit types (optionally filtered)
+        $benefitTypesQuery = BenefitType::active()->where('amount', '>', 0)->orderBy('min_age');
+        
+        $filterTypeId = $request->get('benefit_type_id');
+        if ($filterTypeId) {
+            $benefitTypesQuery->where('id', $filterTypeId);
+        }
+        
+        $benefitTypes = $benefitTypesQuery->get();
+        $search = $request->get('search');
+
+        // Build data for export
+        $eligibleSeniors = [];
+
+        foreach ($benefitTypes as $benefitType) {
+            $query = SeniorCitizen::where('is_active', true)
+                ->when($user->role_id !== 1 && $user->branch_id, function ($q) use ($user) {
+                    $q->accessibleBy($user);
+                });
+
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('osca_id', 'like', "%{$search}%");
+                });
+            }
+
+            $maxBirthdate = now()->subYears($benefitType->min_age)->endOfYear();
+            $query->where('birthdate', '<=', $maxBirthdate);
+
+            if ($benefitType->is_one_time) {
+                $query->whereDoesntHave('benefitClaims', function ($q) use ($benefitType) {
+                    $q->where('benefit_type_id', $benefitType->id)
+                        ->whereIn('status', ['approved', 'released', 'pending']);
+                });
+            } else {
+                $query->whereDoesntHave('benefitClaims', function ($q) use ($benefitType, $currentYear) {
+                    $q->where('benefit_type_id', $benefitType->id)
+                        ->where('claim_year', $currentYear)
+                        ->whereIn('status', ['approved', 'released', 'pending']);
+                });
+            }
+
+            $seniors = $query->with('barangay')
+                ->select('senior_citizens.*')
+                ->selectRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) as age')
+                ->get();
+
+            foreach ($seniors as $senior) {
+                $eligibleSeniors[] = [
+                    'osca_id' => $senior->osca_id,
+                    'full_name' => $senior->full_name ?? "{$senior->first_name} {$senior->last_name}",
+                    'age' => $senior->age,
+                    'barangay' => $senior->barangay?->name,
+                    'benefit_name' => $benefitType->name,
+                    'benefit_amount' => $benefitType->amount,
+                ];
+            }
+        }
+
+        // Build CSV
+        $csv = "OSCA ID,Senior Name,Age,Barangay,Eligible Benefit,Amount\n";
+        
+        foreach ($eligibleSeniors as $row) {
+            $csv .= implode(',', [
+                $row['osca_id'] ?? '',
+                '"' . $row['full_name'] . '"',
+                $row['age'],
+                '"' . ($row['barangay'] ?? '') . '"',
+                '"' . $row['benefit_name'] . '"',
+                $row['benefit_amount'],
+            ]) . "\n";
+        }
+
+        $filename = 'eligible_seniors_' . now()->format('Ymd_His') . '.csv';
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    /**
      * Get dashboard statistics for benefits.
      */
     public function statistics(Request $request)

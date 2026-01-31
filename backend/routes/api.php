@@ -46,6 +46,7 @@ Route::prefix('senior')->group(function () {
     Route::post('/login', [SeniorAuthController::class, 'loginWithPin']);
     Route::get('/profile', [SeniorAuthController::class, 'profile']);
     Route::get('/benefits', [SeniorAuthController::class, 'benefits']);
+    Route::get('/dashboard-stats', [SeniorAuthController::class, 'dashboardStats']);
 });
 
 // Protected routes
@@ -110,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/claims', [\App\Http\Controllers\Api\BenefitController::class, 'index']);
         Route::get('/claims/export', [\App\Http\Controllers\Api\BenefitController::class, 'exportClaims']);
         Route::get('/eligible', [\App\Http\Controllers\Api\BenefitController::class, 'eligible']);
+        Route::get('/eligible/export', [\App\Http\Controllers\Api\BenefitController::class, 'exportEligible']);
         Route::get('/statistics', [\App\Http\Controllers\Api\BenefitController::class, 'statistics']);
         Route::post('/claims', [\App\Http\Controllers\Api\BenefitController::class, 'store']);
         Route::patch('/claims/{id}/status', [\App\Http\Controllers\Api\BenefitController::class, 'updateStatus']);
