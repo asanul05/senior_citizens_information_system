@@ -31,8 +31,9 @@ class DashboardController extends Controller
             ->where('is_deceased', false)
             ->count();
 
-        // Pending Applications
-        $pendingApplications = Application::query()
+        // Pending Applications - combine applications for_verification + pre-registrations pending
+        // This gives a meaningful "work to be done" count
+        $pendingMainApps = Application::query()
             ->whereIn('status', ['pending', 'submitted', 'for_verification'])
             ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
                 $q->whereHas('senior', function ($sq) use ($barangayIds) {
@@ -40,6 +41,17 @@ class DashboardController extends Controller
                 });
             })
             ->count();
+
+        // Pre-registrations that are pending (online applications awaiting processing)
+        $pendingPreRegs = \App\Models\PreRegistration::query()
+            ->whereNotIn('status', ['converted', 'rejected'])
+            ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
+                $q->whereIn('barangay_id', $barangayIds);
+            })
+            ->count();
+
+        $pendingApplications = $pendingMainApps + $pendingPreRegs;
+
 
         // ID Claimable (printed but not released)
         $idClaimable = DB::table('id_printing_queue')

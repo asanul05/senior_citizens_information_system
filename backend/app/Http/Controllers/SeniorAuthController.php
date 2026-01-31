@@ -224,8 +224,11 @@ class SeniorAuthController extends Controller
             return response()->json(['message' => 'Senior not found'], 404);
         }
 
-        // Get all benefit types
-        $benefitTypes = \App\Models\BenefitType::active()->orderBy('min_age')->get();
+        // Get all benefit types (exclude sexagenarian and septuagenarian)
+        $benefitTypes = \App\Models\BenefitType::active()
+            ->whereNotIn('name', ['Sexagenarian', 'Septuagenarian'])
+            ->orderBy('min_age')
+            ->get();
         
         // Calculate age
         $age = $senior->age;

@@ -411,19 +411,22 @@ const Applications = () => {
 
             {/* Applications Table */}
             <Card>
-                <Table
-                    columns={columns}
-                    dataSource={applications}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                        ...pagination,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} applications`,
-                    }}
-                    onChange={handleTableChange}
-                />
+                <div style={{ overflowX: 'auto' }}>
+                    <Table
+                        columns={columns}
+                        dataSource={applications}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            ...pagination,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} applications`,
+                        }}
+                        onChange={handleTableChange}
+                        scroll={{ x: 800 }}
+                    />
+                </div>
             </Card>
 
             {/* View Modal */}

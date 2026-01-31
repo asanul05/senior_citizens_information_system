@@ -225,18 +225,8 @@ const PreRegistrations = () => {
                                 Convert to Application
                             </Button>
                         )}
-                    {/* Reject button for admins */}
-                    {(isFOAdmin || isBarangayAdmin || isMainAdmin) &&
-                        ['pending', 'fo_review', 'fo_verified'].includes(record.status) && (
-                            <Button
-                                danger
-                                size="small"
-                                onClick={() => openReviewModal(record, isFOAdmin || isBarangayAdmin ? 'fo' : 'main')}
-                            >
-                                Reject
-                            </Button>
-                        )}
                 </Space>
+
             ),
         },
     ];

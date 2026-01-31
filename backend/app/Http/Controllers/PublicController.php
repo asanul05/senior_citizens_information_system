@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Barangay;
 use App\Models\PreRegistration;
+use App\Models\SeniorCitizen;
+use App\Models\IdPrintingQueue;
+use App\Models\BenefitClaim;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -11,9 +14,37 @@ use Illuminate\Support\Facades\Validator;
 class PublicController extends Controller
 {
     /**
+     * Get public statistics for home page
+     */
+    public function stats(): JsonResponse
+    {
+        $currentYear = date('Y');
+        
+        // Total registered senior citizens
+        $totalSeniors = SeniorCitizen::count();
+        
+        // IDs issued this year (claimed from id_printing_queue)
+        $idsIssuedThisYear = IdPrintingQueue::where('status', 'claimed')
+            ->whereYear('claimed_at', $currentYear)
+            ->count();
+        
+        // Total benefit claims
+        $totalBenefitsClaimed = BenefitClaim::count();
+        
+        return response()->json([
+            'data' => [
+                'registered_seniors' => $totalSeniors,
+                'ids_issued_this_year' => $idsIssuedThisYear,
+                'benefits_claimed' => $totalBenefitsClaimed,
+            ]
+        ]);
+    }
+
+    /**
      * Get barangays list for public form
      */
     public function barangays(): JsonResponse
+
     {
         $barangays = Barangay::orderBy('name')->get(['id', 'name']);
         return response()->json(['data' => $barangays]);

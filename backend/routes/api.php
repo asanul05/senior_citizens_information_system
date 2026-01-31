@@ -33,9 +33,11 @@ Route::post('/login', [AuthController::class, 'login']);
 // Public Online Application
 Route::prefix('public')->group(function () {
     Route::get('/barangays', [PublicController::class, 'barangays']);
+    Route::get('/stats', [PublicController::class, 'stats']);
     Route::post('/apply', [PublicController::class, 'apply']);
     Route::get('/status/{referenceNumber}', [PublicController::class, 'checkStatus']);
 });
+
 
 // Senior Portal Authentication (public - no auth required)
 Route::prefix('senior')->group(function () {

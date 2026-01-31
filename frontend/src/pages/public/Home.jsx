@@ -251,11 +251,25 @@ const StatsSection = () => {
     const [stats, setStats] = useState({ seniors: 0, approved: 0, claimed: 0 });
 
     useEffect(() => {
-        // Simulate loading stats
-        setTimeout(() => {
-            setStats({ seniors: 24567, approved: 1234, claimed: 890 });
-        }, 500);
+        const fetchStats = async () => {
+            try {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+                const response = await fetch(`${API_URL}/public/stats`);
+                const data = await response.json();
+                if (data.data) {
+                    setStats({
+                        seniors: data.data.registered_seniors || 0,
+                        approved: data.data.ids_issued_this_year || 0,
+                        claimed: data.data.benefits_claimed || 0,
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to fetch stats:', error);
+            }
+        };
+        fetchStats();
     }, []);
+
 
     return (
         <section style={{

@@ -367,8 +367,8 @@ const Seniors = () => {
                             <Option value="deceased">Deceased</Option>
                         </Select>
                     </Col>
-                    <Col xs={12} sm={12} style={{ textAlign: 'right' }}>
-                        <Space>
+                    <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
+                        <Space wrap>
                             <Button
                                 icon={<DownloadOutlined />}
                                 onClick={handleExport}
@@ -388,19 +388,22 @@ const Seniors = () => {
 
             {/* Table */}
             <Card style={{ borderRadius: 8 }}>
-                <Table
-                    columns={columns}
-                    dataSource={seniors}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                        ...pagination,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} seniors`,
-                    }}
-                    onChange={handleTableChange}
-                />
+                <div style={{ overflowX: 'auto' }}>
+                    <Table
+                        columns={columns}
+                        dataSource={seniors}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            ...pagination,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} seniors`,
+                        }}
+                        onChange={handleTableChange}
+                        scroll={{ x: 800 }}
+                    />
+                </div>
             </Card>
 
             {/* Senior Detail Modal */}
