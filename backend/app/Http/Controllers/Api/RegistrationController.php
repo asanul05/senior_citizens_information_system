@@ -99,57 +99,57 @@ class RegistrationController extends Controller
     public function store(Request $request)
     {
         $isDraft = $request->boolean('save_as_draft', false);
-        
-        // Custom validation messages
-        $messages = [
-            'first_name.required' => 'First name is required.',
-            'last_name.required' => 'Last name is required.',
-            'birthdate.required' => 'Date of birth is required.',
-            'birthdate.date' => 'Please enter a valid date of birth.',
-            'gender_id.required' => 'Sex is required.',
-            'gender_id.exists' => 'Please select a valid sex option.',
-            'barangay_id.required' => 'Barangay is required.',
-            'barangay_id.exists' => 'Please select a valid barangay.',
-        ];
-        
-        // Core fields are always required (even for drafts - database compatibility)
-        $rules = [
-            'save_as_draft' => 'nullable|boolean',
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'extension' => 'nullable|string|max:20',
-            'birthdate' => 'required|date',
-            'gender_id' => 'required|exists:genders,id',
-            'barangay_id' => 'required|exists:barangays,id',
-            'house_number' => 'nullable|string|max:100',
-            'street' => 'nullable|string|max:255',
-            'mobile_number' => 'nullable|string|max:20',
-            'telephone_number' => 'nullable|string|max:20',
-            'educational_attainment_id' => 'nullable|integer',
-            'monthly_salary' => 'nullable|numeric',
-            'occupation' => 'nullable|string|max:200',
-            'other_skills' => 'nullable|string|max:500',
-            'family_members' => 'nullable|array',
-            'target_sectors' => 'nullable|array',
-            'sub_categories' => 'nullable|array',
-            'application_type_id' => 'nullable|integer',
-        ];
+            
+            // Custom validation messages
+            $messages = [
+                'first_name.required' => 'First name is required.',
+                'last_name.required' => 'Last name is required.',
+                'birthdate.required' => 'Date of birth is required.',
+                'birthdate.date' => 'Please enter a valid date of birth.',
+                'gender_id.required' => 'Sex is required.',
+                'gender_id.exists' => 'Please select a valid sex option.',
+                'barangay_id.required' => 'Barangay is required.',
+                'barangay_id.exists' => 'Please select a valid barangay.',
+            ];
+            
+            // Core fields are always required (even for drafts - database compatibility)
+            $rules = [
+                'save_as_draft' => 'nullable|boolean',
+                'first_name' => 'required|string|max:100',
+                'middle_name' => 'nullable|string|max:100',
+                'last_name' => 'required|string|max:100',
+                'extension' => 'nullable|string|max:20',
+                'birthdate' => 'required|date',
+                'gender_id' => 'required|exists:genders,id',
+                'barangay_id' => 'required|exists:barangays,id',
+                'house_number' => 'nullable|string|max:100',
+                'street' => 'nullable|string|max:255',
+                'mobile_number' => 'nullable|string|max:20',
+                'telephone_number' => 'nullable|string|max:20',
+                'educational_attainment_id' => 'nullable|integer',
+                'monthly_salary' => 'nullable|numeric',
+                'occupation' => 'nullable|string|max:200',
+                'other_skills' => 'nullable|string|max:500',
+                'family_members' => 'nullable|array',
+                'target_sectors' => 'nullable|array',
+                'sub_categories' => 'nullable|array',
+                'application_type_id' => 'nullable|integer',
+            ];
 
-        // If NOT draft, require documents to be uploaded (check via has_documents flag)
-        if (!$isDraft) {
-            // Note: Document validation will be done on frontend and via has_photo flag
-            // We'll validate that photo was provided for full submission
-        }
+            // If NOT draft, require documents to be uploaded (check via has_documents flag)
+            if (!$isDraft) {
+                // Note: Document validation will be done on frontend and via has_photo flag
+                // We'll validate that photo was provided for full submission
+            }
 
-        $validated = $request->validate($rules, $messages);
+            $validated = $request->validate($rules, $messages);
 
-        // ==============================================
-        // STRICT DUPLICATE CHECK - BLOCK IF DUPLICATE EXISTS
-        // ==============================================
-        $firstName = strtolower(trim($request->first_name));
-        $lastName = strtolower(trim($request->last_name));
-        $birthdate = $request->birthdate;
+            // ==============================================
+            // STRICT DUPLICATE CHECK - BLOCK IF DUPLICATE EXISTS
+            // ==============================================
+            $firstName = strtolower(trim($request->first_name));
+            $lastName = strtolower(trim($request->last_name));
+            $birthdate = $request->birthdate;
 
         // 1. Check existing Senior Citizens (already registered)
         $existingSenior = SeniorCitizen::whereRaw('LOWER(TRIM(first_name)) = ?', [$firstName])

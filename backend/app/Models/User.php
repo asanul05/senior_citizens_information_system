@@ -141,11 +141,15 @@ class User extends Authenticatable
         }
 
         if ($this->isBranchAdmin()) {
-            return $this->branch->barangays()->pluck('barangays.id')->toArray();
+            // Ensure branch relationship is loaded and exists
+            if ($this->branch) {
+                return $this->branch->barangays()->pluck('barangays.id')->toArray();
+            }
+            return [];
         }
 
         if ($this->isBarangayAdmin()) {
-            return [$this->barangay_id];
+            return $this->barangay_id ? [$this->barangay_id] : [];
         }
 
         return [];
