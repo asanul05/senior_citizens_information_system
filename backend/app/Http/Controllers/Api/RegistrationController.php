@@ -171,7 +171,9 @@ class RegistrationController extends Controller
         }
 
         // 2. Check pending/approved applications (not yet rejected)
+        // Only check applications that have applicant_data (to avoid JSON errors)
         $existingApplication = Application::where('status', '!=', 'Rejected')
+            ->whereNotNull('applicant_data')
             ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.first_name')))) = ?", [$firstName])
             ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.last_name')))) = ?", [$lastName])
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.personal_info.birthdate')) = ?", [$birthdate])
@@ -262,10 +264,15 @@ class RegistrationController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
+            \Log::error('Registration submission failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->except(['photo']),
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to submit application: ' . $e->getMessage(),
-                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred.',
             ], 500);
         }
     }
