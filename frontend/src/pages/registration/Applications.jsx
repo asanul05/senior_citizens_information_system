@@ -110,7 +110,8 @@ const Applications = () => {
     };
 
     const handleView = (record) => {
-        setViewModal({ visible: true, data: record });
+        // Navigate to view/edit page with full form data (view mode)
+        navigate(`/admin/registration/new?view=${record.id}`);
     };
 
     const handleEdit = (record) => {
@@ -137,7 +138,6 @@ const Applications = () => {
             'For Verification': { color: 'processing', icon: <SyncOutlined spin /> },
             'Verified': { color: 'blue', icon: <CheckCircleOutlined /> },
             'Approved': { color: 'success', icon: <CheckCircleOutlined /> },
-            'Rejected': { color: 'error', icon: <CloseCircleOutlined /> },
             'Printed': { color: 'purple', icon: <FileTextOutlined /> },
             'Claimed': { color: 'green', icon: <CheckCircleOutlined /> },
         };
@@ -219,32 +219,18 @@ const Applications = () => {
                         </Tooltip>
                     )}
                     {record.status === 'For Verification' && (
-                        <>
-                            <Popconfirm
-                                title="Approve this application?"
-                                onConfirm={() => handleStatusUpdate(record.id, 'Approved')}
-                            >
-                                <Tooltip title="Approve">
-                                    <Button
-                                        type="text"
-                                        icon={<CheckCircleOutlined />}
-                                        style={{ color: '#52c41a' }}
-                                    />
-                                </Tooltip>
-                            </Popconfirm>
-                            <Popconfirm
-                                title="Reject this application?"
-                                onConfirm={() => handleStatusUpdate(record.id, 'Rejected')}
-                            >
-                                <Tooltip title="Reject">
-                                    <Button
-                                        type="text"
-                                        icon={<CloseCircleOutlined />}
-                                        danger
-                                    />
-                                </Tooltip>
-                            </Popconfirm>
-                        </>
+                        <Popconfirm
+                            title="Approve this application?"
+                            onConfirm={() => handleStatusUpdate(record.id, 'Approved')}
+                        >
+                            <Tooltip title="Approve">
+                                <Button
+                                    type="text"
+                                    icon={<CheckCircleOutlined />}
+                                    style={{ color: '#52c41a' }}
+                                />
+                            </Tooltip>
+                        </Popconfirm>
                     )}
                 </Space>
             ),
@@ -342,27 +328,7 @@ const Applications = () => {
                     >
                         <CheckCircleOutlined /> Approved
                     </Tag>
-                    <Tag
-                        color={filters.status === 'Rejected' ? 'error' : 'default'}
-                        style={{ cursor: 'pointer', padding: '4px 12px' }}
-                        onClick={() => handleStatusFilter('Rejected')}
-                    >
-                        <CloseCircleOutlined /> Rejected
-                    </Tag>
-                    <Tag
-                        color={filters.status === 'Printed' ? 'purple' : 'default'}
-                        style={{ cursor: 'pointer', padding: '4px 12px' }}
-                        onClick={() => handleStatusFilter('Printed')}
-                    >
-                        <FileTextOutlined /> Printed
-                    </Tag>
-                    <Tag
-                        color={filters.status === 'Claimed' ? 'green' : 'default'}
-                        style={{ cursor: 'pointer', padding: '4px 12px' }}
-                        onClick={() => handleStatusFilter('Claimed')}
-                    >
-                        <CheckCircleOutlined /> Claimed
-                    </Tag>
+
                 </Space>
             </Card>
 
@@ -386,13 +352,9 @@ const Applications = () => {
                             onChange={handleStatusFilter}
                             value={filters.status || undefined}
                         >
-                            <Option value="Pending">Pending</Option>
                             <Option value="Draft">Draft</Option>
                             <Option value="For Verification">For Verification</Option>
                             <Option value="Approved">Approved</Option>
-                            <Option value="Rejected">Rejected</Option>
-                            <Option value="Printed">Printed</Option>
-                            <Option value="Claimed">Claimed</Option>
                         </Select>
                     </Col>
                     <Col>

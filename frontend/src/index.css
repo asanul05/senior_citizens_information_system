@@ -108,3 +108,44 @@ body {
     display: none !important;
   }
 }
+
+/* Make checkboxes look more boxy/square (not like radio buttons) */
+.ant-checkbox .ant-checkbox-inner {
+  border-radius: 2px !important; /* Square corners */
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d9d9d9;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  border-color: #1890ff;
+  background-color: #1890ff;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner::after {
+  transform: rotate(45deg) scale(1) translate(-50%, -50%);
+  left: 30%;
+  top: 55%;
+}
+
+/* Make checkbox group items look like proper checkbox list items */
+.ant-checkbox-group .ant-checkbox-wrapper {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s;
+}
+
+.ant-checkbox-group .ant-checkbox-wrapper:hover {
+  background: #f5f5f5;
+  border-color: #d9d9d9;
+}
+
+.ant-checkbox-group .ant-checkbox-wrapper-checked {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}

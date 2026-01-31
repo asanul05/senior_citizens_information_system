@@ -66,6 +66,7 @@ const NewApplication = () => {
 
     // Edit mode state
     const [isEditMode, setIsEditMode] = useState(false);
+    const [isViewMode, setIsViewMode] = useState(false); // View-only mode (no editing allowed)
     const [editApplicationId, setEditApplicationId] = useState(null);
     const [applicationNumber, setApplicationNumber] = useState(null);
     const [uploadedDocuments, setUploadedDocuments] = useState([]);
@@ -104,13 +105,20 @@ const NewApplication = () => {
         loadBarangays();
     }, []);
 
-    // Check for edit mode and load existing application
+    // Check for edit or view mode and load existing application
     useEffect(() => {
         const editId = searchParams.get('edit');
+        const viewId = searchParams.get('view');
         if (editId) {
             setIsEditMode(true);
             setEditApplicationId(editId);
             loadApplicationData(editId);
+        } else if (viewId) {
+            // View mode - same as edit but sets view-only flag
+            setIsEditMode(true);
+            setIsViewMode(true);
+            setEditApplicationId(viewId);
+            loadApplicationData(viewId);
         }
     }, [searchParams]);
 

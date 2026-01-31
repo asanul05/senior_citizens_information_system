@@ -376,8 +376,7 @@ class ApplicationController extends Controller
 
         $stats = [
             'total' => (clone $baseQuery)->count(),
-            'pending' => (clone $baseQuery)->where('status', 'Pending')->count(),
-            'draft' => (clone $baseQuery)->where('status', 'Draft')->count(),
+            'pending' => (clone $baseQuery)->where('status', 'Draft')->count(), // Draft = pending action from staff
             'for_verification' => (clone $baseQuery)->where('status', 'For Verification')->count(),
             'approved' => (clone $baseQuery)->where('status', 'Approved')->count(),
             'rejected' => (clone $baseQuery)->where('status', 'Rejected')->count(),

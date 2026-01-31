@@ -28,14 +28,14 @@ class PublicController extends Controller
             ->whereYear('claimed_date', $currentYear)
             ->count();
         
-        // Total benefit claims
-        $totalBenefitsClaimed = BenefitClaim::count();
+        // Total benefits released (only count Released status)
+        $totalBenefitsReleased = BenefitClaim::where('status', 'Released')->count();
         
         return response()->json([
             'data' => [
                 'registered_seniors' => $totalSeniors,
                 'ids_issued_this_year' => $idsIssuedThisYear,
-                'benefits_claimed' => $totalBenefitsClaimed,
+                'benefits_claimed' => $totalBenefitsReleased,
             ]
         ]);
     }

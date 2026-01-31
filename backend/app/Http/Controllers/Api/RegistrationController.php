@@ -145,15 +145,25 @@ class RegistrationController extends Controller
             $validated = $request->validate($rules, $messages);
 
             // ==============================================
-            // STRICT DUPLICATE CHECK - BLOCK IF DUPLICATE EXISTS
+            // AUTO-CAPITALIZE NAMES
             // ==============================================
-            $firstName = strtolower(trim($request->first_name));
-            $lastName = strtolower(trim($request->last_name));
+            $firstName = ucwords(strtolower(trim($request->first_name)));
+            $middleName = $request->middle_name ? ucwords(strtolower(trim($request->middle_name))) : null;
+            $lastName = ucwords(strtolower(trim($request->last_name)));
+            $extension = $request->extension ? strtoupper(trim($request->extension)) : null;
+
+            // For duplicate checking (lowercase versions)
+            $firstNameLower = strtolower($firstName);
+            $lastNameLower = strtolower($lastName);
             $birthdate = $request->birthdate;
 
-        // 1. Check existing Senior Citizens (already registered)
-        $existingSenior = SeniorCitizen::whereRaw('LOWER(TRIM(first_name)) = ?', [$firstName])
-            ->whereRaw('LOWER(TRIM(last_name)) = ?', [$lastName])
+            // ==============================================
+            // DUPLICATE CHECKS
+            // ==============================================
+            
+        // 1. Check existing Senior Citizens with same name + birthdate (STRICT BLOCK)
+        $existingSenior = SeniorCitizen::whereRaw('LOWER(TRIM(first_name)) = ?', [$firstNameLower])
+            ->whereRaw('LOWER(TRIM(last_name)) = ?', [$lastNameLower])
             ->whereDate('birthdate', $birthdate)
             ->first();
 
@@ -168,6 +178,25 @@ class RegistrationController extends Controller
                     'barangay' => $existingSenior->barangay?->name,
                 ],
             ], 409);
+        }
+        
+        // 2. Check for same name only (WARNING - not blocking, return warning flag)
+        $sameNameSeniors = SeniorCitizen::whereRaw('LOWER(TRIM(first_name)) = ?', [$firstNameLower])
+            ->whereRaw('LOWER(TRIM(last_name)) = ?', [$lastNameLower])
+            ->limit(5)
+            ->get(['id', 'osca_id', 'first_name', 'last_name', 'birthdate', 'barangay_id']);
+            
+        $sameNameWarning = null;
+        if ($sameNameSeniors->count() > 0) {
+            $sameNameWarning = [
+                'message' => 'Warning: There are existing seniors with the same name (different birthdate).',
+                'count' => $sameNameSeniors->count(),
+                'seniors' => $sameNameSeniors->map(fn($s) => [
+                    'osca_id' => $s->osca_id,
+                    'name' => "{$s->first_name} {$s->last_name}",
+                    'birthdate' => $s->birthdate?->format('Y-m-d'),
+                ])->toArray(),
+            ];
         }
 
         // 2. Check pending/approved applications (not yet rejected)
@@ -227,13 +256,13 @@ class RegistrationController extends Controller
             
             $applicationNumber = sprintf('APP-%s-%05d', $year, $nextNumber);
 
-            // Build applicant_data JSON (stores all form data)
+            // Build applicant_data JSON (stores all form data with capitalized names)
             $applicantData = [
                 'personal_info' => [
-                    'first_name' => $request->first_name,
-                    'middle_name' => $request->middle_name,
-                    'last_name' => $request->last_name,
-                    'extension' => $request->extension,
+                    'first_name' => $firstName,
+                    'middle_name' => $middleName,
+                    'last_name' => $lastName,
+                    'extension' => $extension,
                     'birthdate' => $request->birthdate,
                     'gender_id' => $request->gender_id,
                     'barangay_id' => $request->barangay_id,
