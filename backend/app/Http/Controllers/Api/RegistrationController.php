@@ -209,10 +209,23 @@ class RegistrationController extends Controller
 
             $user = $request->user();
 
-            // Generate application number
+            // Generate unique application number using MAX to avoid duplicates
             $year = date('Y');
-            $count = Application::whereYear('created_at', $year)->count() + 1;
-            $applicationNumber = sprintf('APP-%s-%05d', $year, $count);
+            $prefix = "APP-{$year}-";
+            
+            // Get the maximum existing number for this year
+            $lastApp = Application::where('application_number', 'like', "{$prefix}%")
+                ->orderByRaw("CAST(SUBSTRING(application_number, -5) AS UNSIGNED) DESC")
+                ->first();
+            
+            $nextNumber = 1;
+            if ($lastApp) {
+                // Extract the numeric part from the last application number
+                $lastNumber = (int) substr($lastApp->application_number, -5);
+                $nextNumber = $lastNumber + 1;
+            }
+            
+            $applicationNumber = sprintf('APP-%s-%05d', $year, $nextNumber);
 
             // Build applicant_data JSON (stores all form data)
             $applicantData = [
