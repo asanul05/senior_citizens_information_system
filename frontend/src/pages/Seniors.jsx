@@ -34,7 +34,7 @@ import {
     CheckCircleOutlined,
     DollarOutlined,
 } from '@ant-design/icons';
-import { seniorsApi, benefitsApi } from '../services/api';
+import { seniorsApi, benefitsApi, registrationApi } from '../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -61,6 +61,7 @@ const Seniors = () => {
         female: 0,
     });
     const [detailModal, setDetailModal] = useState({ visible: false, senior: null });
+    const [barangays, setBarangays] = useState([]);
 
     // Claim History Modal State
     const [claimHistoryModal, setClaimHistoryModal] = useState({ visible: false, loading: false, data: null });
@@ -68,7 +69,17 @@ const Seniors = () => {
     useEffect(() => {
         fetchSeniors();
         fetchStatistics();
+        loadBarangays();
     }, []);
+
+    const loadBarangays = async () => {
+        try {
+            const response = await registrationApi.getBarangays();
+            setBarangays(response.data.data || []);
+        } catch (error) {
+            console.error('Failed to load barangays:', error);
+        }
+    };
 
     const fetchSeniors = async (page = 1, pageSize = 15) => {
         setLoading(true);
@@ -365,6 +376,24 @@ const Seniors = () => {
                             <Option value="active">Active</Option>
                             <Option value="inactive">Inactive</Option>
                             <Option value="deceased">Deceased</Option>
+                        </Select>
+                    </Col>
+                    <Col xs={12} sm={4}>
+                        <Select
+                            placeholder="All Barangays"
+                            style={{ width: '100%' }}
+                            allowClear
+                            showSearch
+                            optionFilterProp="children"
+                            onChange={(value) => {
+                                setFilters(prev => ({ ...prev, barangay_id: value }));
+                                setPagination(prev => ({ ...prev, current: 1 }));
+                                setTimeout(() => fetchSeniors(1), 100);
+                            }}
+                        >
+                            {barangays.map(b => (
+                                <Option key={b.id} value={b.id}>{b.name}</Option>
+                            ))}
                         </Select>
                     </Col>
                     <Col xs={24} sm={12} style={{ textAlign: 'right' }}>

@@ -47,6 +47,18 @@ class User extends Authenticatable
     ];
 
     /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'role_id' => 'integer',
+        'branch_id' => 'integer',
+        'barangay_id' => 'integer',
+        'gender_id' => 'integer',
+        'is_active' => 'boolean',
+        'last_login' => 'datetime',
+    ];
+
+    /**
      * Get the password attribute for authentication.
      */
     public function getAuthPassword()
@@ -112,7 +124,7 @@ class User extends Authenticatable
      */
     public function isMainAdmin(): bool
     {
-        return $this->role_id === 1;
+        return (int) $this->role_id === 1;
     }
 
     /**
@@ -120,7 +132,7 @@ class User extends Authenticatable
      */
     public function isBranchAdmin(): bool
     {
-        return $this->role_id === 2;
+        return (int) $this->role_id === 2;
     }
 
     /**
@@ -128,7 +140,7 @@ class User extends Authenticatable
      */
     public function isBarangayAdmin(): bool
     {
-        return $this->role_id === 3;
+        return (int) $this->role_id === 3;
     }
 
     /**
@@ -140,8 +152,12 @@ class User extends Authenticatable
             return Barangay::pluck('id')->toArray();
         }
 
-        if ($this->isBranchAdmin()) {
-            // Ensure branch relationship is loaded and exists
+        if ($this->isBranchAdmin() && $this->branch_id) {
+            // Explicitly load branch relationship if not loaded
+            if (!$this->relationLoaded('branch')) {
+                $this->load('branch');
+            }
+            
             if ($this->branch) {
                 return $this->branch->barangays()->pluck('barangays.id')->toArray();
             }
@@ -149,7 +165,7 @@ class User extends Authenticatable
         }
 
         if ($this->isBarangayAdmin()) {
-            return $this->barangay_id ? [$this->barangay_id] : [];
+            return $this->barangay_id ? [(int) $this->barangay_id] : [];
         }
 
         return [];
