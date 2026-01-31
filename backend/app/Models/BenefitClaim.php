@@ -73,27 +73,20 @@ class BenefitClaim extends Model
     }
 
     /**
-     * Scope to filter claims accessible by a user based on their branch.
+     * Scope to filter claims accessible by a user based on their role.
      */
     public function scopeAccessibleBy($query, $user)
     {
-        if ($user->role_id === 1) {
+        if ($user->isMainAdmin()) {
             // Main admin sees all
             return $query;
         }
 
-        if ($user->branch_id) {
-            // FO/Barangay users see only their branch's seniors
-            return $query->whereHas('senior', function ($q) use ($user) {
-                $q->whereHas('barangay', function ($bq) use ($user) {
-                    $bq->whereHas('branches', function ($brq) use ($user) {
-                        $brq->where('branches.id', $user->branch_id);
-                    });
-                });
-            });
-        }
-
-        return $query;
+        // FO/Barangay users see only seniors from their accessible barangays
+        $barangayIds = $user->getAccessibleBarangayIds();
+        return $query->whereHas('senior', function ($q) use ($barangayIds) {
+            $q->whereIn('barangay_id', $barangayIds);
+        });
     }
 
     /**

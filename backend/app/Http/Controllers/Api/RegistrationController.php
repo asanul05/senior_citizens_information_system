@@ -48,13 +48,25 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Get all barangays for selection.
+     * Get barangays accessible to current user for selection.
      */
-    public function barangays()
+    public function barangays(Request $request)
     {
+        $user = $request->user();
+        
+        // Filter barangays based on user role
+        if ($user->isMainAdmin()) {
+            $barangays = Barangay::orderBy('name')->get(['id', 'name', 'district']);
+        } else {
+            $accessibleIds = $user->getAccessibleBarangayIds();
+            $barangays = Barangay::whereIn('id', $accessibleIds)
+                ->orderBy('name')
+                ->get(['id', 'name', 'district']);
+        }
+        
         return response()->json([
             'success' => true,
-            'data' => Barangay::orderBy('name')->get(['id', 'name', 'district']),
+            'data' => $barangays,
         ]);
     }
 

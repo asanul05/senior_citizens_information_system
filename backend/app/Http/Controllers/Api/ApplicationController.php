@@ -363,15 +363,26 @@ class ApplicationController extends Controller
 
         $baseQuery = Application::query()
             ->when($user->role_id !== 1, function ($q) use ($user) {
-                if ($user->branch_id) {
-                    $q->whereHas('senior', function ($sq) use ($user) {
-                        $sq->whereHas('barangay', function ($bq) use ($user) {
-                            $bq->whereHas('branches', function ($brq) use ($user) {
-                                $brq->where('branches.id', $user->branch_id);
+                $accessibleBarangayIds = $user->getAccessibleBarangayIds();
+                
+                $q->where(function ($subQ) use ($user, $accessibleBarangayIds) {
+                    // Applications with senior_id set (filter by senior's barangay)
+                    $subQ->whereHas('senior', function ($sq) use ($accessibleBarangayIds) {
+                        $sq->whereIn('barangay_id', $accessibleBarangayIds);
+                    })
+                    // OR applications without senior (pending/draft) - filter by applicant_data.personal_info.barangay_id
+                    ->orWhere(function ($pendingQ) use ($accessibleBarangayIds) {
+                        $pendingQ->whereNull('senior_id')
+                            ->where(function ($barangayCheck) use ($accessibleBarangayIds) {
+                                foreach ($accessibleBarangayIds as $barangayId) {
+                                    $barangayCheck->orWhereRaw(
+                                        "JSON_EXTRACT(applicant_data, '$.personal_info.barangay_id') = ?",
+                                        [$barangayId]
+                                    );
+                                }
                             });
-                        });
                     });
-                }
+                });
             });
 
         $stats = [

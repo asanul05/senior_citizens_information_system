@@ -59,9 +59,10 @@ class PreRegistrationController extends Controller
         $user = $request->user();
         $query = PreRegistration::query();
 
-        // Role-based filtering
-        if ($user->role_id == 3) {
-            $query->where('barangay_id', $user->barangay_id);
+        // Role-based filtering - filter for non-main admins
+        if (!$user->isMainAdmin()) {
+            $barangayIds = $user->getAccessibleBarangayIds();
+            $query->whereIn('barangay_id', $barangayIds);
         }
 
         $stats = [
