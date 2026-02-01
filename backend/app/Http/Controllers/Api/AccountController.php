@@ -296,17 +296,49 @@ class AccountController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $roles = UserRole::all();
-        $branches = Branch::where('id', '>', 1)->where('is_active', true)->get(); // Exclude main office
-        $barangays = Barangay::orderBy('name')->get();
+        try {
+            $roles = UserRole::all();
+            $branches = Branch::where('id', '>', 1)->get(); // Exclude main office
+            $barangays = Barangay::orderBy('name')->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'roles' => $roles,
-                'branches' => $branches,
-                'barangays' => $barangays,
-            ],
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'roles' => $roles,
+                    'branches' => $branches,
+                    'barangays' => $barangays,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch options: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get barangays assigned to a specific branch (for filtered dropdown)
+     */
+    public function getBarangaysByBranch(Request $request, $branchId): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        try {
+            $branch = Branch::findOrFail($branchId);
+            $barangays = $branch->barangays()->orderBy('name')->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $barangays,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch barangays: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

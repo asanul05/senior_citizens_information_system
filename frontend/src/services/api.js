@@ -268,6 +268,9 @@ export const accountsApi = {
 
   resetPassword: (id, password) =>
     api.post(`/admin/accounts/${id}/reset-password`, { password }),
+
+  getBarangaysByBranch: (branchId) =>
+    api.get(`/admin/accounts/barangays-by-branch/${branchId}`),
 };
 
 // Branch (Field Office) Management API

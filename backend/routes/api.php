@@ -141,6 +141,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('admin/accounts')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\AccountController::class, 'index']);
             Route::get('/options', [\App\Http\Controllers\Api\AccountController::class, 'getOptions']);
+            Route::get('/barangays-by-branch/{branchId}', [\App\Http\Controllers\Api\AccountController::class, 'getBarangaysByBranch']);
             Route::get('/{id}', [\App\Http\Controllers\Api\AccountController::class, 'show']);
             Route::post('/', [\App\Http\Controllers\Api\AccountController::class, 'store']);
             Route::put('/{id}', [\App\Http\Controllers\Api\AccountController::class, 'update']);

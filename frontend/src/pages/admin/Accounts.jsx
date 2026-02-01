@@ -48,6 +48,8 @@ function Accounts() {
     const [form] = Form.useForm();
     const [passwordForm] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [filteredBarangays, setFilteredBarangays] = useState([]);
+    const [loadingBarangays, setLoadingBarangays] = useState(false);
 
     useEffect(() => {
         loadAccounts();
@@ -115,6 +117,12 @@ function Accounts() {
             ...record,
             password: undefined, // Don't show password
         });
+        // Load barangays for the current branch if Barangay Admin
+        if (record.role_id === 3 && record.branch_id) {
+            loadBarangaysByBranch(record.branch_id);
+        } else {
+            setFilteredBarangays([]);
+        }
         setModalVisible(true);
     };
 
@@ -326,12 +334,31 @@ function Accounts() {
     ];
 
     const selectedRoleId = Form.useWatch('role_id', form);
-    const filteredBarangays = options.barangays.filter(b => {
-        const branchId = form.getFieldValue('branch_id');
-        if (!branchId) return true;
-        // For now, show all barangays - can be filtered by branch if needed
-        return true;
-    });
+    const selectedBranchId = Form.useWatch('branch_id', form);
+
+    // Load barangays when branch is selected/changed
+    const loadBarangaysByBranch = async (branchId) => {
+        if (!branchId) {
+            setFilteredBarangays([]);
+            return;
+        }
+        setLoadingBarangays(true);
+        try {
+            const response = await accountsApi.getBarangaysByBranch(branchId);
+            setFilteredBarangays(response.data.data);
+        } catch (error) {
+            console.error('Failed to load barangays:', error);
+            setFilteredBarangays([]);
+        } finally {
+            setLoadingBarangays(false);
+        }
+    };
+
+    // Handle branch change - fetch barangays and clear barangay field
+    const handleBranchChange = (branchId) => {
+        form.setFieldValue('barangay_id', undefined);
+        loadBarangaysByBranch(branchId);
+    };
 
     return (
         <div style={{ padding: '24px' }}>
@@ -524,7 +551,10 @@ function Accounts() {
                             label="Field Office"
                             rules={[{ required: true, message: 'Required for this role' }]}
                         >
-                            <Select placeholder="Select Field Office">
+                            <Select
+                                placeholder="Select Field Office"
+                                onChange={handleBranchChange}
+                            >
                                 {options.branches.map(branch => (
                                     <Option key={branch.id} value={branch.id}>{branch.name}</Option>
                                 ))}
@@ -537,8 +567,15 @@ function Accounts() {
                             name="barangay_id"
                             label="Barangay"
                             rules={[{ required: true, message: 'Required for Barangay Admin' }]}
+                            extra={!selectedBranchId ? 'Select a Field Office first' : ''}
                         >
-                            <Select placeholder="Select Barangay" showSearch optionFilterProp="children">
+                            <Select
+                                placeholder={selectedBranchId ? 'Select Barangay' : 'Select Field Office first'}
+                                showSearch
+                                optionFilterProp="children"
+                                loading={loadingBarangays}
+                                disabled={!selectedBranchId}
+                            >
                                 {filteredBarangays.map(barangay => (
                                     <Option key={barangay.id} value={barangay.id}>
                                         {barangay.name}
