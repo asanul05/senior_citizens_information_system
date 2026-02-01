@@ -21,37 +21,28 @@ class ApplicationController extends Controller
         $perPage = $request->get('per_page', 15);
         
         $query = Application::with(['senior', 'senior.barangay', 'applicationType', 'submitter'])
-            ->when($user->role_id !== 1, function ($q) use ($user) {
+            ->when(!$user->isMainAdmin(), function ($q) use ($user) {
                 // Non-main admins can only see applications from their accessible barangays
-                if ($user->branch_id) {
-                    // Get the user's accessible barangay IDs
-                    $accessibleBarangayIds = Barangay::whereHas('branches', function ($brq) use ($user) {
-                        $brq->where('branches.id', $user->branch_id);
-                    })->pluck('id')->toArray();
+                $accessibleBarangayIds = $user->getAccessibleBarangayIds();
 
-                    $q->where(function ($subQ) use ($user, $accessibleBarangayIds) {
-                        // Applications with senior_id set (filter by senior's barangay)
-                        $subQ->whereHas('senior', function ($sq) use ($user) {
-                            $sq->whereHas('barangay', function ($bq) use ($user) {
-                                $bq->whereHas('branches', function ($brq) use ($user) {
-                                    $brq->where('branches.id', $user->branch_id);
-                                });
+                $q->where(function ($subQ) use ($accessibleBarangayIds) {
+                    // Applications with senior_id set (filter by senior's barangay)
+                    $subQ->whereHas('senior', function ($sq) use ($accessibleBarangayIds) {
+                        $sq->whereIn('barangay_id', $accessibleBarangayIds);
+                    })
+                    // OR applications without senior (pending/draft) - filter by applicant_data.personal_info.barangay_id
+                    ->orWhere(function ($pendingQ) use ($accessibleBarangayIds) {
+                        $pendingQ->whereNull('senior_id')
+                            ->where(function ($barangayCheck) use ($accessibleBarangayIds) {
+                                foreach ($accessibleBarangayIds as $barangayId) {
+                                    $barangayCheck->orWhereRaw(
+                                        "JSON_EXTRACT(applicant_data, '$.personal_info.barangay_id') = ?",
+                                        [$barangayId]
+                                    );
+                                }
                             });
-                        })
-                        // OR applications without senior (pending) - filter by applicant_data.personal_info.barangay_id
-                        ->orWhere(function ($pendingQ) use ($accessibleBarangayIds) {
-                            $pendingQ->whereNull('senior_id')
-                                ->where(function ($barangayCheck) use ($accessibleBarangayIds) {
-                                    foreach ($accessibleBarangayIds as $barangayId) {
-                                        $barangayCheck->orWhereRaw(
-                                            "JSON_EXTRACT(applicant_data, '$.personal_info.barangay_id') = ?",
-                                            [$barangayId]
-                                        );
-                                    }
-                                });
-                        });
                     });
-                }
+                });
             });
 
         // Status filter
@@ -93,6 +84,11 @@ class ApplicationController extends Controller
                     ($personal['middle_name'] ?? '') . ' ' . 
                     ($personal['last_name'] ?? '')
                 );
+                // Also add barangay_name for pending apps
+                if (isset($personal['barangay_id'])) {
+                    $barangay = \App\Models\Barangay::find($personal['barangay_id']);
+                    $data['barangay_name'] = $barangay ? $barangay->name : null;
+                }
             } else if ($app->senior) {
                 $data['applicant_name'] = $app->senior->full_name ?? 
                     "{$app->senior->first_name} {$app->senior->last_name}";

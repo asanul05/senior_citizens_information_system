@@ -92,11 +92,12 @@ const AdminLayout = () => {
             icon: <GiftOutlined />,
             label: 'Benefits',
         },
-        {
-            key: '/admin/complaints',
-            icon: <ExclamationCircleOutlined />,
-            label: 'Complaints',
-        },
+        // Complaints - temporarily hidden
+        // {
+        //     key: '/admin/complaints',
+        //     icon: <ExclamationCircleOutlined />,
+        //     label: 'Complaints',
+        // },
         {
             key: '/admin/announcements',
             icon: <NotificationOutlined />,

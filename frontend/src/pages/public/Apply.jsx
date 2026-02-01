@@ -449,12 +449,20 @@ const Apply = () => {
 
                                     <Row gutter={16}>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="house_number" label="House No.">
+                                            <Form.Item
+                                                name="house_number"
+                                                label={<span>House No. <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'House number is required' }]}
+                                            >
                                                 <Input placeholder="House number" size="large" />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="street" label="Street">
+                                            <Form.Item
+                                                name="street"
+                                                label={<span>Street <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'Street is required' }]}
+                                            >
                                                 <Input placeholder="Street name" size="large" />
                                             </Form.Item>
                                         </Col>

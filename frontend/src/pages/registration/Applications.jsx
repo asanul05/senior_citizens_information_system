@@ -174,6 +174,22 @@ const Applications = () => {
             },
         },
         {
+            title: 'Barangay',
+            key: 'barangay',
+            width: 150,
+            render: (_, record) => {
+                // First try senior's barangay
+                if (record.senior?.barangay?.name) {
+                    return record.senior.barangay.name;
+                }
+                // Fallback to applicant_data barangay name (if available)
+                if (record.barangay_name) {
+                    return record.barangay_name;
+                }
+                return <Text type="secondary">-</Text>;
+            },
+        },
+        {
             title: 'Type',
             dataIndex: ['application_type', 'name'],
             key: 'type',

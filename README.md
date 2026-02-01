@@ -46,14 +46,6 @@ npm install
 npm run dev
 ```
 
-## 🔐 Default Accounts
-
-| Role | Email | Password |
-|------|-------|----------|
-| Main Admin | admin@osca.gov.ph | password |
-| Field Office | fo1@osca.gov.ph | password |
-| Barangay | brgy1@osca.gov.ph | password |
-
 ## 📁 Project Structure
 
 ```
@@ -68,7 +60,7 @@ scis-v2/
 │   │   ├── components/
 │   │   └── services/
 │   └── public/
-└── PRD_SCIS.md      # Product Requirements Document
+
 ```
 
 ## 📄 License
