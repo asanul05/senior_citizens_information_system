@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\AdminUser;
+use App\Models\User;
 use App\Models\Branch;
 use App\Models\Barangay;
 use App\Models\UserRole;
@@ -26,7 +26,7 @@ class AccountController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $query = AdminUser::with(['role', 'branch', 'barangay']);
+        $query = User::with(['role', 'branch', 'barangay']);
 
         // Filter by role
         if ($request->filled('role_id')) {
@@ -81,7 +81,7 @@ class AccountController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $account = AdminUser::with(['role', 'branch', 'barangay'])->findOrFail($id);
+        $account = User::with(['role', 'branch', 'barangay'])->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -136,7 +136,7 @@ class AccountController extends Controller
         $validated['password_hash'] = Hash::make($validated['password']);
         unset($validated['password']);
 
-        $account = AdminUser::create($validated);
+        $account = User::create($validated);
         $account->load(['role', 'branch', 'barangay']);
 
         return response()->json([
@@ -157,7 +157,7 @@ class AccountController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $account = AdminUser::findOrFail($id);
+        $account = User::findOrFail($id);
 
         $validated = $request->validate([
             'employee_id' => ['sometimes', 'string', 'max:50', Rule::unique('admin_users')->ignore($id)],
@@ -222,7 +222,7 @@ class AccountController extends Controller
             ], 400);
         }
 
-        $account = AdminUser::findOrFail($id);
+        $account = User::findOrFail($id);
         $account->delete();
 
         return response()->json([
@@ -249,7 +249,7 @@ class AccountController extends Controller
             ], 400);
         }
 
-        $account = AdminUser::findOrFail($id);
+        $account = User::findOrFail($id);
         $account->is_active = !$account->is_active;
         $account->save();
 
@@ -275,7 +275,7 @@ class AccountController extends Controller
             'password' => 'required|string|min:6',
         ]);
 
-        $account = AdminUser::findOrFail($id);
+        $account = User::findOrFail($id);
         $account->password_hash = Hash::make($validated['password']);
         $account->save();
 
