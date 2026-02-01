@@ -19,6 +19,9 @@ import Applications from './pages/registration/Applications';
 import IdPrinting from './pages/IdPrinting';
 import PreRegistrations from './pages/PreRegistrations';
 import Benefits from './pages/Benefits';
+import Accounts from './pages/admin/Accounts';
+import BranchManagement from './pages/admin/BranchManagement';
+import BenefitSettings from './pages/admin/BenefitSettings';
 
 // Public Pages
 import Home from './pages/public/Home';
@@ -117,7 +120,23 @@ function App() {
                   path="accounts"
                   element={
                     <ProtectedRoute allowedRoles={[1]}>
-                      <ComingSoon title="Accounts Management" />
+                      <Accounts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings/branches"
+                  element={
+                    <ProtectedRoute allowedRoles={[1]}>
+                      <BranchManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings/benefits"
+                  element={
+                    <ProtectedRoute allowedRoles={[1]}>
+                      <BenefitSettings />
                     </ProtectedRoute>
                   }
                 />

@@ -243,4 +243,94 @@ export const benefitsApi = {
     api.get(`/seniors/${seniorId}/benefits`),
 };
 
+// Accounts API (Admin Management)
+export const accountsApi = {
+  getList: (params) =>
+    api.get('/admin/accounts', { params }),
+
+  getById: (id) =>
+    api.get(`/admin/accounts/${id}`),
+
+  getOptions: () =>
+    api.get('/admin/accounts/options'),
+
+  create: (data) =>
+    api.post('/admin/accounts', data),
+
+  update: (id, data) =>
+    api.put(`/admin/accounts/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/admin/accounts/${id}`),
+
+  toggleStatus: (id) =>
+    api.patch(`/admin/accounts/${id}/toggle-status`),
+
+  resetPassword: (id, password) =>
+    api.post(`/admin/accounts/${id}/reset-password`, { password }),
+};
+
+// Branch (Field Office) Management API
+export const branchApi = {
+  getList: () =>
+    api.get('/admin/branches'),
+
+  getById: (id) =>
+    api.get(`/admin/branches/${id}`),
+
+  create: (data) =>
+    api.post('/admin/branches', data),
+
+  update: (id, data) =>
+    api.put(`/admin/branches/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/admin/branches/${id}`),
+};
+
+// Barangay Management API
+export const barangayManagementApi = {
+  getList: (params) =>
+    api.get('/admin/barangays', { params }),
+
+  getUnassigned: () =>
+    api.get('/admin/barangays/unassigned'),
+
+  create: (data) =>
+    api.post('/admin/barangays', data),
+
+  update: (id, data) =>
+    api.put(`/admin/barangays/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/admin/barangays/${id}`),
+
+  assign: (barangayId, branchId) =>
+    api.post('/admin/barangays/assign', { barangay_id: barangayId, branch_id: branchId }),
+
+  bulkAssign: (branchId, barangayIds) =>
+    api.post('/admin/barangays/bulk-assign', { branch_id: branchId, barangay_ids: barangayIds }),
+
+  unassign: (barangayId) =>
+    api.delete(`/admin/barangays/${barangayId}/unassign`),
+};
+
+// Benefit Types Management API
+export const benefitTypesApi = {
+  getAll: () =>
+    api.get('/admin/benefit-types'),
+
+  create: (data) =>
+    api.post('/admin/benefit-types', data),
+
+  update: (id, data) =>
+    api.put(`/admin/benefit-types/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/admin/benefit-types/${id}`),
+
+  toggle: (id) =>
+    api.patch(`/admin/benefit-types/${id}/toggle`),
+};
+
 export default api;

@@ -136,6 +136,48 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:1')->group(function () {
         // Pre-registration main review (for rejecting)
         Route::post('/pre-registrations/{id}/main-review', [PreRegistrationController::class, 'mainReview']);
+
+        // Account Management
+        Route::prefix('admin/accounts')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\AccountController::class, 'index']);
+            Route::get('/options', [\App\Http\Controllers\Api\AccountController::class, 'getOptions']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\AccountController::class, 'show']);
+            Route::post('/', [\App\Http\Controllers\Api\AccountController::class, 'store']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\AccountController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\AccountController::class, 'destroy']);
+            Route::patch('/{id}/toggle-status', [\App\Http\Controllers\Api\AccountController::class, 'toggleStatus']);
+            Route::post('/{id}/reset-password', [\App\Http\Controllers\Api\AccountController::class, 'resetPassword']);
+        });
+
+        // Branch (Field Office) Management
+        Route::prefix('admin/branches')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'indexBranches']);
+            Route::get('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'showBranch']);
+            Route::post('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'storeBranch']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'updateBranch']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'destroyBranch']);
+        });
+
+        // Barangay Management
+        Route::prefix('admin/barangays')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'indexBarangays']);
+            Route::get('/unassigned', [\App\Http\Controllers\Api\BranchManagementController::class, 'getUnassignedBarangays']);
+            Route::post('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'storeBarangay']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'updateBarangay']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'destroyBarangay']);
+            Route::post('/assign', [\App\Http\Controllers\Api\BranchManagementController::class, 'assignBarangay']);
+            Route::post('/bulk-assign', [\App\Http\Controllers\Api\BranchManagementController::class, 'bulkAssign']);
+            Route::delete('/{id}/unassign', [\App\Http\Controllers\Api\BranchManagementController::class, 'unassignBarangay']);
+        });
+
+        // Benefit Type Management
+        Route::prefix('admin/benefit-types')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\BenefitController::class, 'allTypes']);
+            Route::post('/', [\App\Http\Controllers\Api\BenefitController::class, 'storeBenefitType']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\BenefitController::class, 'updateBenefitType']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\BenefitController::class, 'destroyBenefitType']);
+            Route::patch('/{id}/toggle', [\App\Http\Controllers\Api\BenefitController::class, 'toggleBenefitType']);
+        });
     });
 
     // Main Admin and Branch Admin routes (role_id = 1 or 2)

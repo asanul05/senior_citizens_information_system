@@ -588,4 +588,171 @@ class BenefitController extends Controller
             ],
         ]);
     }
+
+    // ==========================================
+    // BENEFIT TYPE MANAGEMENT (Main Admin Only)
+    // ==========================================
+
+    /**
+     * Get all benefit types including inactive (for settings page)
+     */
+    public function allTypes(Request $request)
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $types = BenefitType::orderBy('min_age')
+            ->get()
+            ->map(function ($type) {
+                return [
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'description' => $type->description,
+                    'min_age' => $type->min_age,
+                    'max_age' => $type->max_age,
+                    'age_range' => $type->age_range,
+                    'amount' => $type->amount,
+                    'formatted_amount' => $type->formatted_amount,
+                    'is_one_time' => $type->is_one_time,
+                    'is_active' => $type->is_active,
+                    'created_at' => $type->created_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $types,
+        ]);
+    }
+
+    /**
+     * Create a new benefit type
+     */
+    public function storeBenefitType(Request $request)
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:benefit_types',
+            'description' => 'nullable|string|max:500',
+            'min_age' => 'required|integer|min:60|max:120',
+            'max_age' => 'nullable|integer|min:60|max:150',
+            'amount' => 'required|numeric|min:0',
+            'is_one_time' => 'boolean',
+        ]);
+
+        // Validate max_age >= min_age if provided
+        if (isset($validated['max_age']) && $validated['max_age'] < $validated['min_age']) {
+            return response()->json([
+                'error' => 'Maximum age must be greater than or equal to minimum age'
+            ], 422);
+        }
+
+        $type = BenefitType::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Benefit type created successfully',
+            'data' => $type,
+        ], 201);
+    }
+
+    /**
+     * Update a benefit type
+     */
+    public function updateBenefitType(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $type = BenefitType::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:100|unique:benefit_types,name,' . $id,
+            'description' => 'nullable|string|max:500',
+            'min_age' => 'sometimes|integer|min:60|max:120',
+            'max_age' => 'nullable|integer|min:60|max:150',
+            'amount' => 'sometimes|numeric|min:0',
+            'is_one_time' => 'boolean',
+        ]);
+
+        // Validate max_age >= min_age if both are set
+        $minAge = $validated['min_age'] ?? $type->min_age;
+        $maxAge = $validated['max_age'] ?? $type->max_age;
+        if ($maxAge !== null && $maxAge < $minAge) {
+            return response()->json([
+                'error' => 'Maximum age must be greater than or equal to minimum age'
+            ], 422);
+        }
+
+        $type->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Benefit type updated successfully',
+            'data' => $type,
+        ]);
+    }
+
+    /**
+     * Toggle benefit type active status
+     */
+    public function toggleBenefitType(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $type = BenefitType::findOrFail($id);
+        $type->is_active = !$type->is_active;
+        $type->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => $type->is_active ? 'Benefit type activated' : 'Benefit type deactivated',
+            'data' => $type,
+        ]);
+    }
+
+    /**
+     * Delete a benefit type (only if no claims exist)
+     */
+    public function destroyBenefitType(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $type = BenefitType::findOrFail($id);
+
+        // Check if there are any claims for this type
+        $claimCount = BenefitClaim::where('benefit_type_id', $id)->count();
+        if ($claimCount > 0) {
+            return response()->json([
+                'error' => 'Cannot delete benefit type with existing claims. Deactivate it instead.'
+            ], 400);
+        }
+
+        $type->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Benefit type deleted successfully',
+        ]);
+    }
 }
+

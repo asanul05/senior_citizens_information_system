@@ -114,11 +114,16 @@ const AdminLayout = () => {
             icon: <HeatMapOutlined />,
             label: 'Heat Map',
         },
-        // Accounts only for Main Admin
+        // Settings only for Main Admin
         ...(isMainAdmin() ? [{
-            key: '/admin/accounts',
+            key: '/admin/settings',
             icon: <SettingOutlined />,
-            label: 'Accounts',
+            label: 'Settings',
+            children: [
+                { key: '/admin/accounts', label: 'Accounts' },
+                { key: '/admin/settings/branches', label: 'Branches & Barangays' },
+                { key: '/admin/settings/benefits', label: 'Benefit Types' },
+            ],
         }] : []),
     ];
 

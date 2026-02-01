@@ -1,0 +1,453 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\Barangay;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+
+class BranchManagementController extends Controller
+{
+    // ==========================================
+    // BRANCHES (Field Offices) CRUD
+    // ==========================================
+
+    /**
+     * List all branches with barangay counts
+     */
+    public function indexBranches(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $branches = Branch::withCount('barangays')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $branches,
+        ]);
+    }
+
+    /**
+     * Get single branch with assigned barangays
+     */
+    public function showBranch(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $branch = Branch::with('barangays')->withCount('barangays')->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'data' => $branch,
+        ]);
+    }
+
+    /**
+     * Create new branch (Field Office)
+     */
+    public function storeBranch(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'code' => 'required|string|max:20|unique:branches',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'contact_number' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'branch_head' => 'nullable|string|max:255',
+        ]);
+
+        $branch = Branch::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Field Office created successfully',
+            'data' => $branch,
+        ], 201);
+    }
+
+    /**
+     * Update branch
+     */
+    public function updateBranch(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Don't allow editing Main Office (id=1)
+        if ($id == 1) {
+            return response()->json(['error' => 'Cannot modify Main Office'], 400);
+        }
+
+        $branch = Branch::findOrFail($id);
+
+        $validated = $request->validate([
+            'code' => 'sometimes|string|max:20|unique:branches,code,' . $id,
+            'name' => 'sometimes|string|max:255',
+            'address' => 'nullable|string',
+            'contact_number' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'branch_head' => 'nullable|string|max:255',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $branch->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Field Office updated successfully',
+            'data' => $branch,
+        ]);
+    }
+
+    /**
+     * Delete branch (soft delete by setting is_active = false)
+     */
+    public function destroyBranch(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Don't allow deleting Main Office (id=1)
+        if ($id == 1) {
+            return response()->json(['error' => 'Cannot delete Main Office'], 400);
+        }
+
+        $branch = Branch::withCount('barangays')->findOrFail($id);
+
+        // Check if branch has assigned barangays
+        if ($branch->barangays_count > 0) {
+            return response()->json([
+                'error' => 'Cannot delete Field Office with assigned barangays. Please reassign them first.'
+            ], 400);
+        }
+
+        // Check if branch has admin users
+        $adminCount = DB::table('admin_users')->where('branch_id', $id)->count();
+        if ($adminCount > 0) {
+            return response()->json([
+                'error' => 'Cannot delete Field Office with assigned admin users'
+            ], 400);
+        }
+
+        $branch->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Field Office deleted successfully',
+        ]);
+    }
+
+    // ==========================================
+    // BARANGAYS CRUD
+    // ==========================================
+
+    /**
+     * List all barangays with branch assignment
+     */
+    public function indexBarangays(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $query = Barangay::with('branches');
+
+        // Filter by branch
+        if ($request->filled('branch_id')) {
+            $branchId = $request->branch_id;
+            if ($branchId === 'unassigned') {
+                $query->whereDoesntHave('branches');
+            } else {
+                $query->whereHas('branches', function ($q) use ($branchId) {
+                    $q->where('branches.id', $branchId);
+                });
+            }
+        }
+
+        // Search
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        $barangays = $query->orderBy('name')->get();
+
+        // Add current branch info to each barangay
+        $barangays = $barangays->map(function ($barangay) {
+            $currentBranch = $barangay->branches->first();
+            return [
+                'id' => $barangay->id,
+                'code' => $barangay->code,
+                'name' => $barangay->name,
+                'district' => $barangay->district,
+                'city' => $barangay->city,
+                'branch_id' => $currentBranch?->id,
+                'branch_name' => $currentBranch?->name,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $barangays,
+        ]);
+    }
+
+    /**
+     * Create new barangay
+     */
+    public function storeBarangay(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'code' => 'required|string|max:20|unique:barangays',
+            'name' => 'required|string|max:255',
+            'district' => 'nullable|string|max:50',
+            'city' => 'nullable|string|max:100',
+            'branch_id' => 'nullable|integer|exists:branches,id',
+        ]);
+
+        $branchId = $validated['branch_id'] ?? null;
+        unset($validated['branch_id']);
+
+        $validated['city'] = $validated['city'] ?? 'Zamboanga City';
+
+        $barangay = Barangay::create($validated);
+
+        // Assign to branch if specified
+        if ($branchId) {
+            DB::table('branch_barangays')->insert([
+                'branch_id' => $branchId,
+                'barangay_id' => $barangay->id,
+                'assigned_date' => now()->toDateString(),
+                'is_active' => true,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barangay created successfully',
+            'data' => $barangay,
+        ], 201);
+    }
+
+    /**
+     * Update barangay
+     */
+    public function updateBarangay(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $barangay = Barangay::findOrFail($id);
+
+        $validated = $request->validate([
+            'code' => 'sometimes|string|max:20|unique:barangays,code,' . $id,
+            'name' => 'sometimes|string|max:255',
+            'district' => 'nullable|string|max:50',
+            'city' => 'nullable|string|max:100',
+        ]);
+
+        $barangay->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barangay updated successfully',
+            'data' => $barangay,
+        ]);
+    }
+
+    /**
+     * Delete barangay
+     */
+    public function destroyBarangay(Request $request, $id): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $barangay = Barangay::findOrFail($id);
+
+        // Check if barangay has seniors
+        $seniorCount = DB::table('seniors')->where('barangay_id', $id)->count();
+        if ($seniorCount > 0) {
+            return response()->json([
+                'error' => 'Cannot delete barangay with registered seniors'
+            ], 400);
+        }
+
+        // Remove from branch_barangays
+        DB::table('branch_barangays')->where('barangay_id', $id)->delete();
+
+        $barangay->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barangay deleted successfully',
+        ]);
+    }
+
+    // ==========================================
+    // BARANGAY ASSIGNMENT
+    // ==========================================
+
+    /**
+     * Assign barangay to a branch
+     */
+    public function assignBarangay(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'barangay_id' => 'required|integer|exists:barangays,id',
+            'branch_id' => 'required|integer|exists:branches,id',
+        ]);
+
+        // Remove existing assignment
+        DB::table('branch_barangays')
+            ->where('barangay_id', $validated['barangay_id'])
+            ->delete();
+
+        // Create new assignment
+        DB::table('branch_barangays')->insert([
+            'branch_id' => $validated['branch_id'],
+            'barangay_id' => $validated['barangay_id'],
+            'assigned_date' => now()->toDateString(),
+            'is_active' => true,
+        ]);
+
+        $barangay = Barangay::find($validated['barangay_id']);
+        $branch = Branch::find($validated['branch_id']);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Barangay {$barangay->name} assigned to {$branch->name}",
+        ]);
+    }
+
+    /**
+     * Unassign barangay from branch
+     */
+    public function unassignBarangay(Request $request, $barangayId): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        DB::table('branch_barangays')
+            ->where('barangay_id', $barangayId)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barangay unassigned successfully',
+        ]);
+    }
+
+    /**
+     * Bulk assign barangays to a branch
+     */
+    public function bulkAssign(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'branch_id' => 'required|integer|exists:branches,id',
+            'barangay_ids' => 'required|array',
+            'barangay_ids.*' => 'integer|exists:barangays,id',
+        ]);
+
+        $branchId = $validated['branch_id'];
+        $barangayIds = $validated['barangay_ids'];
+
+        // Remove existing assignments for these barangays
+        DB::table('branch_barangays')
+            ->whereIn('barangay_id', $barangayIds)
+            ->delete();
+
+        // Create new assignments
+        $inserts = [];
+        $assignedDate = now()->toDateString();
+        foreach ($barangayIds as $barangayId) {
+            $inserts[] = [
+                'branch_id' => $branchId,
+                'barangay_id' => $barangayId,
+                'assigned_date' => $assignedDate,
+                'is_active' => true,
+            ];
+        }
+
+        DB::table('branch_barangays')->insert($inserts);
+
+        return response()->json([
+            'success' => true,
+            'message' => count($barangayIds) . ' barangays assigned successfully',
+        ]);
+    }
+
+    /**
+     * Get unassigned barangays
+     */
+    public function getUnassignedBarangays(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        if (!$user->isMainAdmin()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $barangays = Barangay::whereDoesntHave('branches')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $barangays,
+        ]);
+    }
+}
