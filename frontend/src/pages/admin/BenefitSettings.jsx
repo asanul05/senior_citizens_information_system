@@ -27,7 +27,7 @@ import {
     CheckCircleOutlined,
     StopOutlined,
 } from '@ant-design/icons';
-import { benefitTypesApi } from '../services/api';
+import { benefitTypesApi } from '../../services/api';
 
 const { Title, Text } = Typography;
 
