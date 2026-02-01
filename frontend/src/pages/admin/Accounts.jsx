@@ -28,7 +28,7 @@ import {
     StopOutlined,
     UserOutlined,
 } from '@ant-design/icons';
-import { accountsApi } from '../services/api';
+import { accountsApi } from '../../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;

@@ -30,7 +30,7 @@ import {
     EnvironmentOutlined,
     SwapOutlined,
 } from '@ant-design/icons';
-import { branchApi, barangayManagementApi } from '../services/api';
+import { branchApi, barangayManagementApi } from '../../services/api';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
