@@ -52,7 +52,7 @@ class BenefitType extends Model
      */
     public function branch()
     {
-        return $this->belongsTo(FieldOffice::class, 'branch_id');
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     /**
@@ -136,7 +136,7 @@ class BenefitType extends Model
             return $query;
         }
 
-        $branchIds = $user->branches()->pluck('field_offices.id')->toArray();
+        $branchIds = $user->branch_id ? [$user->branch_id] : [];
         $barangayIds = $user->getAccessibleBarangayIds();
 
         return $query->where(function ($q) use ($branchIds, $barangayIds) {

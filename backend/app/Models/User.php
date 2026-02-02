@@ -136,6 +136,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is Field Office Admin (alias for isBranchAdmin)
+     */
+    public function isFOAdmin(): bool
+    {
+        return $this->isBranchAdmin();
+    }
+
+    /**
      * Check if user is Barangay Admin (role_id = 3)
      */
     public function isBarangayAdmin(): bool

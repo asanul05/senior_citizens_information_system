@@ -710,7 +710,7 @@ class BenefitController extends Controller
             'is_one_time' => 'boolean',
             'claim_interval_days' => 'nullable|integer|min:1',
             'target_scope' => 'sometimes|in:all,branch,barangays',
-            'branch_id' => 'nullable|exists:field_offices,id',
+            'branch_id' => 'nullable|exists:branches,id',
             'barangay_ids' => 'nullable|array',
             'barangay_ids.*' => 'exists:barangays,id',
         ]);
@@ -724,7 +724,7 @@ class BenefitController extends Controller
 
         // FO Admins can only create benefits for their branch or specific barangays within their jurisdiction
         if (!$user->isMainAdmin()) {
-            $accessibleBranchIds = $user->branches()->pluck('field_offices.id')->toArray();
+            $accessibleBranchIds = $user->branch_id ? [$user->branch_id] : [];
             $accessibleBarangayIds = $user->getAccessibleBarangayIds();
             
             // Enforce branch targeting for FO admins
@@ -788,7 +788,7 @@ class BenefitController extends Controller
         
         // FO Admins can only edit benefits they created or that target their jurisdiction
         if (!$user->isMainAdmin()) {
-            $accessibleBranchIds = $user->branches()->pluck('field_offices.id')->toArray();
+            $accessibleBranchIds = $user->branch_id ? [$user->branch_id] : [];
             if ($type->created_by !== $user->id && 
                 !($type->target_scope === 'branch' && in_array($type->branch_id, $accessibleBranchIds))) {
                 return response()->json(['error' => 'You can only edit benefits you created or that belong to your field office'], 403);
@@ -804,7 +804,7 @@ class BenefitController extends Controller
             'is_one_time' => 'boolean',
             'claim_interval_days' => 'nullable|integer|min:1',
             'target_scope' => 'sometimes|in:all,branch,barangays',
-            'branch_id' => 'nullable|exists:field_offices,id',
+            'branch_id' => 'nullable|exists:branches,id',
             'barangay_ids' => 'nullable|array',
             'barangay_ids.*' => 'exists:barangays,id',
         ]);
