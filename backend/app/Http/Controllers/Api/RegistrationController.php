@@ -33,12 +33,18 @@ class RegistrationController extends Controller
         $mobilityLevels = DB::table('mobility_levels')
             ->select('id', 'level as name')
             ->get();
+        
+        // Get branches (field offices)
+        $branches = \App\Models\Branch::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
 
         $options = [
             'genders' => $genders,
             'application_types' => ApplicationType::all(['id', 'name', 'description']),
             'educational_attainments' => $educationalAttainments,
             'mobility_levels' => $mobilityLevels,
+            'branches' => $branches,
         ];
 
         return response()->json([

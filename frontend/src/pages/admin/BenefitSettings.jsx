@@ -48,7 +48,7 @@ function BenefitSettings() {
     const [branches, setBranches] = useState([]);
     const [targetScope, setTargetScope] = useState('all');
 
-    const isMainAdmin = user?.role?.key === 'main_admin';
+    const isMainAdmin = user?.role_id === 1;
 
     useEffect(() => {
         loadBenefitTypes();
@@ -80,7 +80,7 @@ function BenefitSettings() {
     const loadBranches = async () => {
         try {
             const response = await registrationApi.getLookupOptions();
-            setBranches(response.data.data?.field_offices || []);
+            setBranches(response.data.data?.branches || []);
         } catch (error) {
             console.error('Failed to load branches:', error);
         }
@@ -165,7 +165,6 @@ function BenefitSettings() {
                 <Space>
                     <GiftOutlined style={{ color: '#1890ff' }} />
                     <span>{name}</span>
-                    {record.is_one_time && <Tag color="purple">One-time</Tag>}
                 </Space>
             ),
         },
@@ -265,13 +264,7 @@ function BenefitSettings() {
         },
     ];
 
-    const frequencyOptions = [
-        { label: 'No limit (can claim anytime)', value: null },
-        { label: 'Monthly (every 30 days)', value: 30 },
-        { label: 'Quarterly (every 90 days)', value: 90 },
-        { label: 'Semi-annual (every 180 days)', value: 180 },
-        { label: 'Yearly (every 365 days)', value: 365 },
-    ];
+
 
     return (
         <div style={{ padding: '24px' }}>
@@ -396,14 +389,15 @@ function BenefitSettings() {
                         <Col span={12}>
                             <Form.Item
                                 name="claim_interval_days"
-                                label="Claim Frequency"
-                                help="How often can this benefit be claimed"
+                                label="Claim Frequency (days)"
+                                help="Leave empty for no limit. E.g., 30=monthly, 90=quarterly, 365=yearly"
                             >
-                                <Select allowClear placeholder="Select frequency">
-                                    {frequencyOptions.map(opt => (
-                                        <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-                                    ))}
-                                </Select>
+                                <InputNumber
+                                    min={1}
+                                    max={3650}
+                                    style={{ width: '100%' }}
+                                    placeholder="e.g., 30 for monthly"
+                                />
                             </Form.Item>
                         </Col>
                     </Row>

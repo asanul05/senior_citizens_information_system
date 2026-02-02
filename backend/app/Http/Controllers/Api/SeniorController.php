@@ -109,7 +109,7 @@ class SeniorController extends Controller
                 'mobilityLevel',
                 'registrationStatus',
                 'registeredBy',
-                'applications.type',
+                'applications.applicationType',
                 'seniorIds',
             ])
                 ->accessibleBy($user)
@@ -250,7 +250,7 @@ class SeniorController extends Controller
             'house_number' => 'nullable|string|max:50',
             'street' => 'nullable|string|max:100',
             'purok' => 'nullable|string|max:100',
-            'educational_attainment_id' => 'nullable|exists:educational_attainments,id',
+            'educational_attainment_id' => 'nullable|exists:educational_attainment,id',
             'socioeconomic_status_id' => 'nullable|exists:socioeconomic_statuses,id',
             'is_active' => 'sometimes|boolean',
             'is_deceased' => 'sometimes|boolean',
