@@ -76,7 +76,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
 
     const fetchLookupOptions = async () => {
         try {
-            const response = await registrationApi.getOptions();
+            const response = await registrationApi.getLookupOptions();
             setLookupOptions(response.data.data);
         } catch (error) {
             console.error('Failed to fetch lookup options:', error);
@@ -210,11 +210,6 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
 
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="birthplace" label="Birthplace">
-                                <Input />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
                             <Form.Item name="educational_attainment_id" label="Educational Attainment">
                                 <Select placeholder="Select" allowClear>
                                     {lookupOptions?.educational_attainments?.map(ea => (
@@ -228,22 +223,17 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
                     {/* Address */}
                     <Divider orientation="left">Address</Divider>
                     <Row gutter={16}>
-                        <Col span={6}>
+                        <Col span={8}>
                             <Form.Item name="house_number" label="House No.">
                                 <Input />
                             </Form.Item>
                         </Col>
-                        <Col span={6}>
+                        <Col span={8}>
                             <Form.Item name="street" label="Street">
                                 <Input />
                             </Form.Item>
                         </Col>
-                        <Col span={6}>
-                            <Form.Item name="purok" label="Purok/Subdivision">
-                                <Input />
-                            </Form.Item>
-                        </Col>
-                        <Col span={6}>
+                        <Col span={8}>
                             <Form.Item
                                 name="barangay_id"
                                 label="Barangay"

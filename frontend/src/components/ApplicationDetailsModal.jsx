@@ -36,8 +36,11 @@ const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 // Status indicator component
-const FieldStatus = ({ value, label }) => {
+const FieldStatus = ({ value, label, optional = false }) => {
     const hasValue = value !== undefined && value !== null && value !== '';
+    if (optional && !hasValue) {
+        return <Text type="secondary">{label} - Not provided</Text>;
+    }
     return (
         <Space size="small">
             {hasValue ? (
@@ -121,9 +124,9 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
         if (!data) return { percent: 0, filled: 0, total: 0 };
 
         const requiredFields = {
-            personal: ['first_name', 'last_name', 'birthdate', 'gender_id', 'civil_status_id', 'birthplace', 'barangay_id'],
+            personal: ['first_name', 'last_name', 'birthdate', 'gender_id', 'civil_status_id', 'barangay_id'],
             contact: ['mobile_number'],
-            address: ['house_number', 'street', 'purok'],
+            address: ['house_number', 'street'],
         };
 
         let filled = 0;
@@ -189,7 +192,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                         <FieldStatus value={personalInfo.last_name} label="Last Name" />
                     </Descriptions.Item>
                     <Descriptions.Item label="Extension">
-                        {personalInfo.extension || <Text type="secondary">N/A</Text>}
+                        <FieldStatus value={personalInfo.extension} label="Extension" optional />
                     </Descriptions.Item>
                     <Descriptions.Item label="Birthdate">
                         <FieldStatus
@@ -209,9 +212,6 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                     <Descriptions.Item label="Civil Status">
                         <FieldStatus value={personalInfo.civil_status_name} label="Civil Status" />
                     </Descriptions.Item>
-                    <Descriptions.Item label="Birthplace">
-                        <FieldStatus value={personalInfo.birthplace} label="Birthplace" />
-                    </Descriptions.Item>
                 </Descriptions>
             </Card>
 
@@ -223,10 +223,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                     <Descriptions.Item label="Street">
                         <FieldStatus value={addressData.street} label="Street" />
                     </Descriptions.Item>
-                    <Descriptions.Item label="Purok/Subd">
-                        <FieldStatus value={addressData.purok} label="Purok/Subdivision" />
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Barangay" span={3}>
+                    <Descriptions.Item label="Barangay">
                         <FieldStatus value={personalInfo.barangay_name || applicantData.barangay_name} label="Barangay" />
                     </Descriptions.Item>
                 </Descriptions>
@@ -238,10 +235,10 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                         <FieldStatus value={contactInfo.mobile_number} label="Mobile Number" />
                     </Descriptions.Item>
                     <Descriptions.Item label="Telephone">
-                        {contactInfo.telephone || <Text type="secondary">N/A</Text>}
+                        <FieldStatus value={contactInfo.telephone} label="Telephone" optional />
                     </Descriptions.Item>
                     <Descriptions.Item label="Email" span={2}>
-                        {contactInfo.email || <Text type="secondary">N/A</Text>}
+                        <FieldStatus value={contactInfo.email} label="Email" optional />
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
@@ -313,7 +310,13 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
         ];
 
         const getDocByType = (typeId) => {
-            return documents.find(d => d.document_type_id === typeId || d.type_id === typeId);
+            // Check multiple possible field names for document type
+            return documents.find(d =>
+                d.document_type_id === typeId ||
+                d.type_id === typeId ||
+                d.type === typeId ||
+                d.documentTypeId === typeId
+            );
         };
 
         return (

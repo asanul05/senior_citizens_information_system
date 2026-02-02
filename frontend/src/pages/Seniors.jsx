@@ -37,6 +37,7 @@ import {
 } from '@ant-design/icons';
 import { seniorsApi, benefitsApi, registrationApi } from '../services/api';
 import SeniorEditModal from '../components/SeniorEditModal';
+import SeniorProfileModal from '../components/SeniorProfileModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -62,7 +63,7 @@ const Seniors = () => {
         male: 0,
         female: 0,
     });
-    const [detailModal, setDetailModal] = useState({ visible: false, senior: null });
+    const [profileModal, setProfileModal] = useState({ visible: false, seniorId: null });
     const [barangays, setBarangays] = useState([]);
 
     // Claim History Modal State
@@ -261,11 +262,11 @@ const Seniors = () => {
             width: 150,
             render: (_, record) => (
                 <Space size="small">
-                    <Tooltip title="View Details">
+                    <Tooltip title="View Profile">
                         <Button
                             type="text"
                             icon={<EyeOutlined />}
-                            onClick={() => setDetailModal({ visible: true, senior: record })}
+                            onClick={() => setProfileModal({ visible: true, seniorId: record.id })}
                         />
                     </Tooltip>
                     <Tooltip title="Edit">
@@ -447,78 +448,12 @@ const Seniors = () => {
                 </div>
             </Card>
 
-            {/* Senior Detail Modal */}
-            <Modal
-                title="Senior Citizen Details"
-                open={detailModal.visible}
-                onCancel={() => setDetailModal({ visible: false, senior: null })}
-                footer={null}
-                width={640}
-            >
-                {detailModal.senior && (
-                    <div>
-                        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                            <Avatar
-                                size={80}
-                                style={{ backgroundColor: detailModal.senior.gender_id === 1 ? '#1890ff' : '#eb2f96' }}
-                                icon={detailModal.senior.gender_id === 1 ? <ManOutlined /> : <WomanOutlined />}
-                            />
-                            <div style={{ marginTop: 12 }}>
-                                <Text strong style={{ fontSize: 20 }}>
-                                    {detailModal.senior.full_name || `${detailModal.senior.first_name} ${detailModal.senior.last_name}`}
-                                </Text>
-                            </div>
-                            <Tag color="blue" style={{ marginTop: 8 }}>
-                                OSCA ID: {detailModal.senior.osca_id || 'Not assigned'}
-                            </Tag>
-                        </div>
-
-                        <Divider>Personal Information</Divider>
-                        <Descriptions column={2} size="small">
-                            <Descriptions.Item label="Birthdate">
-                                {detailModal.senior.birthdate || '-'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Age">
-                                {detailModal.senior.age} years old
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Gender">
-                                {detailModal.senior.gender?.name || (detailModal.senior.gender_id === 1 ? 'Male' : 'Female')}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Civil Status">
-                                {detailModal.senior.civil_status || '-'}
-                            </Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider>Contact & Address</Divider>
-                        <Descriptions column={2} size="small">
-                            <Descriptions.Item label="Barangay">
-                                {detailModal.senior.barangay?.name || '-'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Address">
-                                {detailModal.senior.address || '-'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Contact Number">
-                                {detailModal.senior.contact_number || '-'}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Email">
-                                {detailModal.senior.email || '-'}
-                            </Descriptions.Item>
-                        </Descriptions>
-
-                        <Divider>Registration Status</Divider>
-                        <Descriptions column={2} size="small">
-                            <Descriptions.Item label="Status">
-                                {getStatusTag(detailModal.senior)}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Registration">
-                                <Tag color={detailModal.senior.registration_status?.code === 'approved' ? 'green' : 'blue'}>
-                                    {detailModal.senior.registration_status?.name || 'Pending'}
-                                </Tag>
-                            </Descriptions.Item>
-                        </Descriptions>
-                    </div>
-                )}
-            </Modal>
+            {/* Senior Profile Modal */}
+            <SeniorProfileModal
+                visible={profileModal.visible}
+                seniorId={profileModal.seniorId}
+                onClose={() => setProfileModal({ visible: false, seniorId: null })}
+            />
 
             {/* Benefits History Modal */}
             <Modal

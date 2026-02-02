@@ -110,7 +110,6 @@ class SeniorController extends Controller
             'registeredBy',
             'applications.type',
             'seniorIds',
-            'eligibleBenefits',
         ])
             ->accessibleBy($user)
             ->findOrFail($id);

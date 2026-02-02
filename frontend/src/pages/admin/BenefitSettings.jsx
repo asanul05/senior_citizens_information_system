@@ -79,7 +79,7 @@ function BenefitSettings() {
 
     const loadBranches = async () => {
         try {
-            const response = await registrationApi.getOptions();
+            const response = await registrationApi.getLookupOptions();
             setBranches(response.data.data?.field_offices || []);
         } catch (error) {
             console.error('Failed to load branches:', error);
