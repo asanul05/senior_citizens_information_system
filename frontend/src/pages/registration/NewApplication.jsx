@@ -24,6 +24,7 @@ import {
     Modal,
     List,
     Tag,
+    Image,
 } from 'antd';
 import {
     UserOutlined,
@@ -37,6 +38,7 @@ import {
     SaveOutlined,
     PlusOutlined,
     DeleteOutlined,
+    EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { registrationApi, preRegistrationApi } from '../../services/api';
@@ -72,6 +74,7 @@ const NewApplication = () => {
     const [uploadedDocuments, setUploadedDocuments] = useState([]);
     const [thumbmarkConfirmed, setThumbmarkConfirmed] = useState(false);
     const [documentUploading, setDocumentUploading] = useState({});
+    const [previewImage, setPreviewImage] = useState(null);
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
     const [pendingNextStep, setPendingNextStep] = useState(false);
 
@@ -384,6 +387,13 @@ const NewApplication = () => {
         } finally {
             setDocumentUploading(prev => ({ ...prev, [documentTypeId]: false }));
         }
+    };
+
+    // Handle document preview
+    const handlePreviewDocument = (filePath) => {
+        if (!filePath) return;
+        const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
+        setPreviewImage(`${baseUrl}/storage/${filePath}`);
     };
 
     // Calculate age from birthdate
@@ -1106,16 +1116,26 @@ const NewApplication = () => {
                                     <CheckCircleOutlined style={{ marginRight: 8 }} />
                                     {getDocumentByType(1).original_filename}
                                 </span>
-                                <Button
-                                    type="text"
-                                    danger
-                                    size="small"
-                                    icon={<DeleteOutlined />}
-                                    loading={documentUploading[1]}
-                                    onClick={() => handleDocumentDelete(getDocumentByType(1).id, 1)}
-                                >
-                                    Remove
-                                </Button>
+                                <Space>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(1).file_path)}
+                                    >
+                                        Preview
+                                    </Button>
+                                    <Button
+                                        type="text"
+                                        danger
+                                        size="small"
+                                        icon={<DeleteOutlined />}
+                                        loading={documentUploading[1]}
+                                        onClick={() => handleDocumentDelete(getDocumentByType(1).id, 1)}
+                                    >
+                                        Remove
+                                    </Button>
+                                </Space>
                             </div>
                         ) : (
                             <Upload.Dragger
@@ -1145,16 +1165,26 @@ const NewApplication = () => {
                                     <CheckCircleOutlined style={{ marginRight: 8 }} />
                                     {getDocumentByType(2).original_filename}
                                 </span>
-                                <Button
-                                    type="text"
-                                    danger
-                                    size="small"
-                                    icon={<DeleteOutlined />}
-                                    loading={documentUploading[2]}
-                                    onClick={() => handleDocumentDelete(getDocumentByType(2).id, 2)}
-                                >
-                                    Remove
-                                </Button>
+                                <Space>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(2).file_path)}
+                                    >
+                                        Preview
+                                    </Button>
+                                    <Button
+                                        type="text"
+                                        danger
+                                        size="small"
+                                        icon={<DeleteOutlined />}
+                                        loading={documentUploading[2]}
+                                        onClick={() => handleDocumentDelete(getDocumentByType(2).id, 2)}
+                                    >
+                                        Remove
+                                    </Button>
+                                </Space>
                             </div>
                         ) : (
                             <Upload.Dragger
@@ -1184,16 +1214,26 @@ const NewApplication = () => {
                                     <CheckCircleOutlined style={{ marginRight: 8 }} />
                                     {getDocumentByType(3).original_filename}
                                 </span>
-                                <Button
-                                    type="text"
-                                    danger
-                                    size="small"
-                                    icon={<DeleteOutlined />}
-                                    loading={documentUploading[3]}
-                                    onClick={() => handleDocumentDelete(getDocumentByType(3).id, 3)}
-                                >
-                                    Remove
-                                </Button>
+                                <Space>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(3).file_path)}
+                                    >
+                                        Preview
+                                    </Button>
+                                    <Button
+                                        type="text"
+                                        danger
+                                        size="small"
+                                        icon={<DeleteOutlined />}
+                                        loading={documentUploading[3]}
+                                        onClick={() => handleDocumentDelete(getDocumentByType(3).id, 3)}
+                                    >
+                                        Remove
+                                    </Button>
+                                </Space>
                             </div>
                         ) : (
                             <Upload.Dragger
@@ -1223,16 +1263,26 @@ const NewApplication = () => {
                                     <CheckCircleOutlined style={{ marginRight: 8 }} />
                                     {getDocumentByType(4).original_filename}
                                 </span>
-                                <Button
-                                    type="text"
-                                    danger
-                                    size="small"
-                                    icon={<DeleteOutlined />}
-                                    loading={documentUploading[4]}
-                                    onClick={() => handleDocumentDelete(getDocumentByType(4).id, 4)}
-                                >
-                                    Remove
-                                </Button>
+                                <Space>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(4).file_path)}
+                                    >
+                                        Preview
+                                    </Button>
+                                    <Button
+                                        type="text"
+                                        danger
+                                        size="small"
+                                        icon={<DeleteOutlined />}
+                                        loading={documentUploading[4]}
+                                        onClick={() => handleDocumentDelete(getDocumentByType(4).id, 4)}
+                                    >
+                                        Remove
+                                    </Button>
+                                </Space>
                             </div>
                         ) : (
                             <Upload.Dragger
@@ -1536,6 +1586,18 @@ const NewApplication = () => {
                     style={{ marginTop: 16 }}
                 />
             </Modal>
+
+            {/* Image Preview Modal */}
+            <Image
+                style={{ display: 'none' }}
+                preview={{
+                    visible: !!previewImage,
+                    src: previewImage,
+                    onVisibleChange: (visible) => {
+                        if (!visible) setPreviewImage(null);
+                    },
+                }}
+            />
         </div>
     );
 };

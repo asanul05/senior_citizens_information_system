@@ -33,8 +33,10 @@ import {
     ClockCircleOutlined,
     CheckCircleOutlined,
     DollarOutlined,
+    EditOutlined,
 } from '@ant-design/icons';
 import { seniorsApi, benefitsApi, registrationApi } from '../services/api';
+import SeniorEditModal from '../components/SeniorEditModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -65,6 +67,9 @@ const Seniors = () => {
 
     // Claim History Modal State
     const [claimHistoryModal, setClaimHistoryModal] = useState({ visible: false, loading: false, data: null });
+
+    // Edit Modal State
+    const [editModal, setEditModal] = useState({ visible: false, seniorId: null });
 
     useEffect(() => {
         fetchSeniors();
@@ -261,6 +266,13 @@ const Seniors = () => {
                             type="text"
                             icon={<EyeOutlined />}
                             onClick={() => setDetailModal({ visible: true, senior: record })}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Edit">
+                        <Button
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={() => setEditModal({ visible: true, seniorId: record.id })}
                         />
                     </Tooltip>
                     <Tooltip title="Benefits History">
@@ -630,6 +642,17 @@ const Seniors = () => {
                     </>
                 )}
             </Modal>
+
+            {/* Senior Edit Modal */}
+            <SeniorEditModal
+                visible={editModal.visible}
+                seniorId={editModal.seniorId}
+                onClose={() => setEditModal({ visible: false, seniorId: null })}
+                onSuccess={() => {
+                    fetchSeniors();
+                    fetchStatistics();
+                }}
+            />
         </div>
     );
 };

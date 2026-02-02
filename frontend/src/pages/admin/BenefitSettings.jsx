@@ -10,6 +10,7 @@ import {
     Input,
     InputNumber,
     Switch,
+    Select,
     message,
     Popconfirm,
     Typography,
@@ -17,6 +18,7 @@ import {
     Col,
     Tooltip,
     Alert,
+    Divider,
 } from 'antd';
 import {
     PlusOutlined,
@@ -27,11 +29,14 @@ import {
     CheckCircleOutlined,
     StopOutlined,
 } from '@ant-design/icons';
-import { benefitTypesApi } from '../../services/api';
+import { benefitTypesApi, registrationApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 function BenefitSettings() {
+    const { user } = useAuth();
     const [benefitTypes, setBenefitTypes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -39,9 +44,16 @@ function BenefitSettings() {
     const [selectedType, setSelectedType] = useState(null);
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [barangays, setBarangays] = useState([]);
+    const [branches, setBranches] = useState([]);
+    const [targetScope, setTargetScope] = useState('all');
+
+    const isMainAdmin = user?.role?.key === 'main_admin';
 
     useEffect(() => {
         loadBenefitTypes();
+        loadBarangays();
+        loadBranches();
     }, []);
 
     const loadBenefitTypes = async () => {
@@ -56,14 +68,41 @@ function BenefitSettings() {
         }
     };
 
+    const loadBarangays = async () => {
+        try {
+            const response = await registrationApi.getBarangays();
+            setBarangays(response.data.data || []);
+        } catch (error) {
+            console.error('Failed to load barangays:', error);
+        }
+    };
+
+    const loadBranches = async () => {
+        try {
+            const response = await registrationApi.getOptions();
+            setBranches(response.data.data?.field_offices || []);
+        } catch (error) {
+            console.error('Failed to load branches:', error);
+        }
+    };
+
     const openModal = (mode, record = null) => {
         setModalMode(mode);
         setSelectedType(record);
         if (record) {
-            form.setFieldsValue(record);
+            const formValues = {
+                ...record,
+                barangay_ids: record.barangay_ids || [],
+            };
+            form.setFieldsValue(formValues);
+            setTargetScope(record.target_scope || 'all');
         } else {
             form.resetFields();
-            form.setFieldsValue({ is_one_time: false });
+            form.setFieldsValue({
+                is_one_time: false,
+                target_scope: isMainAdmin ? 'all' : 'branch',
+            });
+            setTargetScope(isMainAdmin ? 'all' : 'branch');
         }
         setModalVisible(true);
     };
@@ -119,15 +158,14 @@ function BenefitSettings() {
 
     const columns = [
         {
-            title: 'Benefit Name',
+            title: 'Benefit',
             dataIndex: 'name',
             key: 'name',
             render: (name, record) => (
                 <Space>
-                    <GiftOutlined style={{ color: record.is_active ? '#52c41a' : '#d9d9d9' }} />
-                    <Text strong={record.is_active} type={!record.is_active ? 'secondary' : undefined}>
-                        {name}
-                    </Text>
+                    <GiftOutlined style={{ color: '#1890ff' }} />
+                    <span>{name}</span>
+                    {record.is_one_time && <Tag color="purple">One-time</Tag>}
                 </Space>
             ),
         },
@@ -136,18 +174,15 @@ function BenefitSettings() {
             dataIndex: 'description',
             key: 'description',
             ellipsis: true,
-            render: (desc) => desc || <Text type="secondary">-</Text>,
+            render: (desc) => desc || <Text type="secondary">—</Text>,
         },
         {
-            title: 'Age Eligibility',
+            title: 'Age Range',
             key: 'age',
-            width: 140,
             render: (_, record) => (
                 <Tag color="blue">
-                    {record.max_age
-                        ? `${record.min_age} - ${record.max_age} years`
-                        : `${record.min_age}+ years`
-                    }
+                    {record.min_age}
+                    {record.max_age ? ` - ${record.max_age}` : '+'}
                 </Tag>
             ),
         },
@@ -155,7 +190,6 @@ function BenefitSettings() {
             title: 'Amount',
             dataIndex: 'amount',
             key: 'amount',
-            width: 150,
             render: (amount) => (
                 <Text strong style={{ color: '#52c41a' }}>
                     {formatCurrency(amount)}
@@ -164,22 +198,36 @@ function BenefitSettings() {
         },
         {
             title: 'Frequency',
-            dataIndex: 'is_one_time',
-            key: 'is_one_time',
-            width: 120,
-            render: (isOneTime) => (
-                <Tag color={isOneTime ? 'orange' : 'purple'}>
-                    {isOneTime ? 'One-time' : 'Recurring'}
+            key: 'frequency',
+            render: (_, record) => (
+                <Tag color={record.is_one_time ? 'purple' : 'cyan'}>
+                    {record.frequency_description || (record.is_one_time ? 'One-time' : 'No limit')}
                 </Tag>
             ),
+        },
+        {
+            title: 'Target',
+            key: 'target',
+            render: (_, record) => {
+                if (record.target_scope === 'all') {
+                    return <Tag color="green">All Barangays</Tag>;
+                }
+                if (record.target_scope === 'branch') {
+                    return <Tag color="blue">{record.branch?.name || 'Field Office'}</Tag>;
+                }
+                return (
+                    <Tooltip title={record.barangays?.map(b => b.name).join(', ')}>
+                        <Tag color="orange">{record.barangays?.length || 0} Barangays</Tag>
+                    </Tooltip>
+                );
+            },
         },
         {
             title: 'Status',
             dataIndex: 'is_active',
             key: 'is_active',
-            width: 100,
             render: (isActive) => (
-                <Tag color={isActive ? 'success' : 'error'}>
+                <Tag color={isActive ? 'green' : 'red'} icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}>
                     {isActive ? 'Active' : 'Inactive'}
                 </Tag>
             ),
@@ -187,9 +235,8 @@ function BenefitSettings() {
         {
             title: 'Actions',
             key: 'actions',
-            width: 150,
             render: (_, record) => (
-                <Space size="small">
+                <Space>
                     <Tooltip title="Edit">
                         <Button
                             type="text"
@@ -198,33 +245,32 @@ function BenefitSettings() {
                         />
                     </Tooltip>
                     <Tooltip title={record.is_active ? 'Deactivate' : 'Activate'}>
-                        <Popconfirm
-                            title={`${record.is_active ? 'Deactivate' : 'Activate'} this benefit type?`}
-                            onConfirm={() => handleToggle(record)}
-                            okText="Yes"
-                            cancelText="No"
-                        >
-                            <Button
-                                type="text"
-                                icon={record.is_active ? <StopOutlined /> : <CheckCircleOutlined />}
-                                danger={record.is_active}
-                            />
-                        </Popconfirm>
+                        <Button
+                            type="text"
+                            icon={record.is_active ? <StopOutlined /> : <CheckCircleOutlined />}
+                            onClick={() => handleToggle(record)}
+                        />
                     </Tooltip>
-                    <Tooltip title="Delete">
-                        <Popconfirm
-                            title="Delete this benefit type?"
-                            description="Cannot delete if claims exist"
-                            onConfirm={() => handleDelete(record.id)}
-                            okText="Delete"
-                            okButtonProps={{ danger: true }}
-                        >
-                            <Button type="text" icon={<DeleteOutlined />} danger />
-                        </Popconfirm>
-                    </Tooltip>
+                    <Popconfirm
+                        title="Delete this benefit type?"
+                        description="This cannot be undone. Benefit types with existing claims cannot be deleted."
+                        onConfirm={() => handleDelete(record.id)}
+                        okText="Delete"
+                        cancelText="Cancel"
+                    >
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
                 </Space>
             ),
         },
+    ];
+
+    const frequencyOptions = [
+        { label: 'No limit (can claim anytime)', value: null },
+        { label: 'Monthly (every 30 days)', value: 30 },
+        { label: 'Quarterly (every 90 days)', value: 90 },
+        { label: 'Semi-annual (every 180 days)', value: 180 },
+        { label: 'Yearly (every 365 days)', value: 365 },
     ];
 
     return (
@@ -253,18 +299,17 @@ function BenefitSettings() {
 
                 <Alert
                     message="Benefit Eligibility"
-                    description="Seniors are automatically eligible for benefits based on their age. Set the minimum age requirement for each benefit type."
+                    description="Seniors are automatically eligible for benefits based on their age and barangay. Set the minimum age and target barangays for each benefit type."
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
                 />
 
                 <Table
-                    columns={columns}
                     dataSource={benefitTypes}
+                    columns={columns}
                     rowKey="id"
                     loading={loading}
-                    pagination={false}
                 />
             </Card>
 
@@ -275,7 +320,7 @@ function BenefitSettings() {
                 onCancel={() => setModalVisible(false)}
                 onOk={handleSubmit}
                 confirmLoading={submitting}
-                width={600}
+                width={700}
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -335,14 +380,84 @@ function BenefitSettings() {
                         />
                     </Form.Item>
 
+                    <Divider orientation="left">Frequency Settings</Divider>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="is_one_time"
+                                label="One-time Benefit"
+                                valuePropName="checked"
+                                help="If enabled, seniors can only claim once"
+                            >
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="claim_interval_days"
+                                label="Claim Frequency"
+                                help="How often can this benefit be claimed"
+                            >
+                                <Select allowClear placeholder="Select frequency">
+                                    {frequencyOptions.map(opt => (
+                                        <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Divider orientation="left">Target Barangays</Divider>
+
                     <Form.Item
-                        name="is_one_time"
-                        label="One-time Benefit"
-                        valuePropName="checked"
-                        help="If enabled, seniors can only claim this benefit once"
+                        name="target_scope"
+                        label="Scope"
+                        help="Which barangays can access this benefit"
                     >
-                        <Switch />
+                        <Select
+                            onChange={(val) => setTargetScope(val)}
+                            disabled={!isMainAdmin}
+                        >
+                            {isMainAdmin && <Option value="all">All Barangays</Option>}
+                            <Option value="branch">Specific Field Office</Option>
+                            <Option value="barangays">Specific Barangays</Option>
+                        </Select>
                     </Form.Item>
+
+                    {targetScope === 'branch' && (
+                        <Form.Item
+                            name="branch_id"
+                            label="Field Office"
+                            rules={[{ required: targetScope === 'branch', message: 'Required' }]}
+                        >
+                            <Select placeholder="Select field office" showSearch optionFilterProp="children">
+                                {branches.map(b => (
+                                    <Option key={b.id} value={b.id}>{b.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    )}
+
+                    {targetScope === 'barangays' && (
+                        <Form.Item
+                            name="barangay_ids"
+                            label="Barangays"
+                            rules={[{ required: targetScope === 'barangays', message: 'Select at least one barangay' }]}
+                        >
+                            <Select
+                                mode="multiple"
+                                placeholder="Select barangays"
+                                showSearch
+                                optionFilterProp="children"
+                                style={{ width: '100%' }}
+                            >
+                                {barangays.map(b => (
+                                    <Option key={b.id} value={b.id}>{b.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    )}
                 </Form>
             </Modal>
         </div>

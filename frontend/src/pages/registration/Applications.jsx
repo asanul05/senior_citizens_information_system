@@ -32,6 +32,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { applicationsApi } from '../../services/api';
+import ApplicationDetailsModal from '../../components/ApplicationDetailsModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -50,7 +51,8 @@ const Applications = () => {
         search: '',
         status: '',
     });
-    const [viewModal, setViewModal] = useState({ visible: false, data: null });
+    const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+    const [selectedApplicationId, setSelectedApplicationId] = useState(null);
 
     useEffect(() => {
         fetchApplications();
@@ -110,8 +112,14 @@ const Applications = () => {
     };
 
     const handleView = (record) => {
-        // Navigate to view/edit page with full form data (view mode)
-        navigate(`/admin/registration/new?view=${record.id}`);
+        // Open details modal
+        setSelectedApplicationId(record.id);
+        setDetailsModalVisible(true);
+    };
+
+    const handleCloseDetailsModal = () => {
+        setDetailsModalVisible(false);
+        setSelectedApplicationId(null);
     };
 
     const handleEdit = (record) => {
@@ -407,49 +415,12 @@ const Applications = () => {
                 </div>
             </Card>
 
-            {/* View Modal */}
-            <Modal
-                title="Application Details"
-                open={viewModal.visible}
-                onCancel={() => setViewModal({ visible: false, data: null })}
-                footer={[
-                    <Button key="close" onClick={() => setViewModal({ visible: false, data: null })}>
-                        Close
-                    </Button>,
-                ]}
-                width={700}
-            >
-                {viewModal.data && (
-                    <Descriptions bordered column={2} size="small">
-                        <Descriptions.Item label="Application #" span={2}>
-                            {viewModal.data.application_number}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Status" span={2}>
-                            {getStatusTag(viewModal.data.status)}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Applicant Name" span={2}>
-                            {viewModal.data.senior ?
-                                `${viewModal.data.senior.first_name} ${viewModal.data.senior.middle_name || ''} ${viewModal.data.senior.last_name}`.trim()
-                                : '-'
-                            }
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Application Type">
-                            {viewModal.data.application_type?.name || 'New ID'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Submission Date">
-                            {viewModal.data.submission_date ?
-                                dayjs(viewModal.data.submission_date).format('MMMM D, YYYY h:mm A')
-                                : '-'
-                            }
-                        </Descriptions.Item>
-                        {viewModal.data.notes && (
-                            <Descriptions.Item label="Notes" span={2}>
-                                <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{viewModal.data.notes}</pre>
-                            </Descriptions.Item>
-                        )}
-                    </Descriptions>
-                )}
-            </Modal>
+            {/* Application Details Modal */}
+            <ApplicationDetailsModal
+                visible={detailsModalVisible}
+                applicationId={selectedApplicationId}
+                onClose={handleCloseDetailsModal}
+            />
         </div>
     );
 };

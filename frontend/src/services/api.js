@@ -74,6 +74,9 @@ export const seniorsApi = {
 
   export: () =>
     api.get('/seniors/export', { responseType: 'blob' }),
+
+  update: (id, data) =>
+    api.put(`/seniors/${id}`, data),
 };
 
 // Applications API

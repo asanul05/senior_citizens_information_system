@@ -212,4 +212,129 @@ class SeniorController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    /**
+     * Update senior citizen information.
+     * Logs changes for audit purposes.
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        // Find senior with access check
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+        
+        // Validate request
+        $validated = $request->validate([
+            'first_name' => 'sometimes|string|max:100',
+            'middle_name' => 'nullable|string|max:100',
+            'last_name' => 'sometimes|string|max:100',
+            'extension' => 'nullable|string|max:20',
+            'birthdate' => 'sometimes|date',
+            'gender_id' => 'sometimes|exists:genders,id',
+            'civil_status_id' => 'nullable|exists:civil_statuses,id',
+            'barangay_id' => 'sometimes|exists:barangays,id',
+            'birthplace' => 'nullable|string|max:255',
+            'house_number' => 'nullable|string|max:50',
+            'street' => 'nullable|string|max:100',
+            'purok' => 'nullable|string|max:100',
+            'educational_attainment_id' => 'nullable|exists:educational_attainments,id',
+            'socioeconomic_status_id' => 'nullable|exists:socioeconomic_statuses,id',
+            'is_active' => 'sometimes|boolean',
+            'is_deceased' => 'sometimes|boolean',
+            'notes' => 'nullable|string',
+            // Contact fields
+            'mobile_number' => 'nullable|string|max:50',
+            'telephone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:100',
+        ]);
+
+        // If changing barangay, verify user has access to new barangay
+        if (isset($validated['barangay_id']) && $validated['barangay_id'] !== $senior->barangay_id) {
+            $accessibleBarangays = $user->getAccessibleBarangayIds();
+            if (!$user->isMainAdmin() && !in_array($validated['barangay_id'], $accessibleBarangays)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have access to the selected barangay.',
+                ], 403);
+            }
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Track changes for audit log
+            $changes = [];
+            $oldValues = [];
+            $newValues = [];
+
+            foreach ($validated as $field => $value) {
+                // Skip contact fields - handled separately
+                if (in_array($field, ['mobile_number', 'telephone', 'email'])) {
+                    continue;
+                }
+                
+                $oldValue = $senior->$field;
+                if ($oldValue != $value) {
+                    $changes[] = $field;
+                    $oldValues[$field] = $oldValue;
+                    $newValues[$field] = $value;
+                }
+            }
+
+            // Update senior record
+            $senior->fill(array_diff_key($validated, array_flip(['mobile_number', 'telephone', 'email'])));
+            $senior->save();
+
+            // Update contact info if provided
+            if (isset($validated['mobile_number']) || isset($validated['telephone']) || isset($validated['email'])) {
+                $contact = $senior->contact;
+                if (!$contact) {
+                    $contact = $senior->contact()->create([
+                        'mobile' => $validated['mobile_number'] ?? null,
+                        'telephone' => $validated['telephone'] ?? null,
+                        'email' => $validated['email'] ?? null,
+                    ]);
+                } else {
+                    if (isset($validated['mobile_number'])) $contact->mobile = $validated['mobile_number'];
+                    if (isset($validated['telephone'])) $contact->telephone = $validated['telephone'];
+                    if (isset($validated['email'])) $contact->email = $validated['email'];
+                    $contact->save();
+                }
+            }
+
+            // Log audit entry
+            if (!empty($changes)) {
+                DB::table('audit_logs')->insert([
+                    'user_id' => $user->id,
+                    'action' => 'senior_update',
+                    'target_type' => 'senior_citizens',
+                    'target_id' => $senior->id,
+                    'old_values' => json_encode($oldValues),
+                    'new_values' => json_encode($newValues),
+                    'ip_address' => $request->ip(),
+                    'created_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            // Reload with relationships
+            $senior->load(['barangay', 'gender', 'contact', 'branch']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Senior citizen information updated successfully.',
+                'data' => $senior,
+                'changes' => $changes,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update senior citizen: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

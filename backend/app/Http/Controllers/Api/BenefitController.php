@@ -600,12 +600,20 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isMainAdmin()) {
+        // Allow Main Admin and FO Admin
+        if (!$user->isMainAdmin() && !$user->isFOAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $types = BenefitType::orderBy('min_age')
-            ->get()
+        $query = BenefitType::with(['barangays', 'branch', 'creator'])
+            ->orderBy('min_age');
+        
+        // FO Admins only see benefits targeting their jurisdiction or created by them
+        if (!$user->isMainAdmin()) {
+            $query->accessibleBy($user);
+        }
+        
+        $types = $query->get()
             ->map(function ($type) {
                 return [
                     'id' => $type->id,
@@ -617,6 +625,15 @@ class BenefitController extends Controller
                     'amount' => $type->amount,
                     'formatted_amount' => $type->formatted_amount,
                     'is_one_time' => $type->is_one_time,
+                    'claim_interval_days' => $type->claim_interval_days,
+                    'frequency_description' => $type->frequency_description,
+                    'target_scope' => $type->target_scope ?? 'all',
+                    'branch_id' => $type->branch_id,
+                    'branch' => $type->branch,
+                    'barangay_ids' => $type->barangays->pluck('id'),
+                    'barangays' => $type->barangays,
+                    'created_by' => $type->created_by,
+                    'creator' => $type->creator,
                     'is_active' => $type->is_active,
                     'created_at' => $type->created_at,
                 ];
@@ -635,7 +652,8 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isMainAdmin()) {
+        // Allow Main Admin, FO Admin to create benefits
+        if (!$user->isMainAdmin() && !$user->isFOAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -646,6 +664,11 @@ class BenefitController extends Controller
             'max_age' => 'nullable|integer|min:60|max:150',
             'amount' => 'required|numeric|min:0',
             'is_one_time' => 'boolean',
+            'claim_interval_days' => 'nullable|integer|min:1',
+            'target_scope' => 'sometimes|in:all,branch,barangays',
+            'branch_id' => 'nullable|exists:field_offices,id',
+            'barangay_ids' => 'nullable|array',
+            'barangay_ids.*' => 'exists:barangays,id',
         ]);
 
         // Validate max_age >= min_age if provided
@@ -655,7 +678,48 @@ class BenefitController extends Controller
             ], 422);
         }
 
+        // FO Admins can only create benefits for their branch or specific barangays within their jurisdiction
+        if (!$user->isMainAdmin()) {
+            $accessibleBranchIds = $user->branches()->pluck('field_offices.id')->toArray();
+            $accessibleBarangayIds = $user->getAccessibleBarangayIds();
+            
+            // Enforce branch targeting for FO admins
+            if (empty($validated['target_scope']) || $validated['target_scope'] === 'all') {
+                $validated['target_scope'] = 'branch';
+                $validated['branch_id'] = $accessibleBranchIds[0] ?? null;
+            }
+            
+            // Validate branch_id is in their jurisdiction
+            if ($validated['target_scope'] === 'branch' && isset($validated['branch_id'])) {
+                if (!in_array($validated['branch_id'], $accessibleBranchIds)) {
+                    return response()->json(['error' => 'You can only create benefits for your assigned field office'], 403);
+                }
+            }
+            
+            // Validate barangay_ids are in their jurisdiction
+            if ($validated['target_scope'] === 'barangays' && !empty($validated['barangay_ids'])) {
+                $invalidBarangays = array_diff($validated['barangay_ids'], $accessibleBarangayIds);
+                if (!empty($invalidBarangays)) {
+                    return response()->json(['error' => 'You can only target barangays within your jurisdiction'], 403);
+                }
+            }
+        }
+
+        // Extract barangay_ids before creating
+        $barangayIds = $validated['barangay_ids'] ?? [];
+        unset($validated['barangay_ids']);
+        
+        // Set creator
+        $validated['created_by'] = $user->id;
+
         $type = BenefitType::create($validated);
+        
+        // Sync barangays if targeting specific barangays
+        if ($validated['target_scope'] === 'barangays' && !empty($barangayIds)) {
+            $type->barangays()->sync($barangayIds);
+        }
+
+        $type->load('barangays', 'branch');
 
         return response()->json([
             'success' => true,
@@ -671,11 +735,21 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isMainAdmin()) {
+        // Allow Main Admin and FO Admin
+        if (!$user->isMainAdmin() && !$user->isFOAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $type = BenefitType::findOrFail($id);
+        
+        // FO Admins can only edit benefits they created or that target their jurisdiction
+        if (!$user->isMainAdmin()) {
+            $accessibleBranchIds = $user->branches()->pluck('field_offices.id')->toArray();
+            if ($type->created_by !== $user->id && 
+                !($type->target_scope === 'branch' && in_array($type->branch_id, $accessibleBranchIds))) {
+                return response()->json(['error' => 'You can only edit benefits you created or that belong to your field office'], 403);
+            }
+        }
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:100|unique:benefit_types,name,' . $id,
@@ -684,6 +758,11 @@ class BenefitController extends Controller
             'max_age' => 'nullable|integer|min:60|max:150',
             'amount' => 'sometimes|numeric|min:0',
             'is_one_time' => 'boolean',
+            'claim_interval_days' => 'nullable|integer|min:1',
+            'target_scope' => 'sometimes|in:all,branch,barangays',
+            'branch_id' => 'nullable|exists:field_offices,id',
+            'barangay_ids' => 'nullable|array',
+            'barangay_ids.*' => 'exists:barangays,id',
         ]);
 
         // Validate max_age >= min_age if both are set
@@ -694,8 +773,32 @@ class BenefitController extends Controller
                 'error' => 'Maximum age must be greater than or equal to minimum age'
             ], 422);
         }
+        
+        // FO Admin jurisdiction validation for target changes
+        if (!$user->isMainAdmin()) {
+            $accessibleBarangayIds = $user->getAccessibleBarangayIds();
+            
+            // Validate barangay_ids are in their jurisdiction
+            if (!empty($validated['barangay_ids'])) {
+                $invalidBarangays = array_diff($validated['barangay_ids'], $accessibleBarangayIds);
+                if (!empty($invalidBarangays)) {
+                    return response()->json(['error' => 'You can only target barangays within your jurisdiction'], 403);
+                }
+            }
+        }
+        
+        // Extract barangay_ids before updating
+        $barangayIds = $validated['barangay_ids'] ?? null;
+        unset($validated['barangay_ids']);
 
         $type->update($validated);
+        
+        // Sync barangays if provided
+        if ($barangayIds !== null) {
+            $type->barangays()->sync($barangayIds);
+        }
+
+        $type->load('barangays', 'branch');
 
         return response()->json([
             'success' => true,
