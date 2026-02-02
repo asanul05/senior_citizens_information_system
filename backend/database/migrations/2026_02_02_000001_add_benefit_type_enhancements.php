@@ -26,13 +26,13 @@ return new class extends Migration
             if (!Schema::hasColumn('benefit_types', 'branch_id')) {
                 // The branch this benefit is limited to (when target_scope = 'branch')
                 $table->unsignedBigInteger('branch_id')->nullable()->after('target_scope');
-                $table->foreign('branch_id')->references('id')->on('field_offices')->onDelete('set null');
+                $table->foreign('branch_id')->references('id')->on('branches')->onDelete('set null');
             }
             
             if (!Schema::hasColumn('benefit_types', 'created_by')) {
                 // Who created this benefit type
                 $table->unsignedBigInteger('created_by')->nullable()->after('branch_id');
-                $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+                $table->foreign('created_by')->references('id')->on('admin_users')->onDelete('set null');
             }
         });
 

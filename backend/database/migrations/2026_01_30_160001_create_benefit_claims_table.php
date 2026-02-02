@@ -11,7 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Skip if dependency tables don't exist (for Railway fresh deploy)
+        // Skip if benefit_claims table already exists (Railway has it from SQL import)
+        if (Schema::hasTable('benefit_claims')) {
+            return;
+        }
+
+        // Skip if dependency tables don't exist (for fresh deploy without SQL import)
         if (!Schema::hasTable('senior_citizens') || !Schema::hasTable('benefit_types')) {
             return;
         }
@@ -24,7 +29,7 @@ return new class extends Migration
             $table->decimal('amount', 12, 2);
             $table->enum('status', ['pending', 'approved', 'released', 'rejected'])->default('pending');
             $table->timestamp('released_at')->nullable();
-            $table->foreignId('processed_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('processed_by')->nullable()->constrained('admin_users')->onDelete('set null');
             $table->text('notes')->nullable();
             $table->timestamps();
 

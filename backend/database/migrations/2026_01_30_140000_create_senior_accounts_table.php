@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('senior_accounts')) {
+            return;
+        }
+
         Schema::create('senior_accounts', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('senior_id')->unique();

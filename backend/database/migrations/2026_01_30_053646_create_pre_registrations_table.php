@@ -11,6 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip if table already exists
+        if (Schema::hasTable('pre_registrations')) {
+            return;
+        }
+
         Schema::create('pre_registrations', function (Blueprint $table) {
             $table->id();
             $table->string('reference_number', 20)->unique(); // PRE-20260130-1234

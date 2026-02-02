@@ -12,6 +12,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Skip if table already exists (Railway has it from SQL import)
+        if (Schema::hasTable('benefit_types')) {
+            return;
+        }
+
         Schema::create('benefit_types', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100);
