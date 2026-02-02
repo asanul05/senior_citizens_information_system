@@ -73,7 +73,7 @@ class Application extends Model
 
     public function documents()
     {
-        return $this->hasMany(\Illuminate\Database\Eloquent\Relations\HasMany::class);
+        return $this->hasMany(ApplicationDocument::class);
     }
 
     /**

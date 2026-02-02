@@ -605,44 +605,88 @@ class BenefitController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $query = BenefitType::with(['barangays', 'branch', 'creator'])
-            ->orderBy('min_age');
-        
-        // FO Admins only see benefits targeting their jurisdiction or created by them
-        if (!$user->isMainAdmin()) {
-            $query->accessibleBy($user);
-        }
-        
-        $types = $query->get()
-            ->map(function ($type) {
-                return [
-                    'id' => $type->id,
-                    'name' => $type->name,
-                    'description' => $type->description,
-                    'min_age' => $type->min_age,
-                    'max_age' => $type->max_age,
-                    'age_range' => $type->age_range,
-                    'amount' => $type->amount,
-                    'formatted_amount' => $type->formatted_amount,
-                    'is_one_time' => $type->is_one_time,
-                    'claim_interval_days' => $type->claim_interval_days,
-                    'frequency_description' => $type->frequency_description,
-                    'target_scope' => $type->target_scope ?? 'all',
-                    'branch_id' => $type->branch_id,
-                    'branch' => $type->branch,
-                    'barangay_ids' => $type->barangays->pluck('id'),
-                    'barangays' => $type->barangays,
-                    'created_by' => $type->created_by,
-                    'creator' => $type->creator,
-                    'is_active' => $type->is_active,
-                    'created_at' => $type->created_at,
-                ];
-            });
+        try {
+            // Check if new columns exist
+            $hasNewColumns = \Schema::hasColumn('benefit_types', 'claim_interval_days');
+            
+            $query = BenefitType::query();
+            
+            // Only load new relationships if columns exist
+            if ($hasNewColumns) {
+                $query->with(['barangays', 'branch', 'creator']);
+            }
+            
+            $query->orderBy('min_age');
+            
+            // FO Admins only see benefits targeting their jurisdiction
+            // Only apply this if the new columns exist
+            if (!$user->isMainAdmin() && $hasNewColumns && method_exists(BenefitType::class, 'scopeAccessibleBy')) {
+                $query->accessibleBy($user);
+            }
+            
+            $types = $query->get()
+                ->map(function ($type) use ($hasNewColumns) {
+                    $data = [
+                        'id' => $type->id,
+                        'name' => $type->name,
+                        'description' => $type->description,
+                        'min_age' => $type->min_age,
+                        'max_age' => $type->max_age,
+                        'age_range' => $type->age_range,
+                        'amount' => $type->amount,
+                        'formatted_amount' => $type->formatted_amount,
+                        'is_one_time' => $type->is_one_time,
+                        'is_active' => $type->is_active,
+                        'created_at' => $type->created_at,
+                    ];
+                    
+                    // Add new fields only if columns exist
+                    if ($hasNewColumns) {
+                        $data['claim_interval_days'] = $type->claim_interval_days ?? null;
+                        $data['frequency_description'] = $type->frequency_description ?? null;
+                        $data['target_scope'] = $type->target_scope ?? 'all';
+                        $data['branch_id'] = $type->branch_id ?? null;
+                        $data['branch'] = $type->branch ?? null;
+                        $data['barangay_ids'] = $type->barangays ? $type->barangays->pluck('id') : [];
+                        $data['barangays'] = $type->barangays ?? [];
+                        $data['created_by'] = $type->created_by ?? null;
+                        $data['creator'] = $type->creator ?? null;
+                    }
+                    
+                    return $data;
+                });
 
-        return response()->json([
-            'success' => true,
-            'data' => $types,
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $types,
+            ]);
+        } catch (\Exception $e) {
+            // Log error for debugging
+            \Log::error('Error loading benefit types: ' . $e->getMessage());
+            
+            // Fallback: return basic benefit types without new fields
+            $types = BenefitType::orderBy('min_age')->get()
+                ->map(function ($type) {
+                    return [
+                        'id' => $type->id,
+                        'name' => $type->name,
+                        'description' => $type->description,
+                        'min_age' => $type->min_age,
+                        'max_age' => $type->max_age,
+                        'age_range' => $type->age_range,
+                        'amount' => $type->amount,
+                        'formatted_amount' => $type->formatted_amount,
+                        'is_one_time' => $type->is_one_time,
+                        'is_active' => $type->is_active,
+                        'created_at' => $type->created_at,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $types,
+            ]);
+        }
     }
 
     /**

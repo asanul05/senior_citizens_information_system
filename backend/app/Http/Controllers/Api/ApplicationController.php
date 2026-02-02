@@ -124,6 +124,7 @@ class ApplicationController extends Controller
             'submitter',
             'verifier',
             'approver',
+            'documents', // Include uploaded documents
         ])->findOrFail($id);
 
         return response()->json([

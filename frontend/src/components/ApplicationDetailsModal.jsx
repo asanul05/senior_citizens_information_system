@@ -38,9 +38,12 @@ const { TabPane } = Tabs;
 // Status indicator component
 const FieldStatus = ({ value, label, optional = false }) => {
     const hasValue = value !== undefined && value !== null && value !== '';
+
+    // For optional fields that are empty, show "Not provided" without the red X
     if (optional && !hasValue) {
         return <Text type="secondary">{label} - Not provided</Text>;
     }
+
     return (
         <Space size="small">
             {hasValue ? (
@@ -120,7 +123,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
         return <Tag color={statusColors[status] || 'default'}>{status}</Tag>;
     };
 
-    const calculateProgress = (data) => {
+    const calculateProgress = (data, docs = []) => {
         if (!data) return { percent: 0, filled: 0, total: 0 };
 
         const requiredFields = {
@@ -154,7 +157,6 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
         });
 
         // Check documents (assuming 3 required)
-        const docs = data.documents || [];
         total += 3;
         filled += Math.min(docs.length, 3);
 
@@ -175,8 +177,9 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
     const addressData = applicantData.address || {};
     const familyMembers = applicantData.family_members || [];
     const associations = applicantData.associations || [];
-    const documents = applicantData.documents || [];
-    const progress = calculateProgress(applicantData);
+    // Documents come from the relationship, not applicant_data
+    const documents = application?.documents || [];
+    const progress = calculateProgress(applicantData, documents);
 
     const renderPersonalInfoTab = () => (
         <div>
@@ -186,7 +189,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                         <FieldStatus value={personalInfo.first_name} label="First Name" />
                     </Descriptions.Item>
                     <Descriptions.Item label="Middle Name">
-                        <FieldStatus value={personalInfo.middle_name} label="Middle Name" />
+                        <FieldStatus value={personalInfo.middle_name} label="Middle Name" optional />
                     </Descriptions.Item>
                     <Descriptions.Item label="Last Name">
                         <FieldStatus value={personalInfo.last_name} label="Last Name" />
@@ -210,7 +213,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                         <FieldStatus value={personalInfo.gender_name || (personalInfo.gender_id === 1 ? 'Male' : personalInfo.gender_id === 2 ? 'Female' : null)} label="Gender" />
                     </Descriptions.Item>
                     <Descriptions.Item label="Civil Status">
-                        <FieldStatus value={personalInfo.civil_status_name} label="Civil Status" />
+                        <FieldStatus value={personalInfo.civil_status_name} label="Civil Status" optional />
                     </Descriptions.Item>
                 </Descriptions>
             </Card>
@@ -232,7 +235,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
             <Card size="small" title="Contact Information">
                 <Descriptions column={2} size="small" bordered>
                     <Descriptions.Item label="Mobile Number">
-                        <FieldStatus value={contactInfo.mobile_number} label="Mobile Number" />
+                        <FieldStatus value={contactInfo.mobile_number} label="Mobile Number" optional />
                     </Descriptions.Item>
                     <Descriptions.Item label="Telephone">
                         <FieldStatus value={contactInfo.telephone} label="Telephone" optional />
@@ -303,10 +306,10 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
 
     const renderDocumentsTab = () => {
         const requiredDocs = [
-            { id: 1, name: 'Senior Citizen Photo (2x2)', key: 'photo' },
-            { id: 2, name: 'Birth Certificate', key: 'birth_certificate' },
-            { id: 3, name: 'Barangay Certificate/Certification of Residency', key: 'barangay_certificate' },
-            { id: 4, name: 'Valid ID (Any government-issued ID)', key: 'valid_id' },
+            { id: 1, name: 'Proof of Age (Birth Certificate / Valid ID)', key: 'birth_certificate' },
+            { id: 2, name: 'Barangay Certification / Residency', key: 'barangay_certificate' },
+            { id: 3, name: "COMELEC ID / Certification (Optional)", key: 'comelec', optional: true },
+            { id: 4, name: 'Senior Citizen Photo (2x2)', key: 'photo' },
         ];
 
         const getDocByType = (typeId) => {

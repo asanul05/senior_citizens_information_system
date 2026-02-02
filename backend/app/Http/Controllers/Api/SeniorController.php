@@ -96,28 +96,41 @@ class SeniorController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $user = $request->user();
-        
-        $senior = SeniorCitizen::with([
-            'barangay',
-            'branch',
-            'gender',
-            'contact',
-            'educationalAttainment',
-            'socioeconomicStatus',
-            'mobilityLevel',
-            'registrationStatus',
-            'registeredBy',
-            'applications.type',
-            'seniorIds',
-        ])
-            ->accessibleBy($user)
-            ->findOrFail($id);
+        try {
+            $user = $request->user();
+            
+            $senior = SeniorCitizen::with([
+                'barangay',
+                'branch',
+                'gender',
+                'contact',
+                'educationalAttainment',
+                'socioeconomicStatus',
+                'mobilityLevel',
+                'registrationStatus',
+                'registeredBy',
+                'applications.type',
+                'seniorIds',
+            ])
+                ->accessibleBy($user)
+                ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'data' => $senior,
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $senior,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Senior not found or not accessible',
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching senior: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load senior information: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
