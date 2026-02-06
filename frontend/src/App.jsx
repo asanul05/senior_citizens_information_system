@@ -23,6 +23,7 @@ import Accounts from "./pages/admin/Accounts";
 import BranchManagement from "./pages/admin/BranchManagement";
 import BenefitSettings from "./pages/admin/BenefitSettings";
 import Announcements from "./pages/Announcements";
+import Archives from "./pages/Archives";
 
 // Public Pages
 import Home from "./pages/public/Home";
@@ -137,10 +138,7 @@ function App() {
                   element={<ComingSoon title="Complaints" />}
                 />
                 <Route path="announcements" element={<Announcements />} />
-                <Route
-                  path="archives"
-                  element={<ComingSoon title="Archives" />}
-                />
+                <Route path="archives" element={<Archives />} />
                 <Route
                   path="heatmap"
                   element={<ComingSoon title="Heat Map" />}

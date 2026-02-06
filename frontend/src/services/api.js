@@ -198,6 +198,15 @@ export const benefitsApi = {
   getSeniorClaims: (seniorId) => api.get(`/seniors/${seniorId}/benefits`),
 };
 
+// Archives API (PRD 4.6)
+export const archivesApi = {
+  getList: (params) => api.get("/archives", { params }),
+
+  getById: (id) => api.get(`/archives/${id}`),
+
+  getTimeline: (id) => api.get(`/archives/${id}/timeline`),
+};
+
 // Accounts API (Admin Management)
 export const accountsApi = {
   getList: (params) => api.get("/admin/accounts", { params }),

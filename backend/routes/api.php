@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\SeniorController;
 use App\Http\Controllers\Api\ApplicationController;
 use App\Http\Controllers\Api\IdPrintingController;
 use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\Api\ArchiveController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\PreRegistrationController;
 use App\Http\Controllers\PublicController;
@@ -185,6 +186,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Main Admin and Branch Admin routes (role_id = 1 or 2)
     Route::middleware('role:1,2')->group(function () {
-        // Senior registration approval will go here
+        // Archives (PRD 4.6)
+        Route::get('/archives', [ArchiveController::class, 'index']);
+        Route::get('/archives/{id}', [ArchiveController::class, 'show']);
+        Route::get('/archives/{id}/timeline', [ArchiveController::class, 'timeline']);
     });
 });

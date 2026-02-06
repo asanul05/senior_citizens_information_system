@@ -1,0 +1,306 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Archive;
+use App\Models\Barangay;
+use App\Models\Branch;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class ArchiveController extends Controller
+{
+    /**
+     * List archive records (primarily senior citizens) with filters.
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $perPage = (int) $request->get('per_page', 15);
+
+        // Base query
+        $query = Archive::query()->with('archivedBy');
+
+        // Default to senior citizens unless explicitly requesting another type
+        if ($type = $request->get('archive_type')) {
+            $query->where('archive_type', $type);
+        } else {
+            $query->where('archive_type', 'senior_citizen');
+        }
+
+        // Enforce access control: Barangay admins cannot view archives
+        if ($user->isBarangayAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have access to archives.',
+            ], 403);
+        }
+
+        // Field Office / Branch Admin: restrict to accessible barangays for senior archives
+        if ($user->isBranchAdmin()) {
+            $barangayIds = $user->getAccessibleBarangayIds();
+            if (!empty($barangayIds)) {
+                $placeholders = implode(',', array_fill(0, count($barangayIds), '?'));
+                $query->whereRaw(
+                    "JSON_EXTRACT(archive_data, '$.barangay_id') IN ($placeholders)",
+                    $barangayIds
+                );
+            } else {
+                // No accessible barangays -> no results
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        // Reason filter
+        if ($reason = $request->get('reason')) {
+            $query->where('archive_reason', $reason);
+        }
+
+        // Date range filter (archived_at)
+        if ($from = $request->get('from_date')) {
+            $query->whereDate('archived_at', '>=', $from);
+        }
+        if ($to = $request->get('to_date')) {
+            $query->whereDate('archived_at', '<=', $to);
+        }
+
+        // Search by OSCA ID or name
+        if ($search = $request->get('search')) {
+            $searchLike = "%{$search}%";
+            $query->where(function ($q) use ($searchLike) {
+                $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.osca_id')) LIKE ?", [$searchLike])
+                    ->orWhereRaw(
+                        "CONCAT(" .
+                        "JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.first_name')), ' ', " .
+                        "JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.last_name'))" .
+                        ") LIKE ?",
+                        [$searchLike]
+                    );
+            });
+        }
+
+        $query->orderByDesc('archived_at');
+
+        $paginator = $query->paginate($perPage);
+
+        // Transform results for frontend
+        $barangayCache = [];
+        $branchCache = [];
+
+        $paginator->getCollection()->transform(function (Archive $archive) use (&$barangayCache, &$branchCache) {
+            $data = $archive->archive_data ?? [];
+
+            $barangayId = $data['barangay_id'] ?? null;
+            $barangayName = null;
+            if ($barangayId) {
+                if (!array_key_exists($barangayId, $barangayCache)) {
+                    $barangayCache[$barangayId] = Barangay::find($barangayId)?->name;
+                }
+                $barangayName = $barangayCache[$barangayId];
+            }
+
+            $branchName = null;
+            $branchId = $data['branch_id'] ?? null;
+            if ($branchId) {
+                if (!array_key_exists($branchId, $branchCache)) {
+                    $branchCache[$branchId] = Branch::find($branchId)?->name;
+                }
+                $branchName = $branchCache[$branchId];
+            }
+
+            $fullName = trim(
+                ($data['first_name'] ?? '') . ' ' .
+                ($data['middle_name'] ?? '') . ' ' .
+                ($data['last_name'] ?? '')
+            );
+
+            return [
+                'id' => $archive->id,
+                'archive_type' => $archive->archive_type,
+                'reference_id' => $archive->reference_id,
+                'archive_reason' => $archive->archive_reason,
+                'archive_notes' => $archive->archive_notes,
+                'osca_id' => $data['osca_id'] ?? null,
+                'employee_id' => $data['employee_id'] ?? null,
+                'username' => $data['username'] ?? null,
+                'full_name' => $fullName,
+                'barangay_id' => $barangayId,
+                'barangay_name' => $barangayName,
+                'branch_id' => $branchId,
+                'branch_name' => $branchName,
+                'deceased_date' => optional($archive->deceased_date)->format('Y-m-d'),
+                'original_created_at' => optional($archive->original_created_at)->toIso8601String(),
+                'original_updated_at' => optional($archive->original_updated_at)->toIso8601String(),
+                'archived_at' => optional($archive->archived_at)->toIso8601String(),
+                'archived_by' => $archive->archived_by,
+                'archived_by_name' => $archive->archivedBy?->name,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $paginator,
+        ]);
+    }
+
+    /**
+     * Get single archive record with full snapshot.
+     */
+    public function show(Request $request, int $id)
+    {
+        $user = $request->user();
+        $archive = Archive::with('archivedBy')->findOrFail($id);
+
+        // Enforce access rules (same as index)
+        if ($user->isBarangayAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have access to archives.',
+            ], 403);
+        }
+
+        if ($user->isBranchAdmin() && $archive->archive_type === 'senior_citizen') {
+            $barangayIds = $user->getAccessibleBarangayIds();
+            $barangayId = $archive->archive_data['barangay_id'] ?? null;
+            if ($barangayId && !in_array($barangayId, $barangayIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have access to this record.',
+                ], 403);
+            }
+        }
+
+        $data = $archive->archive_data ?? [];
+
+        $barangay = null;
+        if (!empty($data['barangay_id'])) {
+            $barangay = Barangay::find($data['barangay_id']);
+        }
+
+        $branch = null;
+        if (!empty($data['branch_id'])) {
+            $branch = Branch::find($data['branch_id']);
+        }
+
+        $fullName = trim(
+            ($data['first_name'] ?? '') . ' ' .
+            ($data['middle_name'] ?? '') . ' ' .
+            ($data['last_name'] ?? '')
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $archive->id,
+                'archive_type' => $archive->archive_type,
+                'reference_id' => $archive->reference_id,
+                'archive_reason' => $archive->archive_reason,
+                'archive_notes' => $archive->archive_notes,
+                'snapshot' => $data,
+                'osca_id' => $data['osca_id'] ?? null,
+                'employee_id' => $data['employee_id'] ?? null,
+                'username' => $data['username'] ?? null,
+                'full_name' => $fullName,
+                'barangay' => $barangay ? [
+                    'id' => $barangay->id,
+                    'name' => $barangay->name,
+                ] : null,
+                'branch' => $branch ? [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                ] : null,
+                'deceased_date' => optional($archive->deceased_date)->format('Y-m-d'),
+                'original_created_at' => optional($archive->original_created_at)->toIso8601String(),
+                'original_updated_at' => optional($archive->original_updated_at)->toIso8601String(),
+                'archived_at' => optional($archive->archived_at)->toIso8601String(),
+                'archived_by' => $archive->archived_by,
+                'archived_by_name' => $archive->archivedBy?->name,
+            ],
+        ]);
+    }
+
+    /**
+     * Get activity timeline for an archived senior (audit trail + archive event).
+     */
+    public function timeline(Request $request, int $id)
+    {
+        $user = $request->user();
+        $archive = Archive::findOrFail($id);
+
+        if ($archive->archive_type !== 'senior_citizen') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Timeline is only available for senior citizen archives.',
+            ], 400);
+        }
+
+        // Access check
+        if ($user->isBarangayAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have access to archives.',
+            ], 403);
+        }
+
+        if ($user->isBranchAdmin()) {
+            $barangayIds = $user->getAccessibleBarangayIds();
+            $barangayId = $archive->archive_data['barangay_id'] ?? null;
+            if ($barangayId && !in_array($barangayId, $barangayIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have access to this record.',
+                ], 403);
+            }
+        }
+
+        $seniorId = $archive->reference_id;
+
+        // Fetch audit logs for this senior
+        $auditLogs = DB::table('audit_logs')
+            ->leftJoin('users', 'users.id', '=', 'audit_logs.user_id')
+            ->where('target_type', 'senior_citizens')
+            ->where('target_id', $seniorId)
+            ->orderBy('created_at')
+            ->get([
+                'audit_logs.id',
+                'audit_logs.action',
+                'audit_logs.description',
+                'audit_logs.old_values',
+                'audit_logs.new_values',
+                'audit_logs.created_at',
+                'users.name as user_name',
+            ]);
+
+        $events = [];
+
+        foreach ($auditLogs as $log) {
+            $events[] = [
+                'type' => 'audit',
+                'action' => $log->action,
+                'description' => $log->description,
+                'user_name' => $log->user_name,
+                'created_at' => optional($log->created_at)->toDateTimeString(),
+                'old_values' => $log->old_values ? json_decode($log->old_values, true) : null,
+                'new_values' => $log->new_values ? json_decode($log->new_values, true) : null,
+            ];
+        }
+
+        // Append archive event as final entry
+        $events[] = [
+            'type' => 'archived',
+            'reason' => $archive->archive_reason,
+            'notes' => $archive->archive_notes,
+            'archived_at' => optional($archive->archived_at)->toDateTimeString(),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'senior_id' => $seniorId,
+                'events' => $events,
+            ],
+        ]);
+    }
+}
