@@ -34,6 +34,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::prefix('public')->group(function () {
     Route::get('/barangays', [PublicController::class, 'barangays']);
     Route::get('/stats', [PublicController::class, 'stats']);
+    Route::get('/announcements', [PublicController::class, 'announcements']);
     Route::post('/apply', [PublicController::class, 'apply']);
     Route::get('/status/{referenceNumber}', [PublicController::class, 'checkStatus']);
 });

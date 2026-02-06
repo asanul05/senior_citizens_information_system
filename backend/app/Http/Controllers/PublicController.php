@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Announcement;
 use App\Models\Barangay;
 use App\Models\PreRegistration;
 use App\Models\SeniorCitizen;
@@ -37,6 +38,52 @@ class PublicController extends Controller
                 'ids_issued_this_year' => $idsIssuedThisYear,
                 'benefits_claimed' => $totalBenefitsReleased,
             ]
+        ]);
+    }
+
+    /**
+     * Get published announcements for public website.
+     */
+    public function announcements(Request $request): JsonResponse
+    {
+        $query = Announcement::with('type')
+            ->published()
+            ->orderByDesc('published_at')
+            ->orderByDesc('created_at');
+
+        // Optional type filter (by type code or name)
+        if ($type = $request->get('type')) {
+            $query->whereHas('type', function ($q) use ($type) {
+                $q->where('code', $type)->orWhere('name', $type);
+            });
+        }
+
+        // Optional text search
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
+
+        $announcements = $query->get()->map(function (Announcement $announcement) {
+            $eventDate = $announcement->event_date?->format('Y-m-d');
+            $publishedDate = $announcement->published_at?->format('Y-m-d');
+
+            return [
+                'id' => $announcement->id,
+                'title' => $announcement->title,
+                'content' => $announcement->content,
+                'type' => $announcement->type?->code ?? 'news',
+                'type_name' => $announcement->type?->name,
+                'date' => $eventDate ?? $publishedDate ?? $announcement->created_at?->format('Y-m-d'),
+                'event_date' => $eventDate,
+                'published_at' => $announcement->published_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'data' => $announcements,
         ]);
     }
 
