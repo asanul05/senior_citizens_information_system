@@ -1,0 +1,437 @@
+import { useEffect, useState } from "react";
+import {
+  Card,
+  Table,
+  Row,
+  Col,
+  Input,
+  Select,
+  DatePicker,
+  Tag,
+  Typography,
+  Space,
+  Drawer,
+  Descriptions,
+  Timeline,
+  Spin,
+  message,
+} from "antd";
+import {
+  FolderOutlined,
+  SearchOutlined,
+  ClockCircleOutlined,
+} from "@ant-design/icons";
+import dayjs from "dayjs";
+import { archivesApi } from "../services/api";
+
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { RangePicker } = DatePicker;
+
+const Archives = () => {
+  const [loading, setLoading] = useState(false);
+  const [archives, setArchives] = useState([]);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [filters, setFilters] = useState({
+    search: "",
+    reason: undefined,
+    archive_type: "senior_citizen",
+    from_date: undefined,
+    to_date: undefined,
+  });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  useEffect(() => {
+    fetchArchives(1, pagination.pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchArchives = async (page = 1, pageSize = 10) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        per_page: pageSize,
+        ...filters,
+      };
+      const response = await archivesApi.getList(params);
+      const payload = response.data?.data;
+      if (payload) {
+        const { data, current_page, per_page, total } = payload;
+        setArchives(data);
+        setPagination({ current: current_page, pageSize: per_page, total });
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load archives", error);
+      message.error("Failed to load archives");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTableChange = (paginationConfig) => {
+    fetchArchives(paginationConfig.current, paginationConfig.pageSize);
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setFilters((prev) => ({ ...prev, search: value }));
+  };
+
+  const handleReasonChange = (value) => {
+    setFilters((prev) => ({ ...prev, reason: value || undefined }));
+  };
+
+  const handleTypeChange = (value) => {
+    setFilters((prev) => ({ ...prev, archive_type: value || undefined }));
+  };
+
+  const handleDateRangeChange = (dates) => {
+    if (!dates || dates.length === 0) {
+      setFilters((prev) => ({
+        ...prev,
+        from_date: undefined,
+        to_date: undefined,
+      }));
+    } else {
+      setFilters((prev) => ({
+        ...prev,
+        from_date: dates[0].format("YYYY-MM-DD"),
+        to_date: dates[1].format("YYYY-MM-DD"),
+      }));
+    }
+  };
+
+  const applyFilters = () => {
+    fetchArchives(1, pagination.pageSize);
+  };
+
+  const openDetails = async (record) => {
+    try {
+      setDrawerOpen(true);
+      setSelected(null);
+      setTimeline([]);
+      setTimelineLoading(true);
+
+      const [detailRes, timelineRes] = await Promise.all([
+        archivesApi.getById(record.id),
+        archivesApi.getTimeline(record.id),
+      ]);
+
+      setSelected(detailRes.data?.data || null);
+      setTimeline(timelineRes.data?.data?.events || []);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load archive details", error);
+      message.error("Failed to load archive details");
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
+
+  const columns = [
+    {
+      title: "Senior / User",
+      key: "name",
+      render: (_, record) => (
+        <div>
+          <Text strong>{record.full_name || record.username}</Text>
+          <br />
+          {record.osca_id && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              OSCA ID: {record.osca_id}
+            </Text>
+          )}
+          {record.employee_id && (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Employee ID: {record.employee_id}
+            </Text>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: "Archive Type",
+      dataIndex: "archive_type",
+      key: "archive_type",
+      width: 140,
+      render: (type) => (
+        <Tag color={type === "senior_citizen" ? "blue" : "purple"}>
+          {type === "senior_citizen" ? "Senior Citizen" : "Admin User"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Reason",
+      dataIndex: "archive_reason",
+      key: "archive_reason",
+      width: 140,
+      render: (reason) => {
+        const map = {
+          deceased: { label: "Deceased", color: "red" },
+          deactivated: { label: "Deactivated", color: "orange" },
+          transferred: { label: "Transferred", color: "geekblue" },
+          other: { label: "Other", color: "default" },
+        };
+        const info = map[reason] || map.other;
+        return <Tag color={info.color}>{info.label}</Tag>;
+      },
+    },
+    {
+      title: "Barangay",
+      dataIndex: "barangay_name",
+      key: "barangay_name",
+      width: 160,
+      render: (name) => name || "-",
+    },
+    {
+      title: "Deceased Date",
+      dataIndex: "deceased_date",
+      key: "deceased_date",
+      width: 130,
+      render: (date) => (date ? dayjs(date).format("MMM D, YYYY") : "-"),
+    },
+    {
+      title: "Archived At",
+      dataIndex: "archived_at",
+      key: "archived_at",
+      width: 170,
+      render: (date) => (date ? dayjs(date).format("MMM D, YYYY HH:mm") : "-"),
+    },
+    {
+      title: "Archived By",
+      dataIndex: "archived_by_name",
+      key: "archived_by_name",
+      width: 160,
+      render: (name) => name || "-",
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>
+          <FolderOutlined /> Archives
+        </Title>
+        <Text type="secondary">
+          View archived senior records, reasons, and activity timeline.
+        </Text>
+      </div>
+
+      <Card style={{ marginBottom: 16, borderRadius: 8 }}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} md={6}>
+            <Input
+              placeholder="Search by name or OSCA ID"
+              prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+              allowClear
+              onChange={handleSearchChange}
+            />
+          </Col>
+          <Col xs={12} md={5}>
+            <Select
+              placeholder="Archive type"
+              defaultValue="senior_citizen"
+              style={{ width: "100%" }}
+              onChange={handleTypeChange}
+            >
+              <Option value="senior_citizen">Senior Citizens</Option>
+              <Option value="admin_user">Admin Users</Option>
+            </Select>
+          </Col>
+          <Col xs={12} md={5}>
+            <Select
+              placeholder="Reason"
+              allowClear
+              style={{ width: "100%" }}
+              onChange={handleReasonChange}
+            >
+              <Option value="deceased">Deceased</Option>
+              <Option value="deactivated">Deactivated</Option>
+              <Option value="transferred">Transferred</Option>
+              <Option value="other">Other</Option>
+            </Select>
+          </Col>
+          <Col xs={24} md={6}>
+            <RangePicker
+              style={{ width: "100%" }}
+              onChange={handleDateRangeChange}
+            />
+          </Col>
+          <Col xs={24} md={2} style={{ textAlign: "right" }}>
+            <Space>
+              <a onClick={applyFilters}>Apply</a>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card style={{ borderRadius: 8 }}>
+        <Table
+          columns={columns}
+          dataSource={archives}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            ...pagination,
+            showSizeChanger: true,
+            showTotal: (total) => `${total} archived records`,
+          }}
+          onChange={handleTableChange}
+          onRow={(record) => ({
+            onClick: () => openDetails(record),
+            style: { cursor: "pointer" },
+          })}
+        />
+      </Card>
+
+      <Drawer
+        title={
+          <span>
+            Archive Details
+            {selected?.full_name && (
+              <span style={{ marginLeft: 8, fontWeight: 400 }}>
+                - {selected.full_name}
+              </span>
+            )}
+          </span>
+        }
+        width={600}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        destroyOnClose
+      >
+        {timelineLoading && (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Spin />
+          </div>
+        )}
+
+        {!timelineLoading && selected && (
+          <>
+            <Descriptions
+              bordered
+              size="small"
+              column={1}
+              style={{ marginBottom: 24 }}
+            >
+              <Descriptions.Item label="Name">
+                {selected.full_name || selected.username || "-"}
+              </Descriptions.Item>
+              {selected.osca_id && (
+                <Descriptions.Item label="OSCA ID">
+                  {selected.osca_id}
+                </Descriptions.Item>
+              )}
+              {selected.employee_id && (
+                <Descriptions.Item label="Employee ID">
+                  {selected.employee_id}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="Archive Type">
+                {selected.archive_type === "senior_citizen"
+                  ? "Senior Citizen"
+                  : "Admin User"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Reason">
+                {selected.archive_reason}
+              </Descriptions.Item>
+              {selected.deceased_date && (
+                <Descriptions.Item label="Deceased Date">
+                  {dayjs(selected.deceased_date).format("MMM D, YYYY")}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="Archived At">
+                {selected.archived_at
+                  ? dayjs(selected.archived_at).format("MMM D, YYYY HH:mm")
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Archived By">
+                {selected.archived_by_name || "-"}
+              </Descriptions.Item>
+              {selected.barangay && (
+                <Descriptions.Item label="Barangay">
+                  {selected.barangay.name}
+                </Descriptions.Item>
+              )}
+              {selected.branch && (
+                <Descriptions.Item label="Branch">
+                  {selected.branch.name}
+                </Descriptions.Item>
+              )}
+              {selected.archive_notes && (
+                <Descriptions.Item label="Notes">
+                  {selected.archive_notes}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            <Title level={5}>
+              <ClockCircleOutlined /> Activity Timeline
+            </Title>
+            {timeline.length === 0 ? (
+              <Text type="secondary">No activity records found.</Text>
+            ) : (
+              <Timeline style={{ marginTop: 16 }}>
+                {timeline.map((event, idx) => {
+                  if (event.type === "audit") {
+                    return (
+                      <Timeline.Item
+                        key={idx}
+                        dot={
+                          <ClockCircleOutlined style={{ fontSize: "12px" }} />
+                        }
+                      >
+                        <Text strong>{event.action}</Text>
+                        <br />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {event.created_at}{" "}
+                          {event.user_name && `by ${event.user_name}`}
+                        </Text>
+                        {event.description && (
+                          <div style={{ marginTop: 4 }}>
+                            <Text>{event.description}</Text>
+                          </div>
+                        )}
+                      </Timeline.Item>
+                    );
+                  }
+
+                  // Archive event
+                  return (
+                    <Timeline.Item
+                      key={idx}
+                      color="red"
+                      dot={<ClockCircleOutlined style={{ fontSize: "12px" }} />}
+                    >
+                      <Text strong>Archived ({event.reason})</Text>
+                      <br />
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {event.archived_at}
+                      </Text>
+                      {event.notes && (
+                        <div style={{ marginTop: 4 }}>
+                          <Text>{event.notes}</Text>
+                        </div>
+                      )}
+                    </Timeline.Item>
+                  );
+                })}
+              </Timeline>
+            )}
+          </>
+        )}
+      </Drawer>
+    </div>
+  );
+};
+
+export default Archives;

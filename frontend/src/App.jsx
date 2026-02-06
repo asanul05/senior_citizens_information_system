@@ -1,40 +1,42 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ConfigProvider } from "antd";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Layouts
-import AdminLayout from './layouts/AdminLayout';
-import PublicLayout from './layouts/PublicLayout';
+import AdminLayout from "./layouts/AdminLayout";
+import PublicLayout from "./layouts/PublicLayout";
 
 // Auth
-import Login from './pages/Login';
+import Login from "./pages/Login";
 
 // Admin Pages
-import Dashboard from './pages/Dashboard';
-import Seniors from './pages/Seniors';
-import NewApplication from './pages/registration/NewApplication';
-import Applications from './pages/registration/Applications';
-import IdPrinting from './pages/IdPrinting';
-import PreRegistrations from './pages/PreRegistrations';
-import Benefits from './pages/Benefits';
-import Accounts from './pages/admin/Accounts';
-import BranchManagement from './pages/admin/BranchManagement';
-import BenefitSettings from './pages/admin/BenefitSettings';
+import Dashboard from "./pages/Dashboard";
+import Seniors from "./pages/Seniors";
+import NewApplication from "./pages/registration/NewApplication";
+import Applications from "./pages/registration/Applications";
+import IdPrinting from "./pages/IdPrinting";
+import PreRegistrations from "./pages/PreRegistrations";
+import Benefits from "./pages/Benefits";
+import Accounts from "./pages/admin/Accounts";
+import BranchManagement from "./pages/admin/BranchManagement";
+import BenefitSettings from "./pages/admin/BenefitSettings";
+import Announcements from "./pages/Announcements";
+import Archives from "./pages/Archives";
 
 // Public Pages
-import Home from './pages/public/Home';
-import About from './pages/public/About';
-import Services from './pages/public/Services';
-import News from './pages/public/News';
-import Contact from './pages/public/Contact';
-import Apply from './pages/public/Apply';
+import Home from "./pages/public/Home";
+import About from "./pages/public/About";
+import Services from "./pages/public/Services";
+import News from "./pages/public/News";
+import Contact from "./pages/public/Contact";
+import Apply from "./pages/public/Apply";
 
 // Senior Portal Pages
-import SeniorLogin from './pages/senior/SeniorLogin';
-import SeniorDashboard from './pages/senior/SeniorDashboard';
-import SeniorBenefits from './pages/senior/SeniorBenefits';
+import SeniorLogin from "./pages/senior/SeniorLogin";
+import SeniorDashboard from "./pages/senior/SeniorDashboard";
+import SeniorBenefits from "./pages/senior/SeniorBenefits";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -48,9 +50,9 @@ const queryClient = new QueryClient({
 
 // Placeholder components for incomplete admin pages
 const ComingSoon = ({ title }) => (
-  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+  <div style={{ textAlign: "center", padding: "60px 20px" }}>
     <h2>{title}</h2>
-    <p style={{ color: '#888' }}>This page is coming soon...</p>
+    <p style={{ color: "#888" }}>This page is coming soon...</p>
   </div>
 );
 
@@ -60,9 +62,10 @@ function App() {
       <ConfigProvider
         theme={{
           token: {
-            colorPrimary: '#4338ca',
+            colorPrimary: "#4338ca",
             borderRadius: 8,
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            fontFamily:
+              "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
           },
         }}
       >
@@ -87,7 +90,10 @@ function App() {
               <Route path="/senior/dashboard" element={<SeniorDashboard />} />
               <Route path="/senior/profile" element={<SeniorDashboard />} />
               <Route path="/senior/benefits" element={<SeniorBenefits />} />
-              <Route path="/senior/announcements" element={<SeniorDashboard />} />
+              <Route
+                path="/senior/announcements"
+                element={<SeniorDashboard />}
+              />
               <Route path="/senior/complaints" element={<SeniorDashboard />} />
 
               {/* ============ ADMIN PORTAL ROUTES ============ */}
@@ -99,23 +105,44 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route
+                  index
+                  element={<Navigate to="/admin/dashboard" replace />}
+                />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="seniors" element={<Seniors />} />
                 <Route path="registration">
-                  <Route index element={<Navigate to="/admin/registration/list" replace />} />
+                  <Route
+                    index
+                    element={<Navigate to="/admin/registration/list" replace />}
+                  />
                   <Route path="new" element={<NewApplication />} />
-                  <Route path="revalidation" element={<ComingSoon title="Revalidation/Update" />} />
-                  <Route path="lost-damaged" element={<ComingSoon title="Lost/Damaged ID" />} />
+                  <Route
+                    path="revalidation"
+                    element={<ComingSoon title="Revalidation/Update" />}
+                  />
+                  <Route
+                    path="lost-damaged"
+                    element={<ComingSoon title="Lost/Damaged ID" />}
+                  />
                   <Route path="list" element={<Applications />} />
                 </Route>
                 <Route path="id-printing" element={<IdPrinting />} />
                 <Route path="benefits" element={<Benefits />} />
-                <Route path="pre-registrations" element={<PreRegistrations />} />
-                <Route path="complaints" element={<ComingSoon title="Complaints" />} />
-                <Route path="announcements" element={<ComingSoon title="Announcements" />} />
-                <Route path="archives" element={<ComingSoon title="Archives" />} />
-                <Route path="heatmap" element={<ComingSoon title="Heat Map" />} />
+                <Route
+                  path="pre-registrations"
+                  element={<PreRegistrations />}
+                />
+                <Route
+                  path="complaints"
+                  element={<ComingSoon title="Complaints" />}
+                />
+                <Route path="announcements" element={<Announcements />} />
+                <Route path="archives" element={<Archives />} />
+                <Route
+                  path="heatmap"
+                  element={<ComingSoon title="Heat Map" />}
+                />
                 <Route
                   path="accounts"
                   element={

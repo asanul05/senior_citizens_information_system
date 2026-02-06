@@ -1,24 +1,24 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Add token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Handle 401 responses
@@ -26,151 +26,114 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Auth API
 export const authApi = {
-  login: (username, password) =>
-    api.post('/login', { username, password }),
+  login: (username, password) => api.post("/login", { username, password }),
 
-  logout: () =>
-    api.post('/logout'),
+  logout: () => api.post("/logout"),
 
-  me: () =>
-    api.get('/me'),
+  me: () => api.get("/me"),
 };
 
 // Dashboard API
 export const dashboardApi = {
-  getStats: () =>
-    api.get('/dashboard/stats'),
+  getStats: () => api.get("/dashboard/stats"),
 
-  getUpcomingEvents: () =>
-    api.get('/dashboard/upcoming-events'),
+  getUpcomingEvents: () => api.get("/dashboard/upcoming-events"),
 
-  getAgeDistribution: () =>
-    api.get('/dashboard/age-distribution'),
+  getAgeDistribution: () => api.get("/dashboard/age-distribution"),
 
-  getGenderDistribution: () =>
-    api.get('/dashboard/gender-distribution'),
+  getGenderDistribution: () => api.get("/dashboard/gender-distribution"),
 };
 
 // Seniors API
 export const seniorsApi = {
-  getList: (params) =>
-    api.get('/seniors', { params }),
+  getList: (params) => api.get("/seniors", { params }),
 
-  getById: (id) =>
-    api.get(`/seniors/${id}`),
+  getById: (id) => api.get(`/seniors/${id}`),
 
-  getStatistics: () =>
-    api.get('/seniors/statistics'),
+  getStatistics: () => api.get("/seniors/statistics"),
 
-  export: () =>
-    api.get('/seniors/export', { responseType: 'blob' }),
+  export: () => api.get("/seniors/export", { responseType: "blob" }),
 
-  update: (id, data) =>
-    api.put(`/seniors/${id}`, data),
+  update: (id, data) => api.put(`/seniors/${id}`, data),
 };
 
 // Applications API
 export const applicationsApi = {
-  getList: (params) =>
-    api.get('/applications', { params }),
+  getList: (params) => api.get("/applications", { params }),
 
-  getById: (id) =>
-    api.get(`/applications/${id}`),
+  getById: (id) => api.get(`/applications/${id}`),
 
-  getStatistics: () =>
-    api.get('/applications/statistics'),
+  getStatistics: () => api.get("/applications/statistics"),
 
-  updateStatus: (id, data) =>
-    api.patch(`/applications/${id}/status`, data),
+  updateStatus: (id, data) => api.patch(`/applications/${id}/status`, data),
 };
 
 // ID Printing API
 export const idPrintingApi = {
-  getList: (params) =>
-    api.get('/id-printing', { params }),
+  getList: (params) => api.get("/id-printing", { params }),
 
-  getStatistics: () =>
-    api.get('/id-printing/statistics'),
+  getStatistics: () => api.get("/id-printing/statistics"),
 
-  getAvailableSeniors: (search = '') =>
-    api.get('/id-printing/available-seniors', { params: { search } }),
+  getAvailableSeniors: (search = "") =>
+    api.get("/id-printing/available-seniors", { params: { search } }),
 
-  addToQueue: (data) =>
-    api.post('/id-printing/add', data),
+  addToQueue: (data) => api.post("/id-printing/add", data),
 
-  getCardData: (id) =>
-    api.get(`/id-printing/${id}/card-data`),
+  getCardData: (id) => api.get(`/id-printing/${id}/card-data`),
 
-  getBatchCardData: (ids) =>
-    api.post('/id-printing/batch-card-data', { ids }),
+  getBatchCardData: (ids) => api.post("/id-printing/batch-card-data", { ids }),
 
-  updateStatus: (id, data) =>
-    api.patch(`/id-printing/${id}/status`, data),
+  updateStatus: (id, data) => api.patch(`/id-printing/${id}/status`, data),
 
-  bulkPrint: (ids) =>
-    api.post('/id-printing/bulk-print', { ids }),
+  bulkPrint: (ids) => api.post("/id-printing/bulk-print", { ids }),
 
-  bulkClaim: (ids) =>
-    api.post('/id-printing/bulk-claim', { ids }),
+  bulkClaim: (ids) => api.post("/id-printing/bulk-claim", { ids }),
 };
 
 // Announcements API
 export const announcementsApi = {
-  getList: (params) =>
-    api.get('/announcements', { params }),
+  getList: (params) => api.get("/announcements", { params }),
 
-  getById: (id) =>
-    api.get(`/announcements/${id}`),
+  getById: (id) => api.get(`/announcements/${id}`),
 
-  getTypes: () =>
-    api.get('/announcements/types'),
+  getTypes: () => api.get("/announcements/types"),
 
-  create: (data) =>
-    api.post('/announcements', data),
+  create: (data) => api.post("/announcements", data),
 
-  update: (id, data) =>
-    api.put(`/announcements/${id}`, data),
+  update: (id, data) => api.put(`/announcements/${id}`, data),
 
-  delete: (id) =>
-    api.delete(`/announcements/${id}`),
+  delete: (id) => api.delete(`/announcements/${id}`),
 };
 
 // Registration API
 export const registrationApi = {
-  getLookupOptions: () =>
-    api.get('/registration/lookup-options'),
+  getLookupOptions: () => api.get("/registration/lookup-options"),
 
-  getBarangays: () =>
-    api.get('/registration/barangays'),
+  getBarangays: () => api.get("/registration/barangays"),
 
-  checkDuplicate: (data) =>
-    api.post('/registration/check-duplicate', data),
+  checkDuplicate: (data) => api.post("/registration/check-duplicate", data),
 
-  submitNew: (data) =>
-    api.post('/registration/new', data),
+  submitNew: (data) => api.post("/registration/new", data),
 
-  getById: (id) =>
-    api.get(`/registration/${id}`),
+  getById: (id) => api.get(`/registration/${id}`),
 
-  update: (id, data) =>
-    api.put(`/registration/${id}`, data),
+  update: (id, data) => api.put(`/registration/${id}`, data),
 
-  getDocuments: (id) =>
-    api.get(`/registration/${id}/documents`),
+  getDocuments: (id) => api.get(`/registration/${id}/documents`),
 
   uploadDocument: (formData) =>
-    api.post('/registration/upload-document', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    api.post("/registration/upload-document", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     }),
 
   deleteDocument: (documentId) =>
@@ -179,11 +142,11 @@ export const registrationApi = {
 
 // Public API (No authentication required)
 export const publicApi = {
-  getBarangays: () =>
-    api.get('/public/barangays'),
+  getBarangays: () => api.get("/public/barangays"),
 
-  apply: (data) =>
-    api.post('/public/apply', data),
+  getAnnouncements: (params) => api.get("/public/announcements", { params }),
+
+  apply: (data) => api.post("/public/apply", data),
 
   checkStatus: (referenceNumber) =>
     api.get(`/public/status/${referenceNumber}`),
@@ -191,83 +154,74 @@ export const publicApi = {
 
 // Pre-Registration Admin API
 export const preRegistrationApi = {
-  list: (params) =>
-    api.get('/pre-registrations', { params }),
+  list: (params) => api.get("/pre-registrations", { params }),
 
-  statistics: () =>
-    api.get('/pre-registrations/statistics'),
+  statistics: () => api.get("/pre-registrations/statistics"),
 
-  getById: (id) =>
-    api.get(`/pre-registrations/${id}`),
+  getById: (id) => api.get(`/pre-registrations/${id}`),
 
-  markUnderReview: (id) =>
-    api.post(`/pre-registrations/${id}/mark-review`),
+  markUnderReview: (id) => api.post(`/pre-registrations/${id}/mark-review`),
 
-  foReview: (id, data) =>
-    api.post(`/pre-registrations/${id}/fo-review`, data),
+  foReview: (id, data) => api.post(`/pre-registrations/${id}/fo-review`, data),
 
   mainReview: (id, data) =>
     api.post(`/pre-registrations/${id}/main-review`, data),
 
-  convert: (id) =>
-    api.post(`/pre-registrations/${id}/convert`),
+  convert: (id) => api.post(`/pre-registrations/${id}/convert`),
 
   completeConversion: (id, applicationId) =>
-    api.post(`/pre-registrations/${id}/complete-conversion`, { application_id: applicationId }),
+    api.post(`/pre-registrations/${id}/complete-conversion`, {
+      application_id: applicationId,
+    }),
 };
 
 // Benefits API (PRD 4.3)
 export const benefitsApi = {
-  getTypes: () =>
-    api.get('/benefits/types'),
+  getTypes: () => api.get("/benefits/types"),
 
-  getClaims: (params) =>
-    api.get('/benefits/claims', { params }),
+  getClaims: (params) => api.get("/benefits/claims", { params }),
 
   exportClaims: (params) =>
-    api.get('/benefits/claims/export', { params, responseType: 'blob' }),
+    api.get("/benefits/claims/export", { params, responseType: "blob" }),
 
-  getEligible: (params) =>
-    api.get('/benefits/eligible', { params }),
+  getEligible: (params) => api.get("/benefits/eligible", { params }),
 
   exportEligible: (params) =>
-    api.get('/benefits/eligible/export', { params, responseType: 'blob' }),
+    api.get("/benefits/eligible/export", { params, responseType: "blob" }),
 
-  getStatistics: () =>
-    api.get('/benefits/statistics'),
+  getStatistics: () => api.get("/benefits/statistics"),
 
-  createClaim: (data) =>
-    api.post('/benefits/claims', data),
+  createClaim: (data) => api.post("/benefits/claims", data),
 
-  updateStatus: (id, data) =>
-    api.patch(`/benefits/claims/${id}/status`, data),
+  updateStatus: (id, data) => api.patch(`/benefits/claims/${id}/status`, data),
 
-  getSeniorClaims: (seniorId) =>
-    api.get(`/seniors/${seniorId}/benefits`),
+  getSeniorClaims: (seniorId) => api.get(`/seniors/${seniorId}/benefits`),
+};
+
+// Archives API (PRD 4.6)
+export const archivesApi = {
+  getList: (params) => api.get("/archives", { params }),
+
+  getById: (id) => api.get(`/archives/${id}`),
+
+  getTimeline: (id) => api.get(`/archives/${id}/timeline`),
 };
 
 // Accounts API (Admin Management)
 export const accountsApi = {
-  getList: (params) =>
-    api.get('/admin/accounts', { params }),
+  getList: (params) => api.get("/admin/accounts", { params }),
 
-  getById: (id) =>
-    api.get(`/admin/accounts/${id}`),
+  getById: (id) => api.get(`/admin/accounts/${id}`),
 
-  getOptions: () =>
-    api.get('/admin/accounts/options'),
+  getOptions: () => api.get("/admin/accounts/options"),
 
-  create: (data) =>
-    api.post('/admin/accounts', data),
+  create: (data) => api.post("/admin/accounts", data),
 
-  update: (id, data) =>
-    api.put(`/admin/accounts/${id}`, data),
+  update: (id, data) => api.put(`/admin/accounts/${id}`, data),
 
-  delete: (id) =>
-    api.delete(`/admin/accounts/${id}`),
+  delete: (id) => api.delete(`/admin/accounts/${id}`),
 
-  toggleStatus: (id) =>
-    api.patch(`/admin/accounts/${id}/toggle-status`),
+  toggleStatus: (id) => api.patch(`/admin/accounts/${id}/toggle-status`),
 
   resetPassword: (id, password) =>
     api.post(`/admin/accounts/${id}/reset-password`, { password }),
@@ -278,44 +232,40 @@ export const accountsApi = {
 
 // Branch (Field Office) Management API
 export const branchApi = {
-  getList: () =>
-    api.get('/admin/branches'),
+  getList: () => api.get("/admin/branches"),
 
-  getById: (id) =>
-    api.get(`/admin/branches/${id}`),
+  getById: (id) => api.get(`/admin/branches/${id}`),
 
-  create: (data) =>
-    api.post('/admin/branches', data),
+  create: (data) => api.post("/admin/branches", data),
 
-  update: (id, data) =>
-    api.put(`/admin/branches/${id}`, data),
+  update: (id, data) => api.put(`/admin/branches/${id}`, data),
 
-  delete: (id) =>
-    api.delete(`/admin/branches/${id}`),
+  delete: (id) => api.delete(`/admin/branches/${id}`),
 };
 
 // Barangay Management API
 export const barangayManagementApi = {
-  getList: (params) =>
-    api.get('/admin/barangays', { params }),
+  getList: (params) => api.get("/admin/barangays", { params }),
 
-  getUnassigned: () =>
-    api.get('/admin/barangays/unassigned'),
+  getUnassigned: () => api.get("/admin/barangays/unassigned"),
 
-  create: (data) =>
-    api.post('/admin/barangays', data),
+  create: (data) => api.post("/admin/barangays", data),
 
-  update: (id, data) =>
-    api.put(`/admin/barangays/${id}`, data),
+  update: (id, data) => api.put(`/admin/barangays/${id}`, data),
 
-  delete: (id) =>
-    api.delete(`/admin/barangays/${id}`),
+  delete: (id) => api.delete(`/admin/barangays/${id}`),
 
   assign: (barangayId, branchId) =>
-    api.post('/admin/barangays/assign', { barangay_id: barangayId, branch_id: branchId }),
+    api.post("/admin/barangays/assign", {
+      barangay_id: barangayId,
+      branch_id: branchId,
+    }),
 
   bulkAssign: (branchId, barangayIds) =>
-    api.post('/admin/barangays/bulk-assign', { branch_id: branchId, barangay_ids: barangayIds }),
+    api.post("/admin/barangays/bulk-assign", {
+      branch_id: branchId,
+      barangay_ids: barangayIds,
+    }),
 
   unassign: (barangayId) =>
     api.delete(`/admin/barangays/${barangayId}/unassign`),
@@ -323,20 +273,15 @@ export const barangayManagementApi = {
 
 // Benefit Types Management API
 export const benefitTypesApi = {
-  getAll: () =>
-    api.get('/admin/benefit-types'),
+  getAll: () => api.get("/admin/benefit-types"),
 
-  create: (data) =>
-    api.post('/admin/benefit-types', data),
+  create: (data) => api.post("/admin/benefit-types", data),
 
-  update: (id, data) =>
-    api.put(`/admin/benefit-types/${id}`, data),
+  update: (id, data) => api.put(`/admin/benefit-types/${id}`, data),
 
-  delete: (id) =>
-    api.delete(`/admin/benefit-types/${id}`),
+  delete: (id) => api.delete(`/admin/benefit-types/${id}`),
 
-  toggle: (id) =>
-    api.patch(`/admin/benefit-types/${id}/toggle`),
+  toggle: (id) => api.patch(`/admin/benefit-types/${id}/toggle`),
 };
 
 export default api;
