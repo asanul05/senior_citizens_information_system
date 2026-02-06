@@ -48,7 +48,7 @@ class PublicController extends Controller
     {
         $query = Announcement::with('type')
             ->published()
-            ->orderByDesc('published_at')
+            ->orderByDesc('published_date')
             ->orderByDesc('created_at');
 
         // Optional type filter (by type code or name)
@@ -60,15 +60,16 @@ class PublicController extends Controller
 
         // Optional text search
         if ($search = $request->get('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('content', 'like', "%{$search}%");
+            $like = '%' . $search . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('title', 'like', $like)
+                    ->orWhere('description', 'like', $like);
             });
         }
 
         $announcements = $query->get()->map(function (Announcement $announcement) {
             $eventDate = $announcement->event_date?->format('Y-m-d');
-            $publishedDate = $announcement->published_at?->format('Y-m-d');
+            $publishedDate = $announcement->published_date?->format('Y-m-d');
 
             return [
                 'id' => $announcement->id,
@@ -78,7 +79,7 @@ class PublicController extends Controller
                 'type_name' => $announcement->type?->name,
                 'date' => $eventDate ?? $publishedDate ?? $announcement->created_at?->format('Y-m-d'),
                 'event_date' => $eventDate,
-                'published_at' => $announcement->published_at?->toIso8601String(),
+                'published_at' => $announcement->published_date?->toIso8601String(),
             ];
         });
 
@@ -152,9 +153,9 @@ class PublicController extends Controller
         // Check for duplicate pre-registration (pending/in-review applications)
         $existingPreReg = PreRegistration::where('status', '!=', 'rejected')
             ->where('status', '!=', 'converted')
-            ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.first_name')))) = ?", [$firstName])
-            ->whereRaw("LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.last_name')))) = ?", [$lastName])
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(applicant_data, '$.birthdate')) = ?", [$birthdate])
+            ->whereRaw('LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, \'$.first_name\')))) = ?', [$firstName])
+            ->whereRaw('LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(applicant_data, \'$.last_name\')))) = ?', [$lastName])
+            ->whereRaw('JSON_UNQUOTE(JSON_EXTRACT(applicant_data, \'$.birthdate\')) = ?', [$birthdate])
             ->first();
 
         if ($existingPreReg) {
