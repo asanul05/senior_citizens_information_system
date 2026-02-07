@@ -130,6 +130,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}/documents', [\App\Http\Controllers\Api\ReplaceLostController::class, 'getDocuments']);
     });
 
+    // Replace Damaged ID
+    Route::prefix('replace-damaged')->group(function () {
+        Route::get('/search', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'search']);
+        Route::post('/new', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'store']);
+        Route::get('/{id}', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'update']);
+        Route::post('/upload-document', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'uploadDocument']);
+        Route::delete('/document/{id}', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'deleteDocument']);
+        Route::get('/{id}/documents', [\App\Http\Controllers\Api\ReplaceDamagedController::class, 'getDocuments']);
+    });
+
     // Benefits Module (PRD 4.3)
     Route::prefix('benefits')->group(function () {
         Route::get('/types', [\App\Http\Controllers\Api\BenefitController::class, 'types']);
