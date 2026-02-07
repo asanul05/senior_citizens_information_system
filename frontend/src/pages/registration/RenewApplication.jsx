@@ -156,7 +156,7 @@ const RenewApplication = () => {
         } catch (error) {
             console.error('Failed to load application:', error);
             message.error('Failed to load application data');
-            navigate('/admin/applications');
+            navigate('/admin/registration/list');
         } finally {
             setLoading(false);
         }
@@ -501,7 +501,7 @@ const RenewApplication = () => {
                         <Button
                             key="list"
                             type="primary"
-                            onClick={() => navigate('/admin/applications')}
+                            onClick={() => navigate('/admin/registration/list')}
                         >
                             View Applications
                         </Button>,

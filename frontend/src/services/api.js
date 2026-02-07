@@ -161,6 +161,28 @@ export const renewalApi = {
   deleteDocument: (documentId) => api.delete(`/renew/document/${documentId}`),
 };
 
+// Replace Lost ID API
+export const replaceLostApi = {
+  searchByOscaId: (oscaId) =>
+    api.get("/replace-lost/search", { params: { osca_id: oscaId } }),
+
+  submitNew: (data) => api.post("/replace-lost/new", data),
+
+  getById: (id) => api.get(`/replace-lost/${id}`),
+
+  update: (id, data) => api.put(`/replace-lost/${id}`, data),
+
+  getDocuments: (id) => api.get(`/replace-lost/${id}/documents`),
+
+  uploadDocument: (formData) =>
+    api.post("/replace-lost/upload-document", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  deleteDocument: (documentId) =>
+    api.delete(`/replace-lost/document/${documentId}`),
+};
+
 // Public API (No authentication required)
 export const publicApi = {
   getBarangays: () => api.get("/public/barangays"),
