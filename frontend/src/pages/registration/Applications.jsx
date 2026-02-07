@@ -123,8 +123,20 @@ const Applications = () => {
     };
 
     const handleEdit = (record) => {
-        // Navigate to edit page with application data
-        navigate(`/admin/registration/new?edit=${record.id}`);
+        // Navigate to correct edit page based on application type
+        // application_type_id: 1 = New ID, 2 = Renewal, 3 = Lost/Damaged
+        const typeId = record.application_type_id || record.application_type?.id;
+
+        if (typeId === 2) {
+            // Renewal application
+            navigate(`/admin/registration/renew?edit=${record.id}`);
+        } else if (typeId === 3) {
+            // Lost/Damaged application (when implemented)
+            navigate(`/admin/registration/lost-damaged?edit=${record.id}`);
+        } else {
+            // Default: New ID application
+            navigate(`/admin/registration/new?edit=${record.id}`);
+        }
     };
 
     const handleStatusUpdate = async (id, newStatus) => {

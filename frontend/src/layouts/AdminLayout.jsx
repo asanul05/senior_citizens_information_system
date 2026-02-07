@@ -63,11 +63,8 @@ const AdminLayout = () => {
             label: 'Registration',
             children: [
                 { key: '/admin/registration/new', label: 'New ID' },
-                // Hide Revalidation and Lost/Damaged from FO
-                ...(!isFO ? [
-                    { key: '/admin/registration/revalidation', label: 'Revalidation' },
-                    { key: '/admin/registration/lost-damaged', label: 'Lost/Damaged' },
-                ] : []),
+                { key: '/admin/registration/renew', label: 'Renew ID' },
+                { key: '/admin/registration/lost-damaged', label: 'Lost/Damaged' },
                 { key: '/admin/registration/list', label: 'Application List' },
             ],
         },
