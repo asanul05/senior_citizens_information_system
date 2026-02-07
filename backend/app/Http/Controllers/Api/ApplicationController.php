@@ -177,8 +177,9 @@ class ApplicationController extends Controller
                 case 'Approved':
                     // ==============================================
                     // STRICT DUPLICATE CHECK BEFORE APPROVAL
+                    // Only for NEW registrations (where senior_id is null)
                     // ==============================================
-                    if ($application->applicant_data) {
+                    if (!$application->senior_id && $application->applicant_data) {
                         $personalInfo = $application->applicant_data['personal_info'] ?? [];
                         $firstName = strtolower(trim($personalInfo['first_name'] ?? ''));
                         $lastName = strtolower(trim($personalInfo['last_name'] ?? ''));
@@ -205,16 +206,13 @@ class ApplicationController extends Controller
                     }
                     // ==============================================
                     
-                    // Create senior_citizen from applicant_data
+                    // NEW REGISTRATION: Create senior_citizen from applicant_data
                     if (!$application->senior_id && $application->applicant_data) {
                         $seniorId = $this->createSeniorFromApplication($application, $user);
                         $updateData['senior_id'] = $seniorId;
-                    } else if ($application->senior) {
-                        // If senior already exists, just activate them
-                        $application->senior->update([
-                            'registration_status_id' => 2, // Approved
-                            'is_active' => true,
-                        ]);
+                    } else if ($application->senior_id && $application->senior) {
+                        // RENEWAL: Update existing senior with any changed info from applicant_data
+                        $this->updateSeniorFromRenewal($application, $user);
                     }
                     $updateData['approved_by'] = $user->id;
                     $updateData['approval_date'] = now();
@@ -327,6 +325,51 @@ class ApplicationController extends Controller
         }
 
         return $senior->id;
+    }
+
+    /**
+     * Update existing senior citizen from renewal application's applicant_data.
+     * This applies any updated info (address, phone, etc.) while preserving the OSCA ID.
+     */
+    private function updateSeniorFromRenewal(Application $application, $user): void
+    {
+        $senior = $application->senior;
+        if (!$senior) {
+            return;
+        }
+
+        $data = $application->applicant_data;
+        $personal = $data['personal_info'] ?? [];
+        $contact = $data['contact_info'] ?? [];
+        $background = $data['background_info'] ?? [];
+
+        // Update senior's personal info (preserving osca_id)
+        $senior->update([
+            'first_name' => $personal['first_name'] ?? $senior->first_name,
+            'middle_name' => $personal['middle_name'] ?? $senior->middle_name,
+            'last_name' => $personal['last_name'] ?? $senior->last_name,
+            'extension' => $personal['extension'] ?? $senior->extension,
+            'birthdate' => $personal['birthdate'] ?? $senior->birthdate,
+            'gender_id' => $personal['gender_id'] ?? $senior->gender_id,
+            'barangay_id' => $personal['barangay_id'] ?? $senior->barangay_id,
+            'educational_attainment_id' => $background['educational_attainment_id'] ?? $senior->educational_attainment_id,
+            'monthly_salary' => $background['monthly_salary'] ?? $senior->monthly_salary,
+            'occupation' => $background['occupation'] ?? $senior->occupation,
+            'other_skills' => $background['other_skills'] ?? $senior->other_skills,
+            'registration_status_id' => 2, // Approved
+            'is_active' => true,
+        ]);
+
+        // Update contact info if exists
+        if ($senior->contact) {
+            $senior->contact->update([
+                'mobile_number' => $contact['mobile_number'] ?? $senior->contact->mobile_number,
+                'telephone_number' => $contact['telephone_number'] ?? $senior->contact->telephone_number,
+                'house_number' => $contact['house_number'] ?? $senior->contact->house_number,
+                'street' => $contact['street'] ?? $senior->contact->street,
+                'barangay_id' => $personal['barangay_id'] ?? $senior->contact->barangay_id,
+            ]);
+        }
     }
 
     /**

@@ -140,6 +140,27 @@ export const registrationApi = {
     api.delete(`/registration/document/${documentId}`),
 };
 
+// Renewal API (Renew ID)
+export const renewalApi = {
+  searchByOscaId: (oscaId) =>
+    api.get("/renew/search", { params: { osca_id: oscaId } }),
+
+  submitNew: (data) => api.post("/renew/new", data),
+
+  getById: (id) => api.get(`/renew/${id}`),
+
+  update: (id, data) => api.put(`/renew/${id}`, data),
+
+  getDocuments: (id) => api.get(`/renew/${id}/documents`),
+
+  uploadDocument: (formData) =>
+    api.post("/renew/upload-document", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  deleteDocument: (documentId) => api.delete(`/renew/document/${documentId}`),
+};
+
 // Public API (No authentication required)
 export const publicApi = {
   getBarangays: () => api.get("/public/barangays"),

@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Seniors from "./pages/Seniors";
 import NewApplication from "./pages/registration/NewApplication";
+import RenewApplication from "./pages/registration/RenewApplication";
 import Applications from "./pages/registration/Applications";
 import IdPrinting from "./pages/IdPrinting";
 import PreRegistrations from "./pages/PreRegistrations";
@@ -117,10 +118,7 @@ function App() {
                     element={<Navigate to="/admin/registration/list" replace />}
                   />
                   <Route path="new" element={<NewApplication />} />
-                  <Route
-                    path="revalidation"
-                    element={<ComingSoon title="Revalidation/Update" />}
-                  />
+                  <Route path="renew" element={<RenewApplication />} />
                   <Route
                     path="lost-damaged"
                     element={<ComingSoon title="Lost/Damaged ID" />}
