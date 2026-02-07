@@ -64,7 +64,8 @@ const AdminLayout = () => {
             children: [
                 { key: '/admin/registration/new', label: 'New ID' },
                 { key: '/admin/registration/renew', label: 'Renew ID' },
-                { key: '/admin/registration/lost-damaged', label: 'Lost/Damaged' },
+                { key: '/admin/registration/replace-lost', label: 'Replace Lost ID' },
+                { key: '/admin/registration/replace-damaged', label: 'Replace Damaged ID' },
                 { key: '/admin/registration/list', label: 'Application List' },
             ],
         },

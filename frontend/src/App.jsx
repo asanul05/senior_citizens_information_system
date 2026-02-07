@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Seniors from "./pages/Seniors";
 import NewApplication from "./pages/registration/NewApplication";
+import ReplaceLostApplication from "./pages/registration/ReplaceLostApplication";
 import RenewApplication from "./pages/registration/RenewApplication";
 import Applications from "./pages/registration/Applications";
 import IdPrinting from "./pages/IdPrinting";
@@ -119,9 +120,10 @@ function App() {
                   />
                   <Route path="new" element={<NewApplication />} />
                   <Route path="renew" element={<RenewApplication />} />
+                  <Route path="replace-lost" element={<ReplaceLostApplication />} />
                   <Route
-                    path="lost-damaged"
-                    element={<ComingSoon title="Lost/Damaged ID" />}
+                    path="replace-damaged"
+                    element={<ComingSoon title="Replace Damaged ID" />}
                   />
                   <Route path="list" element={<Applications />} />
                 </Route>
