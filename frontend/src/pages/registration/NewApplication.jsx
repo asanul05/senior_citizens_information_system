@@ -701,9 +701,9 @@ const NewApplication = () => {
                 <Col xs={24} sm={12}>
                     <Form.Item
                         name="house_number"
-                        label={<span>House No. <span style={{ color: '#fa8c16' }}>*</span></span>}
+                        label="House No."
                     >
-                        <Input placeholder="House number" size="large" />
+                        <Input placeholder="House number (optional)" size="large" />
                     </Form.Item>
                 </Col>
             </Row>
@@ -712,9 +712,9 @@ const NewApplication = () => {
                 <Col xs={24}>
                     <Form.Item
                         name="street"
-                        label={<span>Street <span style={{ color: '#fa8c16' }}>*</span></span>}
+                        label="Street"
                     >
-                        <Input placeholder="Street name" size="large" />
+                        <Input placeholder="Street name (optional)" size="large" />
                     </Form.Item>
                 </Col>
             </Row>
