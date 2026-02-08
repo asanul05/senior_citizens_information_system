@@ -77,6 +77,7 @@ const NewApplication = () => {
     const [previewImage, setPreviewImage] = useState(null);
     const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
     const [pendingNextStep, setPendingNextStep] = useState(false);
+    const selectedGenderId = Form.useWatch('gender_id', form);
 
     // Pre-registration conversion state
     const [preRegistrationId, setPreRegistrationId] = useState(null);
@@ -197,6 +198,7 @@ const NewApplication = () => {
                     extension: personal.extension,
                     birthdate: personal.birthdate ? dayjs(personal.birthdate) : null,
                     gender_id: personal.gender_id,
+                    civil_status_id: personal.civil_status_id,
                     barangay_id: personal.barangay_id,
                     house_number: contact.house_number,
                     street: contact.street,
@@ -569,6 +571,7 @@ const NewApplication = () => {
                 extension: allData.extension,
                 birthdate: allData.birthdate?.format('YYYY-MM-DD'),
                 gender_id: allData.gender_id,
+                civil_status_id: allData.civil_status_id,
                 barangay_id: allData.barangay_id,
 
                 // Address/Contact
@@ -804,10 +807,43 @@ const NewApplication = () => {
                         label={<span>Sex <span style={{ color: '#fa8c16' }}>*</span></span>}
                         rules={[{ required: true, message: 'Sex is required' }]}
                     >
-                        <Select placeholder="Select Sex" size="large">
+                        <Select
+                            placeholder="Select Sex"
+                            size="large"
+                            onChange={(value) => {
+                                // Clear civil status if it becomes invalid for the new gender
+                                const currentCivilStatus = form.getFieldValue('civil_status_id');
+                                // Widow(4) only for Female(2), Widower(5) only for Male(1)
+                                if ((value === 1 && currentCivilStatus === 4) ||
+                                    (value === 2 && currentCivilStatus === 5)) {
+                                    form.setFieldValue('civil_status_id', undefined);
+                                }
+                            }}
+                        >
                             {lookupOptions?.genders?.map((g) => (
                                 <Option key={g.id} value={g.id}>
                                     {g.name}
+                                </Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                    <Form.Item
+                        name="civil_status_id"
+                        label={<span>Civil Status <span style={{ color: '#fa8c16' }}>*</span></span>}
+                        rules={[{ required: true, message: 'Civil Status is required' }]}
+                        dependencies={['gender_id']}
+                    >
+                        <Select placeholder="Select Civil Status" size="large">
+                            {lookupOptions?.civil_statuses?.filter((cs) => {
+                                // Widow(4) only for Female(2), Widower(5) only for Male(1)
+                                if (cs.id === 4 && selectedGenderId === 1) return false; // Hide Widow for Male
+                                if (cs.id === 5 && selectedGenderId === 2) return false; // Hide Widower for Female
+                                return true;
+                            }).map((cs) => (
+                                <Option key={cs.id} value={cs.id}>
+                                    {cs.name}
                                 </Option>
                             ))}
                         </Select>
@@ -1094,6 +1130,7 @@ const NewApplication = () => {
         const data = { ...formData, ...form.getFieldsValue() };
         const selectedBarangay = barangays.find((b) => b.id === data.barangay_id);
         const selectedGender = lookupOptions?.genders?.find((g) => g.id === data.gender_id);
+        const selectedCivilStatus = lookupOptions?.civil_statuses?.find((cs) => cs.id === data.civil_status_id);
         const selectedEducation = lookupOptions?.educational_attainments?.find((e) => e.id === data.educational_attainment_id);
 
         return (
@@ -1338,6 +1375,9 @@ const NewApplication = () => {
                     </Descriptions.Item>
                     <Descriptions.Item label="Sex">
                         {selectedGender?.name || '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Civil Status">
+                        {selectedCivilStatus?.name || '-'}
                     </Descriptions.Item>
                 </Descriptions>
 

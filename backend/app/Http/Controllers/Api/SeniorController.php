@@ -17,7 +17,7 @@ class SeniorController extends Controller
         $user = $request->user();
         $perPage = $request->get('per_page', 15);
         
-        $query = SeniorCitizen::with(['barangay', 'branch', 'gender', 'registrationStatus'])
+        $query = SeniorCitizen::with(['barangay', 'branch', 'gender', 'civilStatus', 'registrationStatus'])
             ->accessibleBy($user);
 
         // Search filter
@@ -103,6 +103,7 @@ class SeniorController extends Controller
                 'barangay',
                 'branch',
                 'gender',
+                'civilStatus',
                 'contact',
                 'educationalAttainment',
                 'socioeconomicStatus',
@@ -332,7 +333,7 @@ class SeniorController extends Controller
             DB::commit();
 
             // Reload with relationships
-            $senior->load(['barangay', 'gender', 'contact', 'branch']);
+            $senior->load(['barangay', 'gender', 'civilStatus', 'contact', 'branch']);
 
             return response()->json([
                 'success' => true,
