@@ -10,24 +10,30 @@ class Announcement extends Model
 
     protected $fillable = [
         'title',
-        'content',
+        'description',
         'type_id',
-        'barangay_id',
-        'branch_id',
         'event_date',
+        'event_time',
         'location',
         'target_audience',
         'is_published',
-        'published_at',
+        'published_date',
         'created_by',
-        'image_path',
     ];
 
     protected $casts = [
         'event_date' => 'date',
-        'published_at' => 'datetime',
+        'published_date' => 'datetime',
         'is_published' => 'boolean',
     ];
+
+    /**
+     * Backwards-compatible accessor so $announcement->content works and is serialized.
+     */
+    public function getContentAttribute()
+    {
+        return $this->attributes['description'] ?? null;
+    }
 
     // Relationships
     public function type()
@@ -48,6 +54,11 @@ class Announcement extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function media()
+    {
+        return $this->hasMany(AnnouncementMedia::class, 'announcement_id');
     }
 
     // Scopes

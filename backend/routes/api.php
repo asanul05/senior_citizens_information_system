@@ -90,10 +90,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Announcements
     Route::get('/announcements', [AnnouncementController::class, 'index']);
     Route::get('/announcements/types', [AnnouncementController::class, 'types']);
+    Route::get('/announcements/{id}/media', [AnnouncementController::class, 'mediaIndex']);
+    Route::post('/announcements/{id}/media', [AnnouncementController::class, 'uploadMedia']);
     Route::get('/announcements/{id}', [AnnouncementController::class, 'show']);
     Route::post('/announcements', [AnnouncementController::class, 'store']);
     Route::put('/announcements/{id}', [AnnouncementController::class, 'update']);
     Route::delete('/announcements/{id}', [AnnouncementController::class, 'destroy']);
+    Route::delete('/announcements/media/{mediaId}', [AnnouncementController::class, 'destroyMedia']);
 
     // Registration
     Route::prefix('registration')->group(function () {
