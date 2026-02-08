@@ -28,6 +28,7 @@ const { useBreakpoint } = Grid;
 const AdminLayout = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [openKeys, setOpenKeys] = useState(['/admin/registration']);
     const { user, logout, isMainAdmin } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -119,8 +120,8 @@ const AdminLayout = () => {
             label: 'Settings',
             children: [
                 { key: '/admin/accounts', label: 'Accounts' },
-                { key: '/admin/settings/branches', label: 'Branches & Barangays' },
-                { key: '/admin/settings/benefits', label: 'Benefit Types' },
+                { key: '/admin/settings/branches', label: 'Field Offices and Barangays' },
+                { key: '/admin/settings/benefits', label: 'Benefits Management' },
             ],
         }] : []),
     ];
@@ -182,11 +183,16 @@ const AdminLayout = () => {
                 theme="dark"
                 mode="inline"
                 selectedKeys={[location.pathname]}
-                defaultOpenKeys={['/admin/registration']}
+                openKeys={openKeys}
+                onOpenChange={(keys) => setOpenKeys(keys)}
                 items={menuItems}
                 onClick={({ key }) => {
-                    navigate(key);
-                    if (isMobile) setMobileMenuOpen(false);
+                    // Only navigate if clicking on a leaf item (not a parent with children)
+                    const isParentItem = menuItems.some(item => item.key === key && item.children);
+                    if (!isParentItem) {
+                        navigate(key);
+                        if (isMobile) setMobileMenuOpen(false);
+                    }
                 }}
                 style={{
                     background: 'transparent',

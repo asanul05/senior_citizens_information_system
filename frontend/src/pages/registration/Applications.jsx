@@ -307,7 +307,7 @@ const Applications = () => {
                     <Col xs={12} sm={6}>
                         <Card size="small">
                             <Statistic
-                                title="Pending"
+                                title="Drafts"
                                 value={statistics.pending || 0}
                                 valueStyle={{ color: '#8c8c8c' }}
                             />
