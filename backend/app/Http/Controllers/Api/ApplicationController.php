@@ -50,8 +50,8 @@ class ApplicationController extends Controller
             $query->where('status', $status);
         }
 
-        // Type filter
-        if ($typeId = $request->get('type_id')) {
+        // Type filter (accept both type_id and application_type parameter names)
+        if ($typeId = $request->get('type_id') ?? $request->get('application_type')) {
             $query->where('application_type_id', $typeId);
         }
 
@@ -127,9 +127,27 @@ class ApplicationController extends Controller
             'documents', // Include uploaded documents
         ])->findOrFail($id);
 
+        $data = $application->toArray();
+
+        // Add barangay_name for pending apps without senior
+        if (!$application->senior && $application->applicant_data) {
+            $personal = $application->applicant_data['personal_info'] ?? [];
+            if (isset($personal['barangay_id'])) {
+                $barangay = \App\Models\Barangay::find($personal['barangay_id']);
+                // Add barangay_name to the applicant_data.personal_info
+                $data['applicant_data']['personal_info']['barangay_name'] = $barangay ? $barangay->name : null;
+            }
+        } elseif ($application->senior && $application->senior->barangay) {
+            // For apps with senior, include barangay name in applicant_data too
+            if (!isset($data['applicant_data']['personal_info'])) {
+                $data['applicant_data']['personal_info'] = [];
+            }
+            $data['applicant_data']['personal_info']['barangay_name'] = $application->senior->barangay->name;
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $application,
+            'data' => $data,
         ]);
     }
 

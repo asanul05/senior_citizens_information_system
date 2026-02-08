@@ -129,7 +129,6 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
         const requiredFields = {
             personal: ['first_name', 'last_name', 'birthdate', 'gender_id', 'civil_status_id', 'barangay_id'],
             contact: ['mobile_number'],
-            address: ['house_number', 'street'],
         };
 
         let filled = 0;
@@ -149,12 +148,6 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
             if (contact[field]) filled++;
         });
 
-        // Check address
-        const address = data.address || {};
-        requiredFields.address.forEach(field => {
-            total++;
-            if (address[field]) filled++;
-        });
 
         // Check documents (assuming 3 required)
         total += 3;
@@ -221,10 +214,10 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
             <Card size="small" title="Address" style={{ marginBottom: 16 }}>
                 <Descriptions column={3} size="small" bordered>
                     <Descriptions.Item label="House No.">
-                        <FieldStatus value={addressData.house_number} label="House No." />
+                        <FieldStatus value={contactInfo.house_number || addressData.house_number} label="House No." optional />
                     </Descriptions.Item>
                     <Descriptions.Item label="Street">
-                        <FieldStatus value={addressData.street} label="Street" />
+                        <FieldStatus value={contactInfo.street || addressData.street} label="Street" optional />
                     </Descriptions.Item>
                     <Descriptions.Item label="Barangay">
                         <FieldStatus value={personalInfo.barangay_name || applicantData.barangay_name} label="Barangay" />

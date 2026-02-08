@@ -50,6 +50,7 @@ const Applications = () => {
     const [filters, setFilters] = useState({
         search: '',
         status: '',
+        application_type: '',
     });
     const [detailsModalVisible, setDetailsModalVisible] = useState(false);
     const [selectedApplicationId, setSelectedApplicationId] = useState(null);
@@ -67,6 +68,7 @@ const Applications = () => {
                 per_page: pagination.pageSize,
                 search: filters.search || undefined,
                 status: filters.status || undefined,
+                application_type: filters.application_type || undefined,
             };
             const response = await applicationsApi.getList(params);
             const data = response.data;
@@ -100,6 +102,11 @@ const Applications = () => {
 
     const handleStatusFilter = (value) => {
         setFilters(prev => ({ ...prev, status: value }));
+        setPagination(prev => ({ ...prev, current: 1 }));
+    };
+
+    const handleTypeFilter = (value) => {
+        setFilters(prev => ({ ...prev, application_type: value }));
         setPagination(prev => ({ ...prev, current: 1 }));
     };
 
@@ -374,7 +381,7 @@ const Applications = () => {
             {/* Filters */}
             <Card style={{ marginBottom: 16 }}>
                 <Row gutter={16} align="middle">
-                    <Col xs={24} sm={12} md={8}>
+                    <Col xs={24} sm={12} md={6}>
                         <Input.Search
                             placeholder="Search by name or application number"
                             allowClear
@@ -383,7 +390,7 @@ const Applications = () => {
                             onChange={(e) => !e.target.value && handleSearch('')}
                         />
                     </Col>
-                    <Col xs={24} sm={8} md={6}>
+                    <Col xs={24} sm={8} md={5}>
                         <Select
                             placeholder="Filter by Status"
                             allowClear
@@ -394,13 +401,29 @@ const Applications = () => {
                             <Option value="Draft">Draft</Option>
                             <Option value="For Verification">For Verification</Option>
                             <Option value="Approved">Approved</Option>
+                            <Option value="Printed">Printed</Option>
+                            <Option value="Claimed">Claimed</Option>
+                        </Select>
+                    </Col>
+                    <Col xs={24} sm={8} md={5}>
+                        <Select
+                            placeholder="Filter by Type"
+                            allowClear
+                            style={{ width: '100%' }}
+                            onChange={handleTypeFilter}
+                            value={filters.application_type || undefined}
+                        >
+                            <Option value="1">New ID</Option>
+                            <Option value="2">Renewal</Option>
+                            <Option value="3">Replace Lost ID</Option>
+                            <Option value="4">Replace Damaged ID</Option>
                         </Select>
                     </Col>
                     <Col>
                         <Button
                             icon={<ReloadOutlined />}
                             onClick={() => {
-                                setFilters({ search: '', status: '' });
+                                setFilters({ search: '', status: '', application_type: '' });
                                 setPagination(prev => ({ ...prev, current: 1 }));
                             }}
                         >
