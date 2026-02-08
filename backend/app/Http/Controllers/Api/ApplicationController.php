@@ -129,13 +129,17 @@ class ApplicationController extends Controller
 
         $data = $application->toArray();
 
-        // Add barangay_name for pending apps without senior
+        // Add barangay_name and civil_status_name for pending apps without senior
         if (!$application->senior && $application->applicant_data) {
             $personal = $application->applicant_data['personal_info'] ?? [];
             if (isset($personal['barangay_id'])) {
                 $barangay = \App\Models\Barangay::find($personal['barangay_id']);
                 // Add barangay_name to the applicant_data.personal_info
                 $data['applicant_data']['personal_info']['barangay_name'] = $barangay ? $barangay->name : null;
+            }
+            if (isset($personal['civil_status_id'])) {
+                $civilStatus = \App\Models\CivilStatus::find($personal['civil_status_id']);
+                $data['applicant_data']['personal_info']['civil_status_name'] = $civilStatus ? $civilStatus->name : null;
             }
         } elseif ($application->senior && $application->senior->barangay) {
             // For apps with senior, include barangay name in applicant_data too
@@ -309,6 +313,7 @@ class ApplicationController extends Controller
             'extension' => $personal['extension'] ?? null,
             'birthdate' => $personal['birthdate'] ?? null,
             'gender_id' => $personal['gender_id'] ?? 1,
+            'civil_status_id' => $personal['civil_status_id'] ?? null,
             'barangay_id' => $personal['barangay_id'] ?? null,
             'branch_id' => $branchId,
             'contact_id' => $contactRecord->id,

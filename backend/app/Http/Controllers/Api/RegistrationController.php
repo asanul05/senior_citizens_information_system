@@ -39,12 +39,16 @@ class RegistrationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
+        // Get civil statuses from database
+        $civilStatuses = \App\Models\CivilStatus::all(['id', 'name']);
+
         $options = [
             'genders' => $genders,
             'application_types' => ApplicationType::all(['id', 'name', 'description']),
             'educational_attainments' => $educationalAttainments,
             'mobility_levels' => $mobilityLevels,
             'branches' => $branches,
+            'civil_statuses' => $civilStatuses,
         ];
 
         return response()->json([
@@ -139,6 +143,7 @@ class RegistrationController extends Controller
                 'extension' => 'nullable|string|max:20',
                 'birthdate' => 'required|date',
                 'gender_id' => 'required|exists:genders,id',
+                'civil_status_id' => 'required|exists:civil_statuses,id',
                 'barangay_id' => 'required|exists:barangays,id',
                 'house_number' => 'nullable|string|max:100',
                 'street' => 'nullable|string|max:255',
@@ -283,6 +288,7 @@ class RegistrationController extends Controller
                     'extension' => $extension,
                     'birthdate' => $request->birthdate,
                     'gender_id' => $request->gender_id,
+                    'civil_status_id' => $request->civil_status_id,
                     'barangay_id' => $request->barangay_id,
                 ],
                 'contact_info' => [
@@ -403,6 +409,7 @@ class RegistrationController extends Controller
             'extension' => 'nullable|string|max:20',
             'birthdate' => 'required|date',
             'gender_id' => 'required|exists:genders,id',
+            'civil_status_id' => 'required|exists:civil_statuses,id',
             'barangay_id' => 'required|exists:barangays,id',
             'house_number' => 'nullable|string|max:100',
             'street' => 'nullable|string|max:255',
@@ -429,6 +436,7 @@ class RegistrationController extends Controller
                     'extension' => $request->extension,
                     'birthdate' => $request->birthdate,
                     'gender_id' => $request->gender_id,
+                    'civil_status_id' => $request->civil_status_id,
                     'barangay_id' => $request->barangay_id,
                 ],
                 'contact_info' => [

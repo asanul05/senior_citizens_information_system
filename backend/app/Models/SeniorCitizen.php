@@ -18,6 +18,7 @@ class SeniorCitizen extends Model
         'extension',
         'birthdate',
         'gender_id',
+        'civil_status_id',
         'contact_id',
         'educational_attainment_id',
         'monthly_salary',
@@ -78,6 +79,11 @@ class SeniorCitizen extends Model
     public function gender()
     {
         return $this->belongsTo(Gender::class, 'gender_id');
+    }
+
+    public function civilStatus()
+    {
+        return $this->belongsTo(CivilStatus::class, 'civil_status_id');
     }
 
     public function barangay()

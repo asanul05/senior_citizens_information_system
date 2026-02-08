@@ -413,7 +413,7 @@ function BranchManagement() {
     return (
         <div style={{ padding: '24px' }}>
             <Card>
-                <Title level={4} style={{ marginBottom: 24 }}>Branch & Barangay Management</Title>
+                <Title level={4} style={{ marginBottom: 24 }}>Field Office & Barangay Management</Title>
 
                 <Tabs defaultActiveKey="branches">
                     <TabPane tab={<span><BranchesOutlined /> Field Offices</span>} key="branches">
