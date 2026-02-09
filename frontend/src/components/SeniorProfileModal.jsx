@@ -225,7 +225,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                                 title: 'Benefit',
                                 dataIndex: ['benefit_type', 'name'],
                                 key: 'benefit',
-                                render: (_, record) => record.benefit_type?.name || '-',
+                                render: (_, record) => record.benefit_name || record.benefit_type?.name || record.benefit?.name || record.benefitType?.name || '-',
                             },
                             {
                                 title: 'Amount',
@@ -278,9 +278,9 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                         },
                         {
                             title: 'Type',
-                            dataIndex: ['type', 'name'],
+                            dataIndex: ['application_type', 'name'],
                             key: 'type',
-                            render: (_, record) => record.type?.name || '-',
+                            render: (_, record) => record.application_type?.name || record.applicationType?.name || '-',
                         },
                         {
                             title: 'Status',
