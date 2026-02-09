@@ -214,8 +214,8 @@ const AdminLayout = () => {
                     width={260}
                     collapsedWidth={80}
                     style={{
-                        background: 'linear-gradient(180deg, #312e81 0%, #4338ca 100%)',
-                        boxShadow: '2px 0 8px rgba(0, 0, 0, 0.15)',
+                        background: '#DA1E37',
+                        boxShadow: '2px 0 8px rgba(0, 0, 0, 1)',
                         position: 'fixed',
                         left: 0,
                         top: 0,
@@ -235,7 +235,7 @@ const AdminLayout = () => {
                 onClose={() => setMobileMenuOpen(false)}
                 width={280}
                 styles={{
-                    body: { padding: 0, background: 'linear-gradient(180deg, #312e81 0%, #4338ca 100%)' },
+                    body: { padding: 0, background: '#DA1E37' },
                     header: { display: 'none' },
                 }}
             >
@@ -288,7 +288,7 @@ const AdminLayout = () => {
                         <Space style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: 8, transition: 'background 0.2s' }}>
                             <Avatar
                                 style={{
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    background: '#006fd6',
                                 }}
                                 icon={<UserOutlined />}
                             />

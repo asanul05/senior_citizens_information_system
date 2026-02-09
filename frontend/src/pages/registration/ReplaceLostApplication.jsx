@@ -440,6 +440,15 @@ const ReplaceLostApplication = () => {
                             <Descriptions.Item label="Full Name">
                                 {seniorData.full_name || `${seniorData.first_name} ${seniorData.middle_name || ''} ${seniorData.last_name}`.trim()}
                             </Descriptions.Item>
+                            <Descriptions.Item label="Age">
+                                {seniorData.age} years old
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Sex">
+                                {seniorData.gender?.name || (seniorData.gender_id === 1 ? 'Male' : seniorData.gender_id === 2 ? 'Female' : '-')}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Civil Status">
+                                {seniorData.civil_status?.name || '-'}
+                            </Descriptions.Item>
                             <Descriptions.Item label="Barangay">
                                 {seniorData.barangay || 'N/A'}
                             </Descriptions.Item>

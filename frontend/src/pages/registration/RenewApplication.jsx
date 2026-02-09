@@ -598,6 +598,12 @@ const RenewApplication = () => {
                             <Descriptions.Item label="Age">
                                 {seniorData.age || calculatedAge} years old
                             </Descriptions.Item>
+                            <Descriptions.Item label="Sex">
+                                {seniorData.gender?.name || (seniorData.gender_id === 1 ? 'Male' : seniorData.gender_id === 2 ? 'Female' : '-')}
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Civil Status">
+                                {seniorData.civil_status?.name || '-'}
+                            </Descriptions.Item>
                             <Descriptions.Item label="Barangay">
                                 {seniorData.barangay}
                             </Descriptions.Item>
