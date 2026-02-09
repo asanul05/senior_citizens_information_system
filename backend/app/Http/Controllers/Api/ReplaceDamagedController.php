@@ -25,7 +25,7 @@ class ReplaceDamagedController extends Controller
         $oscaId = trim($request->osca_id);
 
         $senior = SeniorCitizen::where('osca_id', $oscaId)
-            ->with(['barangay', 'gender', 'contact', 'educationalAttainment', 'branch'])
+            ->with(['barangay', 'gender', 'civilStatus', 'contact', 'educationalAttainment', 'branch'])
             ->first();
 
         if (!$senior) {
@@ -79,7 +79,9 @@ class ReplaceDamagedController extends Controller
                 'birthdate' => $senior->birthdate?->format('Y-m-d'),
                 'age' => $senior->age,
                 'gender_id' => $senior->gender_id,
-                'gender' => $senior->gender?->name,
+                'gender' => $senior->gender,
+                'civil_status_id' => $senior->civil_status_id,
+                'civil_status' => $senior->civilStatus,
                 'barangay_id' => $senior->barangay_id,
                 'barangay' => $senior->barangay?->name,
                 'branch_id' => $senior->branch_id,
