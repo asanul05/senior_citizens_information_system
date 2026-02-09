@@ -123,8 +123,8 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
         return <Tag color={statusColors[status] || 'default'}>{status}</Tag>;
     };
 
-    const calculateProgress = (data, docs = []) => {
-        if (!data) return { percent: 0, filled: 0, total: 0 };
+    const calculateProgress = (data, docs = [], appTypeId = 1) => {
+        if (!data) return { percent: 0, filled: 0, total: 0, missingDocs: 0 };
 
         const requiredFields = {
             personal: ['first_name', 'last_name', 'birthdate', 'gender_id', 'civil_status_id', 'barangay_id'],
@@ -148,15 +148,27 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
             if (contact[field]) filled++;
         });
 
+        // Get required document count based on application type
+        const requiredDocCounts = {
+            1: 3, // New ID: Birth Cert, Barangay Cert, Photo (COMELEC is optional)
+            2: 4, // Renewal: Birth Cert, Barangay Cert, Photo, Old ID Photocopy
+            3: 4, // Replace Lost: Birth Cert, Barangay Cert, Photo, Affidavit of Loss
+            4: 4, // Replace Damaged: Birth Cert, Barangay Cert, Photo, Damaged ID Photocopy
+        };
+        const requiredDocCount = requiredDocCounts[appTypeId] || 3;
 
-        // Check documents (assuming 3 required)
-        total += 3;
-        filled += Math.min(docs.length, 3);
+        // Count how many required docs are uploaded
+        const uploadedRequiredDocs = Math.min(docs.length, requiredDocCount);
+        const missingDocs = requiredDocCount - uploadedRequiredDocs;
+
+        total += requiredDocCount;
+        filled += uploadedRequiredDocs;
 
         return {
             percent: Math.round((filled / total) * 100),
             filled,
-            total
+            total,
+            missingDocs
         };
     };
 
@@ -172,7 +184,50 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
     const associations = applicantData.associations || [];
     // Documents come from the relationship, not applicant_data
     const documents = application?.documents || [];
-    const progress = calculateProgress(applicantData, documents);
+    const appTypeId = application?.application_type_id || 1;
+    const progress = calculateProgress(applicantData, documents, appTypeId);
+
+    // Helper to get required documents based on application type
+    const getRequiredDocsByType = (typeId) => {
+        const documentsByType = {
+            // New ID (type 1) - 3 required + 1 optional
+            1: [
+                { id: 1, name: 'Birth Certificate / ID with Date of Birth', key: 'birth_certificate' },
+                { id: 2, name: 'Original Barangay Certification', key: 'barangay_certificate' },
+                { id: 3, name: 'COMELEC ID / Certification', key: 'comelec', optional: true },
+                { id: 4, name: 'Senior Citizen Recent Picture (2x2)', key: 'photo' },
+            ],
+            // Renewal (type 2) - 4 required
+            2: [
+                { id: 1, name: 'Birth Certificate / ID with Date of Birth', key: 'birth_certificate' },
+                { id: 2, name: 'Original Barangay Certification', key: 'barangay_certificate' },
+                { id: 4, name: 'Senior Citizen Recent Picture (2x2)', key: 'photo' },
+                { id: 5, name: 'Photocopy of Old Senior Citizen ID Card', key: 'old_id' },
+            ],
+            // Replace Lost ID (type 3) - 4 required
+            3: [
+                { id: 1, name: 'Birth Certificate / ID with Date of Birth', key: 'birth_certificate' },
+                { id: 2, name: 'Original Barangay Certification', key: 'barangay_certificate' },
+                { id: 4, name: 'Senior Citizen Recent Picture (2x2)', key: 'photo' },
+                { id: 6, name: 'Affidavit of Loss', key: 'affidavit_loss' },
+            ],
+            // Replace Damaged ID (type 4) - 4 required
+            4: [
+                { id: 1, name: 'Birth Certificate / ID with Date of Birth', key: 'birth_certificate' },
+                { id: 2, name: 'Original Barangay Certification', key: 'barangay_certificate' },
+                { id: 4, name: 'Senior Citizen Recent Picture (2x2)', key: 'photo' },
+                { id: 7, name: 'Photocopy of Damaged Senior Citizen ID Card', key: 'damaged_id' },
+            ],
+        };
+        return documentsByType[typeId] || documentsByType[1];
+    };
+
+    // Count missing required documents for badge
+    const getDocByTypeId = (typeId) => documents.find(d =>
+        d.document_type_id === typeId || d.type_id === typeId || d.type === typeId || d.documentTypeId === typeId
+    );
+    const requiredDocsForBadge = getRequiredDocsByType(appTypeId);
+    const missingDocsCount = requiredDocsForBadge.filter(doc => !doc.optional && !getDocByTypeId(doc.id)).length;
 
     const renderPersonalInfoTab = () => (
         <div>
@@ -298,12 +353,8 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
     );
 
     const renderDocumentsTab = () => {
-        const requiredDocs = [
-            { id: 1, name: 'Proof of Age (Birth Certificate / Valid ID)', key: 'birth_certificate' },
-            { id: 2, name: 'Barangay Certification / Residency', key: 'barangay_certificate' },
-            { id: 3, name: "COMELEC ID / Certification (Optional)", key: 'comelec', optional: true },
-            { id: 4, name: 'Senior Citizen Photo (2x2)', key: 'photo' },
-        ];
+        // Reuse the helper function for document requirements
+        const requiredDocs = getRequiredDocsByType(appTypeId);
 
         const getDocByType = (typeId) => {
             // Check multiple possible field names for document type
@@ -314,6 +365,9 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                 d.documentTypeId === typeId
             );
         };
+
+        // Count missing required documents
+        const missingCount = requiredDocs.filter(doc => !doc.optional && !getDocByType(doc.id)).length;
 
         return (
             <div>
@@ -489,8 +543,13 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                                 </TabPane>
                                 <TabPane
                                     tab={
-                                        <Badge count={documents.length} size="small" offset={[10, 0]}>
-                                            <span><FileOutlined /> Documents</span>
+                                        <Badge
+                                            count={missingDocsCount}
+                                            size="small"
+                                            offset={[10, 0]}
+                                            style={{ backgroundColor: missingDocsCount > 0 ? '#faad14' : '#52c41a' }}
+                                        >
+                                            <span><FileOutlined /> Documents {missingDocsCount > 0 ? `(${missingDocsCount} missing)` : ''}</span>
                                         </Badge>
                                     }
                                     key="documents"
