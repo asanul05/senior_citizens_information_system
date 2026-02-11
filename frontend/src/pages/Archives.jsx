@@ -10,11 +10,12 @@ import {
   Tag,
   Typography,
   Space,
-  Drawer,
+  Modal,
   Descriptions,
   Timeline,
   Spin,
   message,
+  Button,
 } from "antd";
 import {
   FolderOutlined,
@@ -43,7 +44,7 @@ const Archives = () => {
     from_date: undefined,
     to_date: undefined,
   });
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
@@ -116,7 +117,7 @@ const Archives = () => {
 
   const openDetails = async (record) => {
     try {
-      setDrawerOpen(true);
+      setModalOpen(true);
       setSelected(null);
       setTimeline([]);
       setTimelineLoading(true);
@@ -139,65 +140,13 @@ const Archives = () => {
 
   const columns = [
     {
-      title: "Senior / User",
+      title: "Name",
       key: "name",
       render: (_, record) => (
-        <div>
-          <Text strong>{record.full_name || record.username}</Text>
-          <br />
-          {record.osca_id && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              OSCA ID: {record.osca_id}
-            </Text>
-          )}
-          {record.employee_id && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Employee ID: {record.employee_id}
-            </Text>
-          )}
-        </div>
+        <Button type="link" onClick={() => openDetails(record)}>
+          {record.full_name || record.username}
+        </Button>
       ),
-    },
-    {
-      title: "Archive Type",
-      dataIndex: "archive_type",
-      key: "archive_type",
-      width: 140,
-      render: (type) => (
-        <Tag color={type === "senior_citizen" ? "blue" : "purple"}>
-          {type === "senior_citizen" ? "Senior Citizen" : "Admin User"}
-        </Tag>
-      ),
-    },
-    {
-      title: "Reason",
-      dataIndex: "archive_reason",
-      key: "archive_reason",
-      width: 140,
-      render: (reason) => {
-        const map = {
-          deceased: { label: "Deceased", color: "red" },
-          deactivated: { label: "Deactivated", color: "orange" },
-          transferred: { label: "Transferred", color: "geekblue" },
-          other: { label: "Other", color: "default" },
-        };
-        const info = map[reason] || map.other;
-        return <Tag color={info.color}>{info.label}</Tag>;
-      },
-    },
-    {
-      title: "Barangay",
-      dataIndex: "barangay_name",
-      key: "barangay_name",
-      width: 160,
-      render: (name) => name || "-",
-    },
-    {
-      title: "Deceased Date",
-      dataIndex: "deceased_date",
-      key: "deceased_date",
-      width: 130,
-      render: (date) => (date ? dayjs(date).format("MMM D, YYYY") : "-"),
     },
     {
       title: "Archived At",
@@ -205,13 +154,6 @@ const Archives = () => {
       key: "archived_at",
       width: 170,
       render: (date) => (date ? dayjs(date).format("MMM D, YYYY HH:mm") : "-"),
-    },
-    {
-      title: "Archived By",
-      dataIndex: "archived_by_name",
-      key: "archived_by_name",
-      width: 160,
-      render: (name) => name || "-",
     },
   ];
 
@@ -286,14 +228,10 @@ const Archives = () => {
             showTotal: (total) => `${total} archived records`,
           }}
           onChange={handleTableChange}
-          onRow={(record) => ({
-            onClick: () => openDetails(record),
-            style: { cursor: "pointer" },
-          })}
         />
       </Card>
 
-      <Drawer
+      <Modal
         title={
           <span>
             Archive Details
@@ -305,9 +243,11 @@ const Archives = () => {
           </span>
         }
         width={600}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        footer={null}
         destroyOnClose
+        centered
       >
         {timelineLoading && (
           <div style={{ textAlign: "center", padding: 40 }}>
@@ -429,7 +369,7 @@ const Archives = () => {
             )}
           </>
         )}
-      </Drawer>
+      </Modal>
     </div>
   );
 };
