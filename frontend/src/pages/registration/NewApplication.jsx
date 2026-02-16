@@ -296,8 +296,8 @@ const NewApplication = () => {
             const allData = { ...formData, ...form.getFieldsValue() };
 
             // Check minimum required fields
-            if (!allData.first_name || !allData.last_name || !allData.birthdate || !allData.gender_id || !allData.barangay_id) {
-                message.warning('Please fill in the required personal information before uploading documents.');
+            if (!allData.first_name || !allData.last_name || !allData.birthdate || !allData.gender_id || !allData.civil_status_id || !allData.barangay_id) {
+                message.warning('Please fill in all required personal information (name, birthdate, sex, civil status, barangay) before uploading documents.');
                 return false;
             }
 
@@ -313,6 +313,7 @@ const NewApplication = () => {
                     extension: allData.extension,
                     birthdate: allData.birthdate?.format?.('YYYY-MM-DD') || allData.birthdate,
                     gender_id: allData.gender_id,
+                    civil_status_id: allData.civil_status_id,
                     barangay_id: allData.barangay_id,
                     house_number: allData.house_number,
                     street: allData.street,
