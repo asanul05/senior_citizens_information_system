@@ -181,7 +181,8 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
     const contactInfo = applicantData.contact_info || {};
     const addressData = applicantData.address || {};
     const familyMembers = applicantData.family_members || [];
-    const associations = applicantData.associations || [];
+    const targetSectors = applicantData.target_sectors || [];
+    const subCategories = applicantData.sub_categories || [];
     // Documents come from the relationship, not applicant_data
     const documents = application?.documents || [];
     const appTypeId = application?.application_type_id || 1;
@@ -305,10 +306,22 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                     size="small"
                     pagination={false}
                     columns={[
-                        { title: 'Name', dataIndex: 'name', key: 'name' },
-                        { title: 'Relationship', dataIndex: 'relationship', key: 'relationship' },
-                        { title: 'Age', dataIndex: 'age', key: 'age', width: 80 },
-                        { title: 'Occupation', dataIndex: 'occupation', key: 'occupation' },
+                        {
+                            title: 'Name',
+                            key: 'name',
+                            render: (_, record) => {
+                                const parts = [
+                                    record.first_name,
+                                    record.middle_name,
+                                    record.last_name,
+                                    record.extension,
+                                ].filter(Boolean);
+                                return parts.join(' ') || '-';
+                            },
+                        },
+                        { title: 'Relationship', dataIndex: 'relationship', key: 'relationship', render: (val) => val || '-' },
+                        { title: 'Age', dataIndex: 'age', key: 'age', width: 80, render: (val) => val || '-' },
+                        { title: 'Monthly Salary', dataIndex: 'monthly_salary', key: 'monthly_salary', render: (val) => val ? `₱${Number(val).toLocaleString()}` : '-' },
                     ]}
                 />
             ) : (
@@ -319,36 +332,29 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
 
     const renderAssociationTab = () => (
         <div>
-            <Card size="small" title="Membership & Associations">
-                {associations.length > 0 ? (
+            <Card size="small" title="Target Sectors" style={{ marginBottom: 16 }}>
+                {targetSectors.length > 0 ? (
                     <Space wrap>
-                        {associations.map((assoc, index) => (
-                            <Tag key={index} color="blue">{assoc.name || assoc}</Tag>
-                        ))}
-                    </Space>
-                ) : personalInfo.sectors && personalInfo.sectors.length > 0 ? (
-                    <Space wrap>
-                        {personalInfo.sectors.map((sector, index) => (
+                        {targetSectors.map((sector, index) => (
                             <Tag key={index} color="blue">{sector}</Tag>
                         ))}
                     </Space>
                 ) : (
-                    <Text type="secondary">No associations listed</Text>
+                    <Text type="secondary">No target sectors selected</Text>
                 )}
             </Card>
 
-            {personalInfo.pension_source && (
-                <Card size="small" title="Pension Information" style={{ marginTop: 16 }}>
-                    <Descriptions size="small" bordered>
-                        <Descriptions.Item label="Pension Source">
-                            {personalInfo.pension_source}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Monthly Pension">
-                            {personalInfo.pension_amount ? `₱${Number(personalInfo.pension_amount).toLocaleString()}` : 'N/A'}
-                        </Descriptions.Item>
-                    </Descriptions>
-                </Card>
-            )}
+            <Card size="small" title="Sub-Categories">
+                {subCategories.length > 0 ? (
+                    <Space wrap>
+                        {subCategories.map((cat, index) => (
+                            <Tag key={index} color="green">{cat}</Tag>
+                        ))}
+                    </Space>
+                ) : (
+                    <Text type="secondary">No sub-categories selected</Text>
+                )}
+            </Card>
         </div>
     );
 

@@ -30,6 +30,8 @@ import {
     CloseCircleOutlined,
     ManOutlined,
     WomanOutlined,
+    TeamOutlined,
+    TagOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { seniorsApi, benefitsApi } from '../services/api';
@@ -209,6 +211,103 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         </Card>
     );
 
+    // Get applicant_data from the latest application
+    const getApplicantData = () => {
+        if (!senior?.applications?.length) return null;
+        // Find the latest application with applicant_data
+        const app = senior.applications
+            .filter(a => a.applicant_data)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        return app?.applicant_data || null;
+    };
+
+    const renderFamily = () => {
+        const appData = getApplicantData();
+        const familyMembers = appData?.family_members || [];
+
+        return (
+            <Card size="small" title="Family Composition" style={{ marginTop: 16 }}>
+                {familyMembers.length > 0 ? (
+                    <Table
+                        dataSource={familyMembers}
+                        rowKey={(_, index) => index}
+                        size="small"
+                        pagination={false}
+                        columns={[
+                            {
+                                title: 'Name',
+                                key: 'name',
+                                render: (_, record) => {
+                                    const parts = [
+                                        record.first_name,
+                                        record.middle_name,
+                                        record.last_name,
+                                        record.extension,
+                                    ].filter(Boolean);
+                                    return parts.join(' ') || '-';
+                                },
+                            },
+                            {
+                                title: 'Relationship',
+                                dataIndex: 'relationship',
+                                key: 'relationship',
+                                render: (val) => val || '-',
+                            },
+                            {
+                                title: 'Age',
+                                dataIndex: 'age',
+                                key: 'age',
+                                width: 60,
+                                render: (val) => val || '-',
+                            },
+                            {
+                                title: 'Monthly Salary',
+                                dataIndex: 'monthly_salary',
+                                key: 'monthly_salary',
+                                render: (val) => val ? `₱${Number(val).toLocaleString()}` : '-',
+                            },
+                        ]}
+                    />
+                ) : (
+                    <Empty description="No family members recorded" />
+                )}
+            </Card>
+        );
+    };
+
+    const renderAssociation = () => {
+        const appData = getApplicantData();
+        const targetSectors = appData?.target_sectors || [];
+        const subCategories = appData?.sub_categories || [];
+
+        return (
+            <div>
+                <Card size="small" title="Target Sectors" style={{ marginTop: 16 }}>
+                    {targetSectors.length > 0 ? (
+                        <Space wrap>
+                            {targetSectors.map((sector, i) => (
+                                <Tag key={i} color="blue">{sector}</Tag>
+                            ))}
+                        </Space>
+                    ) : (
+                        <Empty description="No target sectors recorded" />
+                    )}
+                </Card>
+                <Card size="small" title="Sub-Categories" style={{ marginTop: 16 }}>
+                    {subCategories.length > 0 ? (
+                        <Space wrap>
+                            {subCategories.map((cat, i) => (
+                                <Tag key={i} color="green">{cat}</Tag>
+                            ))}
+                        </Space>
+                    ) : (
+                        <Empty description="No sub-categories recorded" />
+                    )}
+                </Card>
+            </div>
+        );
+    };
+
     const renderBenefits = () => (
         <div>
             <Card size="small" title="Benefits History" style={{ marginTop: 16 }}>
@@ -361,6 +460,22 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                             >
                                 {renderPersonalDetails()}
                                 {renderAddressContact()}
+                            </TabPane>
+                            <TabPane
+                                tab={
+                                    <span><TeamOutlined /> Family</span>
+                                }
+                                key="family"
+                            >
+                                {renderFamily()}
+                            </TabPane>
+                            <TabPane
+                                tab={
+                                    <span><TagOutlined /> Association</span>
+                                }
+                                key="association"
+                            >
+                                {renderAssociation()}
                             </TabPane>
                             <TabPane
                                 tab={

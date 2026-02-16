@@ -121,7 +121,7 @@ const Apply = () => {
     const addFamilyMember = () => {
         setFamilyMembers([
             ...familyMembers,
-            { id: Date.now(), first_name: '', middle_name: '', last_name: '', relationship: '', age: '', monthly_salary: '' },
+            { id: Date.now(), first_name: '', middle_name: '', last_name: '', extension: '', relationship: '', age: '', monthly_salary: '' },
         ]);
     };
 
@@ -139,6 +139,18 @@ const Apply = () => {
         try {
             const values = await form.validateFields();
             setFormData({ ...formData, ...values });
+
+            // Validate family member required fields
+            if (currentStep === 1 && familyMembers.length > 0) {
+                const invalidMembers = familyMembers.filter(
+                    m => !m.first_name?.trim() || !m.last_name?.trim() || !m.relationship?.trim() || m.relationship === '__other__'
+                );
+                if (invalidMembers.length > 0) {
+                    message.warning('Please fill in First Name, Last Name, and Relationship for all family members, or remove incomplete entries.');
+                    return;
+                }
+            }
+
             if (currentStep < steps.length - 1) {
                 setCurrentStep(currentStep + 1);
             }
@@ -653,7 +665,10 @@ const Apply = () => {
                                         >
                                             <Row gutter={12}>
                                                 <Col xs={24} sm={8}>
-                                                    <Form.Item label="First Name" style={{ marginBottom: 8 }}>
+                                                    <Form.Item
+                                                        label={<span>First Name <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
                                                         <Input
                                                             value={member.first_name}
                                                             onChange={(e) => updateFamilyMember(member.id, 'first_name', e.target.value)}
@@ -662,7 +677,19 @@ const Apply = () => {
                                                     </Form.Item>
                                                 </Col>
                                                 <Col xs={24} sm={8}>
-                                                    <Form.Item label="Last Name" style={{ marginBottom: 8 }}>
+                                                    <Form.Item label="Middle Name" style={{ marginBottom: 8 }}>
+                                                        <Input
+                                                            value={member.middle_name}
+                                                            onChange={(e) => updateFamilyMember(member.id, 'middle_name', e.target.value)}
+                                                            placeholder="Middle name"
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={8}>
+                                                    <Form.Item
+                                                        label={<span>Last Name <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
                                                         <Input
                                                             value={member.last_name}
                                                             onChange={(e) => updateFamilyMember(member.id, 'last_name', e.target.value)}
@@ -670,20 +697,72 @@ const Apply = () => {
                                                         />
                                                     </Form.Item>
                                                 </Col>
-                                                <Col xs={24} sm={8}>
-                                                    <Form.Item label="Relationship" style={{ marginBottom: 8 }}>
-                                                        <Select
-                                                            value={member.relationship}
-                                                            onChange={(val) => updateFamilyMember(member.id, 'relationship', val)}
-                                                            placeholder="Select"
-                                                        >
-                                                            <Option value="Spouse">Spouse</Option>
-                                                            <Option value="Son">Son</Option>
-                                                            <Option value="Daughter">Daughter</Option>
-                                                            <Option value="Grandchild">Grandchild</Option>
-                                                            <Option value="Sibling">Sibling</Option>
-                                                            <Option value="Other">Other</Option>
-                                                        </Select>
+                                            </Row>
+                                            <Row gutter={12}>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item label="Extension" style={{ marginBottom: 8 }}>
+                                                        <Input
+                                                            value={member.extension}
+                                                            onChange={(e) => updateFamilyMember(member.id, 'extension', e.target.value)}
+                                                            placeholder="Jr., Sr."
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item
+                                                        label={<span>Relationship <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
+                                                        {member.relationship === '__other__' || (member.relationship && !['Spouse', 'Son', 'Daughter', 'Grandchild', 'Sibling', 'Parent', 'In-Law', 'Nephew/Niece'].includes(member.relationship)) ? (
+                                                            <Input
+                                                                value={member.relationship === '__other__' ? '' : member.relationship}
+                                                                onChange={(e) => updateFamilyMember(member.id, 'relationship', e.target.value)}
+                                                                placeholder="Specify relationship"
+                                                                addonAfter={
+                                                                    <a onClick={() => updateFamilyMember(member.id, 'relationship', '')}
+                                                                        style={{ fontSize: 12 }}
+                                                                    >Back</a>
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <Select
+                                                                value={member.relationship || undefined}
+                                                                onChange={(val) => updateFamilyMember(member.id, 'relationship', val)}
+                                                                placeholder="Select"
+                                                            >
+                                                                <Option value="Spouse">Spouse</Option>
+                                                                <Option value="Son">Son</Option>
+                                                                <Option value="Daughter">Daughter</Option>
+                                                                <Option value="Grandchild">Grandchild</Option>
+                                                                <Option value="Sibling">Sibling</Option>
+                                                                <Option value="Parent">Parent</Option>
+                                                                <Option value="In-Law">In-Law</Option>
+                                                                <Option value="Nephew/Niece">Nephew/Niece</Option>
+                                                                <Option value="__other__">Other (specify)</Option>
+                                                            </Select>
+                                                        )}
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item label="Age" style={{ marginBottom: 8 }}>
+                                                        <InputNumber
+                                                            value={member.age}
+                                                            onChange={(value) => updateFamilyMember(member.id, 'age', value)}
+                                                            placeholder="Age"
+                                                            min={0}
+                                                            style={{ width: '100%' }}
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item label="Monthly Salary" style={{ marginBottom: 8 }}>
+                                                        <InputNumber
+                                                            value={member.monthly_salary}
+                                                            onChange={(value) => updateFamilyMember(member.id, 'monthly_salary', value)}
+                                                            placeholder="0.00"
+                                                            min={0}
+                                                            style={{ width: '100%' }}
+                                                        />
                                                     </Form.Item>
                                                 </Col>
                                             </Row>
@@ -782,6 +861,48 @@ const Apply = () => {
                                                     <Text type="secondary">Family Members</Text>
                                                     <div><Text strong>{familyMembers.filter(m => m.first_name).length} members listed</Text></div>
                                                 </Col>
+                                            )}
+                                            {(formData.target_sectors?.length > 0 || formData.sub_categories?.length > 0) && (
+                                                <>
+                                                    <Divider style={{ margin: '12px 0' }} />
+                                                    <Col span={24}>
+                                                        <Text type="secondary" strong>Association</Text>
+                                                    </Col>
+                                                    {formData.target_sectors?.length > 0 && (
+                                                        <Col span={24}>
+                                                            <Text type="secondary">Target Sectors</Text>
+                                                            <div>{formData.target_sectors.map((s, i) => (
+                                                                <span key={i} style={{
+                                                                    display: 'inline-block',
+                                                                    background: '#dbeafe',
+                                                                    color: '#2563eb',
+                                                                    padding: '2px 10px',
+                                                                    borderRadius: 12,
+                                                                    marginRight: 6,
+                                                                    marginBottom: 4,
+                                                                    fontSize: 13,
+                                                                }}>{s}</span>
+                                                            ))}</div>
+                                                        </Col>
+                                                    )}
+                                                    {formData.sub_categories?.length > 0 && (
+                                                        <Col span={24}>
+                                                            <Text type="secondary">Sub-Categories</Text>
+                                                            <div>{formData.sub_categories.map((s, i) => (
+                                                                <span key={i} style={{
+                                                                    display: 'inline-block',
+                                                                    background: '#dcfce7',
+                                                                    color: '#16a34a',
+                                                                    padding: '2px 10px',
+                                                                    borderRadius: 12,
+                                                                    marginRight: 6,
+                                                                    marginBottom: 4,
+                                                                    fontSize: 13,
+                                                                }}>{s}</span>
+                                                            ))}</div>
+                                                        </Col>
+                                                    )}
+                                                </>
                                             )}
                                         </Row>
                                     </Card>
