@@ -30,7 +30,8 @@ import {
     EnvironmentOutlined,
     SwapOutlined,
 } from '@ant-design/icons';
-import { branchApi, barangayManagementApi } from '../../services/api';
+import { branchApi, barangayManagementApi, districtApi } from '../../services/api';
+import { GlobalOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -59,11 +60,20 @@ function BranchManagement() {
     const [assignTargetBranch, setAssignTargetBranch] = useState(null);
     const [selectedBarangayIds, setSelectedBarangayIds] = useState([]);
 
+    // District state
+    const [districts, setDistricts] = useState([]);
+    const [districtLoading, setDistrictLoading] = useState(false);
+    const [districtModalVisible, setDistrictModalVisible] = useState(false);
+    const [districtModalMode, setDistrictModalMode] = useState('create');
+    const [selectedDistrict, setSelectedDistrict] = useState(null);
+    const [districtForm] = Form.useForm();
+
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         loadBranches();
         loadBarangays();
+        loadDistricts();
     }, []);
 
     // ==========================================
@@ -213,7 +223,6 @@ function BranchManagement() {
     // ==========================================
     const openAssignModal = (branch) => {
         setAssignTargetBranch(branch);
-        // Pre-select currently assigned barangays
         const currentIds = barangays
             .filter(b => b.branch_id === branch.id)
             .map(b => b.id);
@@ -233,6 +242,66 @@ function BranchManagement() {
             message.error('Failed to assign barangays');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    // ==========================================
+    // DISTRICT OPERATIONS
+    // ==========================================
+    const loadDistricts = async () => {
+        setDistrictLoading(true);
+        try {
+            const response = await districtApi.getList();
+            setDistricts(response.data.data);
+        } catch (error) {
+            message.error('Failed to load districts');
+        } finally {
+            setDistrictLoading(false);
+        }
+    };
+
+    const openDistrictModal = (mode, record = null) => {
+        setDistrictModalMode(mode);
+        setSelectedDistrict(record);
+        if (record) {
+            districtForm.setFieldsValue(record);
+        } else {
+            districtForm.resetFields();
+        }
+        setDistrictModalVisible(true);
+    };
+
+    const handleDistrictSubmit = async () => {
+        try {
+            const values = await districtForm.validateFields();
+            setSubmitting(true);
+
+            if (districtModalMode === 'create') {
+                await districtApi.create(values);
+                message.success('District created successfully');
+            } else {
+                await districtApi.update(selectedDistrict.id, values);
+                message.success('District updated successfully');
+            }
+
+            setDistrictModalVisible(false);
+            loadDistricts();
+            loadBarangays(); // Refresh in case names changed
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Operation failed');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDistrictDelete = async (id) => {
+        try {
+            await districtApi.delete(id);
+            message.success('District deleted successfully');
+            loadDistricts();
+            loadBarangays(); // Refresh district assignments
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Failed to delete');
         }
     };
 
@@ -410,6 +479,62 @@ function BranchManagement() {
         },
     ];
 
+    const districtColumns = [
+        {
+            title: 'Name',
+            dataIndex: 'name',
+            key: 'name',
+            render: (name) => (
+                <Space>
+                    <GlobalOutlined />
+                    <span>{name}</span>
+                </Space>
+            ),
+        },
+        {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            render: (desc) => desc || <Text type="secondary">—</Text>,
+        },
+        {
+            title: 'Barangays',
+            dataIndex: 'barangays_count',
+            key: 'barangays_count',
+            width: 120,
+            render: (count) => (
+                <Badge count={count || 0} showZero style={{ backgroundColor: count ? '#52c41a' : '#d9d9d9' }} />
+            ),
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            width: 120,
+            render: (_, record) => (
+                <Space size="small">
+                    <Tooltip title="Edit">
+                        <Button
+                            type="text"
+                            icon={<EditOutlined />}
+                            onClick={() => openDistrictModal('edit', record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                        <Popconfirm
+                            title="Delete this district?"
+                            description="Barangays in this district will have their district cleared"
+                            onConfirm={() => handleDistrictDelete(record.id)}
+                            okText="Delete"
+                            okButtonProps={{ danger: true }}
+                        >
+                            <Button type="text" icon={<DeleteOutlined />} danger />
+                        </Popconfirm>
+                    </Tooltip>
+                </Space>
+            ),
+        },
+    ];
+
     return (
         <div style={{ padding: '24px' }}>
             <Card>
@@ -442,7 +567,7 @@ function BranchManagement() {
 
                     <TabPane tab={<span><EnvironmentOutlined /> Barangays</span>} key="barangays">
                         <Row gutter={16} style={{ marginBottom: 16 }}>
-                            <Col span={8}>
+                            <Col span={6}>
                                 <Input
                                     placeholder="Search barangay name..."
                                     prefix={<SearchOutlined />}
@@ -451,7 +576,7 @@ function BranchManagement() {
                                     onPressEnter={loadBarangays}
                                 />
                             </Col>
-                            <Col span={6}>
+                            <Col span={5}>
                                 <Select
                                     placeholder="Filter by Field Office"
                                     allowClear
@@ -489,6 +614,30 @@ function BranchManagement() {
                             loading={barangayLoading}
                             pagination={{ pageSize: 20 }}
                             size="small"
+                        />
+                    </TabPane>
+
+                    <TabPane tab={<span><GlobalOutlined /> Districts</span>} key="districts">
+                        <Row justify="end" style={{ marginBottom: 16 }}>
+                            <Space>
+                                <Button icon={<ReloadOutlined />} onClick={loadDistricts}>
+                                    Refresh
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => openDistrictModal('create')}
+                                >
+                                    Add District
+                                </Button>
+                            </Space>
+                        </Row>
+                        <Table
+                            columns={districtColumns}
+                            dataSource={districts}
+                            rowKey="id"
+                            loading={districtLoading}
+                            pagination={false}
                         />
                     </TabPane>
                 </Tabs>
@@ -556,9 +705,10 @@ function BranchManagement() {
                         <Input placeholder="Barangay name" />
                     </Form.Item>
                     <Form.Item name="district" label="District">
-                        <Select allowClear>
-                            <Option value="District 1">District 1</Option>
-                            <Option value="District 2">District 2</Option>
+                        <Select allowClear placeholder="Select District">
+                            {districts.map(d => (
+                                <Option key={d.id} value={d.name}>{d.name}</Option>
+                            ))}
                         </Select>
                     </Form.Item>
                     {barangayModalMode === 'create' && (
@@ -605,6 +755,28 @@ function BranchManagement() {
                         </Option>
                     ))}
                 </Select>
+            </Modal>
+
+            {/* District Modal */}
+            <Modal
+                title={districtModalMode === 'create' ? 'Add District' : 'Edit District'}
+                open={districtModalVisible}
+                onCancel={() => setDistrictModalVisible(false)}
+                onOk={handleDistrictSubmit}
+                confirmLoading={submitting}
+            >
+                <Form form={districtForm} layout="vertical">
+                    <Form.Item
+                        name="name"
+                        label="Name"
+                        rules={[{ required: true, message: 'District name is required' }]}
+                    >
+                        <Input placeholder="e.g., District 1" />
+                    </Form.Item>
+                    <Form.Item name="description" label="Description">
+                        <Input.TextArea rows={2} placeholder="Optional description" />
+                    </Form.Item>
+                </Form>
             </Modal>
         </div>
     );

@@ -284,7 +284,7 @@ function BenefitSettings() {
                                 icon={<PlusOutlined />}
                                 onClick={() => openModal('create')}
                             >
-                                Add Benefit Type
+                                Add New Benefit
                             </Button>
                         </Space>
                     </Col>
@@ -308,7 +308,7 @@ function BenefitSettings() {
 
             {/* Create/Edit Modal */}
             <Modal
-                title={modalMode === 'create' ? 'Add Benefit Type' : 'Edit Benefit Type'}
+                title={modalMode === 'create' ? 'Add New Benefit' : 'Edit Benefit'}
                 open={modalVisible}
                 onCancel={() => setModalVisible(false)}
                 onOk={handleSubmit}

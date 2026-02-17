@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Barangay;
+use App\Models\District;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -448,6 +449,83 @@ class BranchManagementController extends Controller
         return response()->json([
             'success' => true,
             'data' => $barangays,
+        ]);
+    }
+
+    
+    // DISTRICTS CRUD //
+
+
+     //List all districts with barangay counts     
+    public function indexDistricts(Request $request): JsonResponse
+    {
+        $districts = District::withCount('barangays')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $districts,
+        ]);
+    }
+
+    //Create new district
+    public function storeDistrict(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:districts',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $district = District::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'District created successfully',
+            'data' => $district,
+        ], 201);
+    }
+
+    //Update district (also updates barangay references)
+    public function updateDistrict(Request $request, $id): JsonResponse
+    {
+        $district = District::findOrFail($id);
+        $oldName = $district->name;
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:100|unique:districts,name,' . $id,
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        // If name changed, update all barangays referencing the old name
+        if ($oldName !== $validated['name']) {
+            Barangay::where('district', $oldName)
+                ->update(['district' => $validated['name']]);
+        }
+
+        $district->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'District updated successfully',
+            'data' => $district->loadCount('barangays'),
+        ]);
+    }
+
+    //Delete district (clears district from barangays)
+    public function destroyDistrict(Request $request, $id): JsonResponse
+    {
+        $district = District::findOrFail($id);
+
+        // Clear district reference from barangays
+        Barangay::where('district', $district->name)
+            ->update(['district' => null]);
+
+        $district->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'District deleted successfully',
         ]);
     }
 }
