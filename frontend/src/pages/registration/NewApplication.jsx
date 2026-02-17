@@ -143,6 +143,7 @@ const NewApplication = () => {
                 extension: prefillData.extension,
                 birthdate: prefillData.birthdate ? dayjs(prefillData.birthdate) : null,
                 gender_id: prefillData.gender_id,
+                civil_status_id: prefillData.civil_status_id,
                 barangay_id: prefillData.barangay_id,
                 house_number: prefillData.house_number,
                 street: prefillData.street,
@@ -152,10 +153,20 @@ const NewApplication = () => {
                 monthly_salary: prefillData.monthly_salary,
                 occupation: prefillData.occupation,
                 other_skills: prefillData.other_skills,
+                target_sectors: prefillData.target_sectors || [],
+                sub_categories: prefillData.sub_categories || [],
             });
 
             // Store in formData state
             setFormData(prefillData);
+
+            // Pre-fill family members if available
+            if (prefillData.family_members && prefillData.family_members.length > 0) {
+                setFamilyMembers(prefillData.family_members.map((m, i) => ({
+                    ...m,
+                    id: m.id || Date.now() + i,
+                })));
+            }
 
             // Calculate age if birthdate exists (inline to avoid dependency issue)
             if (prefillData.birthdate) {
@@ -296,8 +307,8 @@ const NewApplication = () => {
             const allData = { ...formData, ...form.getFieldsValue() };
 
             // Check minimum required fields
-            if (!allData.first_name || !allData.last_name || !allData.birthdate || !allData.gender_id || !allData.barangay_id) {
-                message.warning('Please fill in the required personal information before uploading documents.');
+            if (!allData.first_name || !allData.last_name || !allData.birthdate || !allData.gender_id || !allData.civil_status_id || !allData.barangay_id) {
+                message.warning('Please fill in all required personal information (name, birthdate, sex, civil status, barangay) before uploading documents.');
                 return false;
             }
 
@@ -313,6 +324,7 @@ const NewApplication = () => {
                     extension: allData.extension,
                     birthdate: allData.birthdate?.format?.('YYYY-MM-DD') || allData.birthdate,
                     gender_id: allData.gender_id,
+                    civil_status_id: allData.civil_status_id,
                     barangay_id: allData.barangay_id,
                     house_number: allData.house_number,
                     street: allData.street,
@@ -486,6 +498,17 @@ const NewApplication = () => {
                     setShowDuplicateWarning(true);
                     setPendingNextStep(true);
                     return; // Block navigation until user acknowledges
+                }
+            }
+
+            // Validate family member required fields
+            if (currentStep === 1 && familyMembers.length > 0) {
+                const invalidMembers = familyMembers.filter(
+                    m => !m.first_name?.trim() || !m.last_name?.trim() || !m.relationship?.trim() || m.relationship === '__other__'
+                );
+                if (invalidMembers.length > 0) {
+                    message.warning('Please fill in First Name, Last Name, and Relationship for all family members, or remove incomplete entries.');
+                    return;
                 }
             }
 
@@ -989,7 +1012,10 @@ const NewApplication = () => {
                         >
                             <Row gutter={16}>
                                 <Col xs={24} sm={8}>
-                                    <Form.Item label="First Name" style={{ marginBottom: 8 }}>
+                                    <Form.Item
+                                        label={<span>First Name <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                        style={{ marginBottom: 8 }}
+                                    >
                                         <Input
                                             value={member.first_name}
                                             onChange={(e) => updateFamilyMember(member.id, 'first_name', e.target.value)}
@@ -1007,7 +1033,10 @@ const NewApplication = () => {
                                     </Form.Item>
                                 </Col>
                                 <Col xs={24} sm={8}>
-                                    <Form.Item label="Last Name" style={{ marginBottom: 8 }}>
+                                    <Form.Item
+                                        label={<span>Last Name <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                        style={{ marginBottom: 8 }}
+                                    >
                                         <Input
                                             value={member.last_name}
                                             onChange={(e) => updateFamilyMember(member.id, 'last_name', e.target.value)}
@@ -1027,12 +1056,38 @@ const NewApplication = () => {
                                     </Form.Item>
                                 </Col>
                                 <Col xs={24} sm={6}>
-                                    <Form.Item label="Relationship" style={{ marginBottom: 8 }}>
-                                        <Input
-                                            value={member.relationship}
-                                            onChange={(e) => updateFamilyMember(member.id, 'relationship', e.target.value)}
-                                            placeholder="Relationship"
-                                        />
+                                    <Form.Item
+                                        label={<span>Relationship <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                        style={{ marginBottom: 8 }}
+                                    >
+                                        {member.relationship === '__other__' || (member.relationship && !['Spouse', 'Son', 'Daughter', 'Grandchild', 'Sibling', 'Parent', 'In-Law', 'Nephew/Niece'].includes(member.relationship)) ? (
+                                            <Input
+                                                value={member.relationship === '__other__' ? '' : member.relationship}
+                                                onChange={(e) => updateFamilyMember(member.id, 'relationship', e.target.value)}
+                                                placeholder="Specify relationship"
+                                                addonAfter={
+                                                    <a onClick={() => updateFamilyMember(member.id, 'relationship', '')}
+                                                        style={{ fontSize: 12 }}
+                                                    >Back</a>
+                                                }
+                                            />
+                                        ) : (
+                                            <Select
+                                                value={member.relationship || undefined}
+                                                onChange={(val) => updateFamilyMember(member.id, 'relationship', val)}
+                                                placeholder="Select"
+                                            >
+                                                <Option value="Spouse">Spouse</Option>
+                                                <Option value="Son">Son</Option>
+                                                <Option value="Daughter">Daughter</Option>
+                                                <Option value="Grandchild">Grandchild</Option>
+                                                <Option value="Sibling">Sibling</Option>
+                                                <Option value="Parent">Parent</Option>
+                                                <Option value="In-Law">In-Law</Option>
+                                                <Option value="Nephew/Niece">Nephew/Niece</Option>
+                                                <Option value="__other__">Other (specify)</Option>
+                                            </Select>
+                                        )}
                                     </Form.Item>
                                 </Col>
                                 <Col xs={24} sm={6}>
@@ -1423,6 +1478,49 @@ const NewApplication = () => {
                                 {m.age && `, Age: ${m.age}`}
                             </Descriptions.Item>
                         ))}
+                    </Descriptions>
+                )}
+
+                {(data.target_sectors?.length > 0 || data.sub_categories?.length > 0) && (
+                    <Descriptions
+                        title="Association"
+                        bordered
+                        column={{ xs: 1, sm: 2 }}
+                        size="small"
+                        style={{ marginBottom: 24 }}
+                    >
+                        {data.target_sectors?.length > 0 && (
+                            <Descriptions.Item label="Target Sectors">
+                                {data.target_sectors.map((s, i) => (
+                                    <span key={i} style={{
+                                        display: 'inline-block',
+                                        background: '#dbeafe',
+                                        color: '#2563eb',
+                                        padding: '2px 10px',
+                                        borderRadius: 12,
+                                        marginRight: 6,
+                                        marginBottom: 4,
+                                        fontSize: 13,
+                                    }}>{s}</span>
+                                ))}
+                            </Descriptions.Item>
+                        )}
+                        {data.sub_categories?.length > 0 && (
+                            <Descriptions.Item label="Sub-Categories">
+                                {data.sub_categories.map((s, i) => (
+                                    <span key={i} style={{
+                                        display: 'inline-block',
+                                        background: '#dcfce7',
+                                        color: '#16a34a',
+                                        padding: '2px 10px',
+                                        borderRadius: 12,
+                                        marginRight: 6,
+                                        marginBottom: 4,
+                                        fontSize: 13,
+                                    }}>{s}</span>
+                                ))}
+                            </Descriptions.Item>
+                        )}
                     </Descriptions>
                 )}
             </div>

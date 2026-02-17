@@ -235,8 +235,13 @@ class PreRegistrationController extends Controller
             ],
             
             // Additional online data for reference
-            'civil_status' => $onlineData['civil_status'] ?? '',
+            'civil_status_id' => $onlineData['civil_status_id'] ?? null,
             'email' => $onlineData['email'] ?? '',
+            
+            // Family & Associations from online form
+            'family_members' => $onlineData['family_members'] ?? [],
+            'target_sectors' => $onlineData['target_sectors'] ?? [],
+            'sub_categories' => $onlineData['sub_categories'] ?? [],
         ];
 
         // Mark as being converted (optional status update)

@@ -111,6 +111,7 @@ class PublicController extends Controller
             'extension' => 'nullable|string|max:10',
             'birthdate' => 'required|date|before:-60 years',
             'gender_id' => 'required|integer|in:1,2',
+            'civil_status_id' => 'required|integer',
             'house_number' => 'nullable|string|max:50',
             'street' => 'nullable|string|max:255',
             'mobile_number' => 'nullable|string|max:20',
@@ -179,6 +180,7 @@ class PublicController extends Controller
                 'extension' => $request->extension,
                 'birthdate' => $request->birthdate,
                 'gender_id' => $request->gender_id,
+                'civil_status_id' => $request->civil_status_id,
                 // Address
                 'house_number' => $request->house_number,
                 'street' => $request->street,

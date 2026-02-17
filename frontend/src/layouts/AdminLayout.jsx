@@ -28,7 +28,13 @@ const { useBreakpoint } = Grid;
 const AdminLayout = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [openKeys, setOpenKeys] = useState(['/admin/registration']);
+    const [openKeys, setOpenKeys] = useState(() => {
+        const path = window.location.pathname;
+        if (path.startsWith('/admin/benefits')) return ['/admin/benefits-menu'];
+        if (path.startsWith('/admin/registration')) return ['/admin/registration'];
+        if (path.startsWith('/admin/settings') || path.startsWith('/admin/accounts')) return ['/admin/settings'];
+        return ['/admin/registration'];
+    });
     const { user, logout, isMainAdmin } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
@@ -87,9 +93,13 @@ const AdminLayout = () => {
             label: 'ID Printing',
         }] : []),
         {
-            key: '/admin/benefits',
+            key: '/admin/benefits-menu',
             icon: <GiftOutlined />,
             label: 'Benefits',
+            children: [
+                { key: '/admin/benefits', label: 'Benefits Eligibility & Claims' },
+                ...(isMainAdmin() ? [{ key: '/admin/benefits/configuration', label: 'Benefits Configuration' }] : []),
+            ],
         },
         // Complaints - temporarily hidden
         // {
@@ -121,7 +131,6 @@ const AdminLayout = () => {
             children: [
                 { key: '/admin/accounts', label: 'Accounts' },
                 { key: '/admin/settings/branches', label: 'Field Offices and Barangays' },
-                { key: '/admin/settings/benefits', label: 'Benefits Management' },
             ],
         }] : []),
     ];

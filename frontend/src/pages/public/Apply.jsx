@@ -56,6 +56,17 @@ const Apply = () => {
         { id: 9, name: 'Post Graduate' },
     ];
 
+    const civilStatuses = [
+        { id: 1, name: 'Single' },
+        { id: 2, name: 'Married' },
+        { id: 3, name: 'Separated' },
+        { id: 4, name: 'Widow' },
+        { id: 5, name: 'Widower' },
+        { id: 6, name: 'Divorced' },
+        { id: 7, name: 'Annulled' },
+        { id: 8, name: 'Single Parent' },
+    ];
+
     const targetSectors = [
         { value: 'PNGNA', label: 'PNGNA', description: 'Member of national senior citizens organization' },
         { value: 'WEPC', label: 'WEPC', description: 'Female senior citizens in empowerment programs' },
@@ -121,7 +132,7 @@ const Apply = () => {
     const addFamilyMember = () => {
         setFamilyMembers([
             ...familyMembers,
-            { id: Date.now(), first_name: '', middle_name: '', last_name: '', relationship: '', age: '', monthly_salary: '' },
+            { id: Date.now(), first_name: '', middle_name: '', last_name: '', extension: '', relationship: '', age: '', monthly_salary: '' },
         ]);
     };
 
@@ -139,6 +150,18 @@ const Apply = () => {
         try {
             const values = await form.validateFields();
             setFormData({ ...formData, ...values });
+
+            // Validate family member required fields
+            if (currentStep === 1 && familyMembers.length > 0) {
+                const invalidMembers = familyMembers.filter(
+                    m => !m.first_name?.trim() || !m.last_name?.trim() || !m.relationship?.trim() || m.relationship === '__other__'
+                );
+                if (invalidMembers.length > 0) {
+                    message.warning('Please fill in First Name, Last Name, and Relationship for all family members, or remove incomplete entries.');
+                    return;
+                }
+            }
+
             if (currentStep < steps.length - 1) {
                 setCurrentStep(currentStep + 1);
             }
@@ -166,6 +189,7 @@ const Apply = () => {
                 extension: formData.extension,
                 birthdate: formData.birthdate ? dayjs(formData.birthdate).format('YYYY-MM-DD') : null,
                 gender_id: formData.gender_id,
+                civil_status_id: formData.civil_status_id,
 
                 // Address
                 barangay_id: formData.barangay_id,
@@ -451,8 +475,7 @@ const Apply = () => {
                                         <Col xs={24} sm={12}>
                                             <Form.Item
                                                 name="house_number"
-                                                label={<span>House No. <span style={{ color: '#fa8c16' }}>*</span></span>}
-                                                rules={[{ required: true, message: 'House number is required' }]}
+                                                label="House No."
                                             >
                                                 <Input placeholder="House number" size="large" />
                                             </Form.Item>
@@ -460,8 +483,7 @@ const Apply = () => {
                                         <Col xs={24} sm={12}>
                                             <Form.Item
                                                 name="street"
-                                                label={<span>Street <span style={{ color: '#fa8c16' }}>*</span></span>}
-                                                rules={[{ required: true, message: 'Street is required' }]}
+                                                label="Street"
                                             >
                                                 <Input placeholder="Street name" size="large" />
                                             </Form.Item>
@@ -564,6 +586,21 @@ const Apply = () => {
                                                 </Select>
                                             </Form.Item>
                                         </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item
+                                                name="civil_status_id"
+                                                label={<span>Civil Status <span style={{ color: '#fa8c16' }}>*</span></span>}
+                                                rules={[{ required: true, message: 'Civil status is required' }]}
+                                            >
+                                                <Select placeholder="Select Civil Status" size="large" allowClear>
+                                                    {civilStatuses.map((cs) => (
+                                                        <Option key={cs.id} value={cs.id}>
+                                                            {cs.name}
+                                                        </Option>
+                                                    ))}
+                                                </Select>
+                                            </Form.Item>
+                                        </Col>
                                     </Row>
 
                                     <Divider />
@@ -653,7 +690,10 @@ const Apply = () => {
                                         >
                                             <Row gutter={12}>
                                                 <Col xs={24} sm={8}>
-                                                    <Form.Item label="First Name" style={{ marginBottom: 8 }}>
+                                                    <Form.Item
+                                                        label={<span>First Name <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
                                                         <Input
                                                             value={member.first_name}
                                                             onChange={(e) => updateFamilyMember(member.id, 'first_name', e.target.value)}
@@ -662,7 +702,19 @@ const Apply = () => {
                                                     </Form.Item>
                                                 </Col>
                                                 <Col xs={24} sm={8}>
-                                                    <Form.Item label="Last Name" style={{ marginBottom: 8 }}>
+                                                    <Form.Item label="Middle Name" style={{ marginBottom: 8 }}>
+                                                        <Input
+                                                            value={member.middle_name}
+                                                            onChange={(e) => updateFamilyMember(member.id, 'middle_name', e.target.value)}
+                                                            placeholder="Middle name"
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={8}>
+                                                    <Form.Item
+                                                        label={<span>Last Name <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
                                                         <Input
                                                             value={member.last_name}
                                                             onChange={(e) => updateFamilyMember(member.id, 'last_name', e.target.value)}
@@ -670,20 +722,72 @@ const Apply = () => {
                                                         />
                                                     </Form.Item>
                                                 </Col>
-                                                <Col xs={24} sm={8}>
-                                                    <Form.Item label="Relationship" style={{ marginBottom: 8 }}>
-                                                        <Select
-                                                            value={member.relationship}
-                                                            onChange={(val) => updateFamilyMember(member.id, 'relationship', val)}
-                                                            placeholder="Select"
-                                                        >
-                                                            <Option value="Spouse">Spouse</Option>
-                                                            <Option value="Son">Son</Option>
-                                                            <Option value="Daughter">Daughter</Option>
-                                                            <Option value="Grandchild">Grandchild</Option>
-                                                            <Option value="Sibling">Sibling</Option>
-                                                            <Option value="Other">Other</Option>
-                                                        </Select>
+                                            </Row>
+                                            <Row gutter={12}>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item label="Extension" style={{ marginBottom: 8 }}>
+                                                        <Input
+                                                            value={member.extension}
+                                                            onChange={(e) => updateFamilyMember(member.id, 'extension', e.target.value)}
+                                                            placeholder="Jr., Sr."
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item
+                                                        label={<span>Relationship <span style={{ color: '#ff4d4f' }}>*</span></span>}
+                                                        style={{ marginBottom: 8 }}
+                                                    >
+                                                        {member.relationship === '__other__' || (member.relationship && !['Spouse', 'Son', 'Daughter', 'Grandchild', 'Sibling', 'Parent', 'In-Law', 'Nephew/Niece'].includes(member.relationship)) ? (
+                                                            <Input
+                                                                value={member.relationship === '__other__' ? '' : member.relationship}
+                                                                onChange={(e) => updateFamilyMember(member.id, 'relationship', e.target.value)}
+                                                                placeholder="Specify relationship"
+                                                                addonAfter={
+                                                                    <a onClick={() => updateFamilyMember(member.id, 'relationship', '')}
+                                                                        style={{ fontSize: 12 }}
+                                                                    >Back</a>
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <Select
+                                                                value={member.relationship || undefined}
+                                                                onChange={(val) => updateFamilyMember(member.id, 'relationship', val)}
+                                                                placeholder="Select"
+                                                            >
+                                                                <Option value="Spouse">Spouse</Option>
+                                                                <Option value="Son">Son</Option>
+                                                                <Option value="Daughter">Daughter</Option>
+                                                                <Option value="Grandchild">Grandchild</Option>
+                                                                <Option value="Sibling">Sibling</Option>
+                                                                <Option value="Parent">Parent</Option>
+                                                                <Option value="In-Law">In-Law</Option>
+                                                                <Option value="Nephew/Niece">Nephew/Niece</Option>
+                                                                <Option value="__other__">Other (specify)</Option>
+                                                            </Select>
+                                                        )}
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item label="Age" style={{ marginBottom: 8 }}>
+                                                        <InputNumber
+                                                            value={member.age}
+                                                            onChange={(value) => updateFamilyMember(member.id, 'age', value)}
+                                                            placeholder="Age"
+                                                            min={0}
+                                                            style={{ width: '100%' }}
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col xs={24} sm={6}>
+                                                    <Form.Item label="Monthly Salary" style={{ marginBottom: 8 }}>
+                                                        <InputNumber
+                                                            value={member.monthly_salary}
+                                                            onChange={(value) => updateFamilyMember(member.id, 'monthly_salary', value)}
+                                                            placeholder="0.00"
+                                                            min={0}
+                                                            style={{ width: '100%' }}
+                                                        />
                                                     </Form.Item>
                                                 </Col>
                                             </Row>
@@ -751,10 +855,11 @@ const Apply = () => {
                                 <div>
                                     <Title level={4} style={{ marginBottom: 24 }}>Review Your Information</Title>
                                     <Card style={{ background: '#f9fafb', borderRadius: 12, marginBottom: 24 }}>
-                                        <Row gutter={[16, 16]}>
-                                            <Col span={24}>
+                                        <Title level={5} style={{ color: '#1890ff', marginBottom: 12 }}>Personal Information</Title>
+                                        <Row gutter={[16, 8]}>
+                                            <Col xs={24}>
                                                 <Text type="secondary">Full Name</Text>
-                                                <div><Text strong>{`${formData.first_name || ''} ${formData.middle_name || ''} ${formData.last_name || ''} ${formData.extension || ''}`}</Text></div>
+                                                <div><Text strong>{`${formData.first_name || ''} ${formData.middle_name || ''} ${formData.last_name || ''} ${formData.extension || ''}`.trim() || '-'}</Text></div>
                                             </Col>
                                             <Col xs={12}>
                                                 <Text type="secondary">Birthdate</Text>
@@ -769,21 +874,115 @@ const Apply = () => {
                                                 <div><Text strong>{genders.find(g => g.id === formData.gender_id)?.name || '-'}</Text></div>
                                             </Col>
                                             <Col xs={12}>
-                                                <Text type="secondary">Mobile</Text>
+                                                <Text type="secondary">Civil Status</Text>
+                                                <div><Text strong>{civilStatuses.find(cs => cs.id === formData.civil_status_id)?.name || '-'}</Text></div>
+                                            </Col>
+                                        </Row>
+
+                                        <Divider style={{ margin: '16px 0' }} />
+                                        <Title level={5} style={{ color: '#1890ff', marginBottom: 12 }}>Contact & Background</Title>
+                                        <Row gutter={[16, 8]}>
+                                            <Col xs={24}>
+                                                <Text type="secondary">Address</Text>
+                                                <div><Text strong>{`${formData.house_number || ''} ${formData.street || ''}, ${barangays.find(b => b.id === formData.barangay_id)?.name || ''}, Zamboanga City`.replace(/^\s*,/, '')}</Text></div>
+                                            </Col>
+                                            <Col xs={12}>
+                                                <Text type="secondary">Mobile Number</Text>
                                                 <div><Text strong>{formData.mobile_number || '-'}</Text></div>
                                             </Col>
-                                            <Divider style={{ margin: '12px 0' }} />
-                                            <Col span={24}>
-                                                <Text type="secondary">Address</Text>
-                                                <div><Text strong>{`${formData.house_number || ''} ${formData.street || ''}, ${barangays.find(b => b.id === formData.barangay_id)?.name || ''}, Zamboanga City`}</Text></div>
+                                            <Col xs={12}>
+                                                <Text type="secondary">Telephone Number</Text>
+                                                <div><Text strong>{formData.telephone_number || '-'}</Text></div>
                                             </Col>
-                                            {familyMembers.length > 0 && (
-                                                <Col span={24}>
-                                                    <Text type="secondary">Family Members</Text>
-                                                    <div><Text strong>{familyMembers.filter(m => m.first_name).length} members listed</Text></div>
-                                                </Col>
-                                            )}
+                                            <Col xs={12}>
+                                                <Text type="secondary">Educational Attainment</Text>
+                                                <div><Text strong>{educationalAttainments.find(ea => ea.id === formData.educational_attainment_id)?.name || '-'}</Text></div>
+                                            </Col>
+                                            <Col xs={12}>
+                                                <Text type="secondary">Monthly Salary</Text>
+                                                <div><Text strong>{formData.monthly_salary ? `₱${Number(formData.monthly_salary).toLocaleString()}` : '-'}</Text></div>
+                                            </Col>
+                                            <Col xs={12}>
+                                                <Text type="secondary">Occupation</Text>
+                                                <div><Text strong>{formData.occupation || '-'}</Text></div>
+                                            </Col>
+                                            <Col xs={12}>
+                                                <Text type="secondary">Other Skills</Text>
+                                                <div><Text strong>{formData.other_skills || '-'}</Text></div>
+                                            </Col>
                                         </Row>
+
+                                        {familyMembers.filter(m => m.first_name).length > 0 && (
+                                            <>
+                                                <Divider style={{ margin: '16px 0' }} />
+                                                <Title level={5} style={{ color: '#1890ff', marginBottom: 12 }}>Family Composition</Title>
+                                                {familyMembers.filter(m => m.first_name).map((m, i) => (
+                                                    <Card key={m.id} size="small" style={{ marginBottom: 8, background: '#fff' }}>
+                                                        <Row gutter={[16, 4]}>
+                                                            <Col xs={12}>
+                                                                <Text type="secondary">Name</Text>
+                                                                <div><Text strong>{`${m.first_name} ${m.middle_name || ''} ${m.last_name || ''} ${m.extension || ''}`.trim()}</Text></div>
+                                                            </Col>
+                                                            <Col xs={12}>
+                                                                <Text type="secondary">Relationship</Text>
+                                                                <div><Text strong>{m.relationship || '-'}</Text></div>
+                                                            </Col>
+                                                            <Col xs={12}>
+                                                                <Text type="secondary">Age</Text>
+                                                                <div><Text strong>{m.age || '-'}</Text></div>
+                                                            </Col>
+                                                            <Col xs={12}>
+                                                                <Text type="secondary">Monthly Salary</Text>
+                                                                <div><Text strong>{m.monthly_salary ? `₱${Number(m.monthly_salary).toLocaleString()}` : '-'}</Text></div>
+                                                            </Col>
+                                                        </Row>
+                                                    </Card>
+                                                ))}
+                                            </>
+                                        )}
+
+                                        {(formData.target_sectors?.length > 0 || formData.sub_categories?.length > 0) && (
+                                            <>
+                                                <Divider style={{ margin: '16px 0' }} />
+                                                <Title level={5} style={{ color: '#1890ff', marginBottom: 12 }}>Association</Title>
+                                                <Row gutter={[16, 8]}>
+                                                    {formData.target_sectors?.length > 0 && (
+                                                        <Col span={24}>
+                                                            <Text type="secondary">Target Sectors</Text>
+                                                            <div style={{ marginTop: 4 }}>{formData.target_sectors.map((s, i) => (
+                                                                <span key={i} style={{
+                                                                    display: 'inline-block',
+                                                                    background: '#dbeafe',
+                                                                    color: '#2563eb',
+                                                                    padding: '2px 10px',
+                                                                    borderRadius: 12,
+                                                                    marginRight: 6,
+                                                                    marginBottom: 4,
+                                                                    fontSize: 13,
+                                                                }}>{s}</span>
+                                                            ))}</div>
+                                                        </Col>
+                                                    )}
+                                                    {formData.sub_categories?.length > 0 && (
+                                                        <Col span={24}>
+                                                            <Text type="secondary">Sub-Categories</Text>
+                                                            <div style={{ marginTop: 4 }}>{formData.sub_categories.map((s, i) => (
+                                                                <span key={i} style={{
+                                                                    display: 'inline-block',
+                                                                    background: '#dcfce7',
+                                                                    color: '#16a34a',
+                                                                    padding: '2px 10px',
+                                                                    borderRadius: 12,
+                                                                    marginRight: 6,
+                                                                    marginBottom: 4,
+                                                                    fontSize: 13,
+                                                                }}>{s}</span>
+                                                            ))}</div>
+                                                        </Col>
+                                                    )}
+                                                </Row>
+                                            </>
+                                        )}
                                     </Card>
                                     <Card style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 12 }}>
                                         <Text>
