@@ -158,7 +158,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="settings/benefits"
+                  path="benefits/configuration"
                   element={
                     <ProtectedRoute allowedRoles={[1]}>
                       <BenefitSettings />

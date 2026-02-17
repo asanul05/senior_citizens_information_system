@@ -462,7 +462,7 @@ const Benefits = () => {
         <div style={{ padding: 24 }}>
             <Title level={2} style={{ marginBottom: 24 }}>
                 <GiftOutlined style={{ marginRight: 12 }} />
-                Benefits Management
+                Benefits Eligibility and Claims
             </Title>
 
             {/* Statistics Cards */}

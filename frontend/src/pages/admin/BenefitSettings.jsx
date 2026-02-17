@@ -271,7 +271,7 @@ function BenefitSettings() {
             <Card>
                 <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
                     <Col>
-                        <Title level={4} style={{ margin: 0 }}>Benefit Types Management</Title>
+                        <Title level={4} style={{ margin: 0 }}>Benefits Configuration</Title>
                         <Text type="secondary">Configure benefits available for senior citizens</Text>
                     </Col>
                     <Col>
