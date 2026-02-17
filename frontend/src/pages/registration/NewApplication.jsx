@@ -143,6 +143,7 @@ const NewApplication = () => {
                 extension: prefillData.extension,
                 birthdate: prefillData.birthdate ? dayjs(prefillData.birthdate) : null,
                 gender_id: prefillData.gender_id,
+                civil_status_id: prefillData.civil_status_id,
                 barangay_id: prefillData.barangay_id,
                 house_number: prefillData.house_number,
                 street: prefillData.street,
@@ -152,10 +153,20 @@ const NewApplication = () => {
                 monthly_salary: prefillData.monthly_salary,
                 occupation: prefillData.occupation,
                 other_skills: prefillData.other_skills,
+                target_sectors: prefillData.target_sectors || [],
+                sub_categories: prefillData.sub_categories || [],
             });
 
             // Store in formData state
             setFormData(prefillData);
+
+            // Pre-fill family members if available
+            if (prefillData.family_members && prefillData.family_members.length > 0) {
+                setFamilyMembers(prefillData.family_members.map((m, i) => ({
+                    ...m,
+                    id: m.id || Date.now() + i,
+                })));
+            }
 
             // Calculate age if birthdate exists (inline to avoid dependency issue)
             if (prefillData.birthdate) {
