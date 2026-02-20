@@ -221,6 +221,11 @@ class BenefitController extends Controller
                 ->get();
 
             foreach ($seniors as $senior) {
+                // Check target scope eligibility (district, branch, barangays)
+                if ($senior->barangay_id && !$benefitType->isEligibleForBarangay($senior->barangay_id)) {
+                    continue;
+                }
+
                 $eligibleSeniors[] = [
                     'senior_id' => $senior->id,
                     'osca_id' => $senior->osca_id,
@@ -311,6 +316,11 @@ class BenefitController extends Controller
                 ->get();
 
             foreach ($seniors as $senior) {
+                // Check target scope eligibility (district, branch, barangays)
+                if ($senior->barangay_id && !$benefitType->isEligibleForBarangay($senior->barangay_id)) {
+                    continue;
+                }
+
                 $eligibleSeniors[] = [
                     'osca_id' => $senior->osca_id,
                     'full_name' => $senior->full_name ?? "{$senior->first_name} {$senior->last_name}",
@@ -537,6 +547,11 @@ class BenefitController extends Controller
         $eligibility = [];
         foreach ($benefitTypes as $type) {
             $isEligible = $type->isEligibleForAge($age);
+        
+        // check barangay/district scope eligibility
+        if ($isEligible && $senior->barangay_id) {
+            $isEligible = $type->isEligibleForBarangay($senior->barangay_id);
+        }
             
             // Check if already claimed
             $existingClaim = $senior->benefitClaims
@@ -613,7 +628,7 @@ class BenefitController extends Controller
             
             // Only load new relationships if columns exist
             if ($hasNewColumns) {
-                $query->with(['barangays', 'branch', 'creator']);
+                $query->with(['barangays', 'branch', 'district', 'creator']);
             }
             
             $query->orderBy('min_age');
@@ -647,6 +662,8 @@ class BenefitController extends Controller
                         $data['target_scope'] = $type->target_scope ?? 'all';
                         $data['branch_id'] = $type->branch_id ?? null;
                         $data['branch'] = $type->branch ?? null;
+                        $data['district_id'] = $type->district_id ?? null;
+                        $data['district'] = $type->district ?? null;
                         $data['barangay_ids'] = $type->barangays ? $type->barangays->pluck('id') : [];
                         $data['barangays'] = $type->barangays ?? [];
                         $data['created_by'] = $type->created_by ?? null;
@@ -709,8 +726,9 @@ class BenefitController extends Controller
             'amount' => 'required|numeric|min:0',
             'is_one_time' => 'boolean',
             'claim_interval_days' => 'nullable|integer|min:1',
-            'target_scope' => 'sometimes|in:all,branch,barangays',
+            'target_scope' => 'sometimes|in:all,branch,barangays,district',
             'branch_id' => 'nullable|exists:branches,id',
+            'district_id' => 'nullable|exists:districts,id',
             'barangay_ids' => 'nullable|array',
             'barangay_ids.*' => 'exists:barangays,id',
         ]);
@@ -763,7 +781,7 @@ class BenefitController extends Controller
             $type->barangays()->sync($barangayIds);
         }
 
-        $type->load('barangays', 'branch');
+        $type->load('barangays', 'branch', 'district');
 
         return response()->json([
             'success' => true,
@@ -803,8 +821,9 @@ class BenefitController extends Controller
             'amount' => 'sometimes|numeric|min:0',
             'is_one_time' => 'boolean',
             'claim_interval_days' => 'nullable|integer|min:1',
-            'target_scope' => 'sometimes|in:all,branch,barangays',
+            'target_scope' => 'sometimes|in:all,branch,barangays,district',
             'branch_id' => 'nullable|exists:branches,id',
+            'district_id' => 'nullable|exists:districts,id',
             'barangay_ids' => 'nullable|array',
             'barangay_ids.*' => 'exists:barangays,id',
         ]);
@@ -842,7 +861,7 @@ class BenefitController extends Controller
             $type->barangays()->sync($barangayIds);
         }
 
-        $type->load('barangays', 'branch');
+        $type->load('barangays', 'branch', 'district');
 
         return response()->json([
             'success' => true,

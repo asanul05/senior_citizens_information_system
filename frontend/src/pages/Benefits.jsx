@@ -626,7 +626,7 @@ const Benefits = () => {
                         tab={
                             <span>
                                 <UserOutlined />
-                                Eligible Seniors ({statistics.eligible_unclaimed || 0})
+                                Eligible Seniors ({eligiblePagination.total})
                             </span>
                         }
                         key="eligible"

@@ -29,7 +29,7 @@ import {
     CheckCircleOutlined,
     StopOutlined,
 } from '@ant-design/icons';
-import { benefitTypesApi, registrationApi } from '../../services/api';
+import { benefitTypesApi, registrationApi, districtApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
@@ -46,6 +46,7 @@ function BenefitSettings() {
     const [submitting, setSubmitting] = useState(false);
     const [barangays, setBarangays] = useState([]);
     const [branches, setBranches] = useState([]);
+    const [districts, setDistricts] = useState([]);
     const [targetScope, setTargetScope] = useState('all');
 
     const isMainAdmin = user?.role_id === 1;
@@ -54,6 +55,7 @@ function BenefitSettings() {
         loadBenefitTypes();
         loadBarangays();
         loadBranches();
+        loadDistricts();
     }, []);
 
     const loadBenefitTypes = async () => {
@@ -86,6 +88,15 @@ function BenefitSettings() {
         }
     };
 
+    const loadDistricts = async () => {
+        try {
+            const response = await districtApi.getList();
+            setDistricts(response.data.data || []);
+        } catch (error) {
+            console.error('Failed to load districts:', error);
+        }
+    };
+
     const openModal = (mode, record = null) => {
         setModalMode(mode);
         setSelectedType(record);
@@ -93,6 +104,7 @@ function BenefitSettings() {
             const formValues = {
                 ...record,
                 barangay_ids: record.barangay_ids || [],
+                district_id: record.district_id || undefined,
             };
             form.setFieldsValue(formValues);
             setTargetScope(record.target_scope || 'all');
@@ -213,6 +225,9 @@ function BenefitSettings() {
                 }
                 if (record.target_scope === 'branch') {
                     return <Tag color="blue">{record.branch?.name || 'Field Office'}</Tag>;
+                }
+                if (record.target_scope === 'district') {
+                    return <Tag color="geekblue">{record.district?.name || 'District'}</Tag>;
                 }
                 return (
                     <Tooltip title={record.barangays?.map(b => b.name).join(', ')}>
@@ -415,6 +430,7 @@ function BenefitSettings() {
                         >
                             {isMainAdmin && <Option value="all">All Barangays</Option>}
                             <Option value="branch">Specific Field Office</Option>
+                            {isMainAdmin && <Option value="district">By District</Option>}
                             <Option value="barangays">Specific Barangays</Option>
                         </Select>
                     </Form.Item>
@@ -428,6 +444,20 @@ function BenefitSettings() {
                             <Select placeholder="Select field office" showSearch optionFilterProp="children">
                                 {branches.map(b => (
                                     <Option key={b.id} value={b.id}>{b.name}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    )}
+
+                    {targetScope === 'district' && (
+                        <Form.Item
+                            name="district_id"
+                            label="District"
+                            rules={[{ required: targetScope === 'district', message: 'Select a district' }]}
+                        >
+                            <Select placeholder="Select district" showSearch optionFilterProp="children">
+                                {districts.map(d => (
+                                    <Option key={d.id} value={d.id}>{d.name}</Option>
                                 ))}
                             </Select>
                         </Form.Item>

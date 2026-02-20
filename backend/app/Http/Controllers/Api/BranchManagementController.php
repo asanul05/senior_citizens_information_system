@@ -460,6 +460,9 @@ class BranchManagementController extends Controller
     public function indexDistricts(Request $request): JsonResponse
     {
         $districts = District::withCount('barangays')
+            ->with(['barangays' => function ($q) {
+                $q->select('id', 'name', 'district')->orderBy('name');
+            }])
             ->orderBy('name')
             ->get();
 

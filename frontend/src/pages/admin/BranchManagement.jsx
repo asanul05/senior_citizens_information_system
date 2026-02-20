@@ -29,9 +29,11 @@ import {
     BranchesOutlined,
     EnvironmentOutlined,
     SwapOutlined,
+    GlobalOutlined,
+    RightOutlined,
+    DownOutlined,
 } from '@ant-design/icons';
 import { branchApi, barangayManagementApi, districtApi } from '../../services/api';
-import { GlobalOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -638,6 +640,36 @@ function BranchManagement() {
                             rowKey="id"
                             loading={districtLoading}
                             pagination={false}
+                            expandable={{
+                                expandedRowRender: (record) => {
+                                    const districtBarangays = barangays.filter(b => b.district === record.name);
+                                    return (
+                                        <div style={{ padding: '8px 0' }}>
+                                            <Text strong style={{ marginBottom: 8, display: 'block' }}>
+                                                Barangays under {record.name}:
+                                            </Text>
+                                            {districtBarangays.length > 0 ? (
+                                                <Space size={[4, 8]} wrap>
+                                                    {districtBarangays.map(b => (
+                                                        <Tag key={b.id} color="blue" icon={<EnvironmentOutlined />}>
+                                                            {b.name}
+                                                        </Tag>
+                                                    ))}
+                                                </Space>
+                                            ) : (
+                                                <Text type="secondary">No barangays assigned to this district</Text>
+                                            )}
+                                        </div>
+                                    );
+                                },
+                                rowExpandable: () => true,
+                                expandIcon: ({ expanded, onExpand, record }) =>
+                                    expanded ? (
+                                        <DownOutlined style={{ cursor: 'pointer', fontSize: 12 }} onClick={e => onExpand(record, e)} />
+                                    ) : (
+                                        <RightOutlined style={{ cursor: 'pointer', fontSize: 12 }} onClick={e => onExpand(record, e)} />
+                                    ),
+                            }}
                         />
                     </TabPane>
                 </Tabs>
