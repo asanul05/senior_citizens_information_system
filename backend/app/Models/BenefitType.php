@@ -19,6 +19,7 @@ class BenefitType extends Model
         'claim_interval_days',
         'target_scope',
         'branch_id',
+        'district_id',
         'created_by',
         'is_active',
     ];
@@ -56,6 +57,14 @@ class BenefitType extends Model
     }
 
     /**
+     * Get the district this benefit is limited to.
+     */
+    public function district()
+    {
+        return $this->belongsTo(District::class, 'district_id');
+    }
+
+    /**
      * Get the user who created this benefit type.
      */
     public function creator()
@@ -81,13 +90,35 @@ class BenefitType extends Model
         }
 
         if ($this->target_scope === 'branch' && $this->branch_id) {
+            // If specific barangays were selected for this branch, use them
+            if ($this->barangays()->count() > 0) {
+                return $this->barangays()->where('barangays.id', $barangayId)->exists();
+            }
+            // Otherwise check all barangays under the branch
             return Barangay::where('id', $barangayId)
-                ->where('branch_id', $this->branch_id)
+                ->whereHas('branches', function ($q) {
+                    $q->where('branches.id', $this->branch_id);
+                })
                 ->exists();
         }
 
         if ($this->target_scope === 'barangays') {
             return $this->barangays()->where('barangays.id', $barangayId)->exists();
+        }
+
+        if ($this->target_scope === 'district' && $this->district_id) {
+            // If specific barangays were selected for this district, use them
+            if ($this->barangays()->count() > 0) {
+                return $this->barangays()->where('barangays.id', $barangayId)->exists();
+            }
+            // Otherwise check all barangays under the district
+            $district = District::find($this->district_id);
+            if ($district) {
+                return Barangay::where('id', $barangayId)
+                    ->where('district', $district->name)
+                    ->exists();
+            }
+            return false;
         }
 
         return false;
@@ -150,7 +181,8 @@ class BenefitType extends Model
                         ->whereHas('barangays', function ($q3) use ($barangayIds) {
                             $q3->whereIn('barangays.id', $barangayIds);
                         });
-                });
+                })
+                ->orWhere('target_scope', 'district');
         });
     }
 

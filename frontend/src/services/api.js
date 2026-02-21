@@ -345,6 +345,20 @@ export const barangayManagementApi = {
     api.delete(`/admin/barangays/${barangayId}/unassign`),
 };
 
+// District Management API
+export const districtApi = {
+  getList: () => api.get("/admin/districts"),
+
+  create: (data) => api.post("/admin/districts", data),
+
+  update: (id, data) => api.put(`/admin/districts/${id}`, data),
+
+  delete: (id) => api.delete(`/admin/districts/${id}`),
+
+  assignBarangays: (id, barangayIds) =>
+    api.post(`/admin/districts/${id}/assign-barangays`, { barangay_ids: barangayIds }),
+};
+
 // Benefit Types Management API
 export const benefitTypesApi = {
   getAll: () => api.get('/admin/benefit-types'),

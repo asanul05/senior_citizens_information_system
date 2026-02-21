@@ -210,6 +210,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{id}/unassign', [\App\Http\Controllers\Api\BranchManagementController::class, 'unassignBarangay']);
         });
 
+        // District Management
+        Route::prefix('admin/districts')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'indexDistricts']);
+            Route::post('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'storeDistrict']);
+            Route::put('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'updateDistrict']);
+            Route::delete('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'destroyDistrict']);
+            Route::post('/{id}/assign-barangays', [\App\Http\Controllers\Api\BranchManagementController::class, 'assignDistrictBarangays']);
+        });
+
         // Benefit Type Management
         Route::prefix('admin/benefit-types')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\BenefitController::class, 'allTypes']);
