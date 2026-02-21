@@ -213,6 +213,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'storeDistrict']);
             Route::put('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'updateDistrict']);
             Route::delete('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'destroyDistrict']);
+            Route::post('/{id}/assign-barangays', [\App\Http\Controllers\Api\BranchManagementController::class, 'assignDistrictBarangays']);
         });
 
         // Benefit Type Management

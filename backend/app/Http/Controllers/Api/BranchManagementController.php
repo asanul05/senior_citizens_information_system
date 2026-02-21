@@ -197,6 +197,16 @@ class BranchManagementController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
+        // Filter by district
+        if ($request->filled('district')) {
+            $district = $request->district;
+            if ($district === 'unassigned') {
+                $query->whereNull('district')->orWhere('district', '');
+            } else {
+                $query->where('district', $district);
+            }
+        }
+
         $barangays = $query->orderBy('name')->get();
 
         // Add current branch info to each barangay
@@ -529,6 +539,37 @@ class BranchManagementController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'District deleted successfully',
+        ]);
+    }
+
+    // Bulk assign barangays to a district
+    public function assignDistrictBarangays(Request $request, $id): JsonResponse
+    {
+        $district = District::findOrFail($id);
+
+        $validated = $request->validate([
+            'barangay_ids' => 'required|array',
+            'barangay_ids.*' => 'exists:barangays,id',
+        ]);
+
+        $districtName = $district->name;
+        $barangayIds = $validated['barangay_ids'];
+
+        DB::transaction(function () use ($districtName, $barangayIds) {
+            // Clear this district from all barangays currently assigned to it
+            Barangay::where('district', $districtName)
+                ->update(['district' => null]);
+
+            // Assign selected barangays to this district
+            if (!empty($barangayIds)) {
+                Barangay::whereIn('id', $barangayIds)
+                    ->update(['district' => $districtName]);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Barangays assigned to district successfully',
         ]);
     }
 }

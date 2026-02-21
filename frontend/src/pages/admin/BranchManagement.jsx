@@ -50,8 +50,9 @@ function BranchManagement() {
 
     // Barangay state
     const [barangays, setBarangays] = useState([]);
+    const [allBarangays, setAllBarangays] = useState([]);
     const [barangayLoading, setBarangayLoading] = useState(false);
-    const [barangayFilters, setBarangayFilters] = useState({ search: '', branch_id: null });
+    const [barangayFilters, setBarangayFilters] = useState({ search: '', branch_id: null, district: null });
     const [barangayModalVisible, setBarangayModalVisible] = useState(false);
     const [barangayModalMode, setBarangayModalMode] = useState('create');
     const [selectedBarangay, setSelectedBarangay] = useState(null);
@@ -70,10 +71,17 @@ function BranchManagement() {
     const [selectedDistrict, setSelectedDistrict] = useState(null);
     const [districtForm] = Form.useForm();
 
+    // District assignment state
+    const [districtAssignModalVisible, setDistrictAssignModalVisible] = useState(false);
+    const [districtAssignTarget, setDistrictAssignTarget] = useState(null);
+    const [selectedDistrictBarangayIds, setSelectedDistrictBarangayIds] = useState([]);
+    const [districtSearch, setDistrictSearch] = useState('');
+
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         loadBranches();
+        loadAllBarangays();
         loadBarangays();
         loadDistricts();
     }, []);
@@ -139,6 +147,15 @@ function BranchManagement() {
     // ==========================================
     // BARANGAY OPERATIONS
     // ==========================================
+    const loadAllBarangays = async () => {
+        try {
+            const response = await barangayManagementApi.getList();
+            setAllBarangays(response.data.data);
+        } catch (error) {
+            console.error('Failed to load all barangays');
+        }
+    };
+
     const loadBarangays = async () => {
         setBarangayLoading(true);
         try {
@@ -148,6 +165,10 @@ function BranchManagement() {
             });
             const response = await barangayManagementApi.getList(params);
             setBarangays(response.data.data);
+            // Also refresh allBarangays when no filters are active
+            if (!params.search && !params.branch_id) {
+                setAllBarangays(response.data.data);
+            }
         } catch (error) {
             message.error('Failed to load barangays');
         } finally {
@@ -225,7 +246,7 @@ function BranchManagement() {
     // ==========================================
     const openAssignModal = (branch) => {
         setAssignTargetBranch(branch);
-        const currentIds = barangays
+        const currentIds = allBarangays
             .filter(b => b.branch_id === branch.id)
             .map(b => b.id);
         setSelectedBarangayIds(currentIds);
@@ -242,6 +263,34 @@ function BranchManagement() {
             loadBranches();
         } catch (error) {
             message.error('Failed to assign barangays');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // ==========================================
+    // DISTRICT BULK ASSIGNMENT
+    // ==========================================
+    const openDistrictAssignModal = (district) => {
+        setDistrictAssignTarget(district);
+        const currentIds = allBarangays
+            .filter(b => b.district === district.name)
+            .map(b => b.id);
+        setSelectedDistrictBarangayIds(currentIds);
+        setDistrictAssignModalVisible(true);
+    };
+
+    const handleDistrictBulkAssign = async () => {
+        try {
+            setSubmitting(true);
+            await districtApi.assignBarangays(districtAssignTarget.id, selectedDistrictBarangayIds);
+            message.success('Barangays assigned to district successfully');
+            setDistrictAssignModalVisible(false);
+            loadAllBarangays();
+            loadBarangays();
+            loadDistricts();
+        } catch (error) {
+            message.error('Failed to assign barangays to district');
         } finally {
             setSubmitting(false);
         }
@@ -511,7 +560,7 @@ function BranchManagement() {
         {
             title: 'Actions',
             key: 'actions',
-            width: 120,
+            width: 180,
             render: (_, record) => (
                 <Space size="small">
                     <Tooltip title="Edit">
@@ -519,6 +568,13 @@ function BranchManagement() {
                             type="text"
                             icon={<EditOutlined />}
                             onClick={() => openDistrictModal('edit', record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Manage Barangays">
+                        <Button
+                            type="text"
+                            icon={<SwapOutlined />}
+                            onClick={() => openDistrictAssignModal(record)}
                         />
                     </Tooltip>
                     <Tooltip title="Delete">
@@ -580,6 +636,20 @@ function BranchManagement() {
                             </Col>
                             <Col span={5}>
                                 <Select
+                                    placeholder="Filter by District"
+                                    allowClear
+                                    style={{ width: '100%' }}
+                                    value={barangayFilters.district}
+                                    onChange={(value) => setBarangayFilters(prev => ({ ...prev, district: value }))}
+                                >
+                                    <Option value="unassigned">No District</Option>
+                                    {districts.map(d => (
+                                        <Option key={d.id} value={d.name}>{d.name}</Option>
+                                    ))}
+                                </Select>
+                            </Col>
+                            <Col span={5}>
+                                <Select
                                     placeholder="Filter by Field Office"
                                     allowClear
                                     style={{ width: '100%' }}
@@ -596,7 +666,7 @@ function BranchManagement() {
                                 <Space>
                                     <Button icon={<SearchOutlined />} onClick={loadBarangays}>Search</Button>
                                     <Button icon={<ReloadOutlined />} onClick={() => {
-                                        setBarangayFilters({ search: '', branch_id: null });
+                                        setBarangayFilters({ search: '', branch_id: null, district: null });
                                         loadBarangays();
                                     }}>Reset</Button>
                                     <Button
@@ -620,29 +690,49 @@ function BranchManagement() {
                     </TabPane>
 
                     <TabPane tab={<span><GlobalOutlined /> Districts</span>} key="districts">
-                        <Row justify="end" style={{ marginBottom: 16 }}>
-                            <Space>
-                                <Button icon={<ReloadOutlined />} onClick={loadDistricts}>
-                                    Refresh
-                                </Button>
-                                <Button
-                                    type="primary"
-                                    icon={<PlusOutlined />}
-                                    onClick={() => openDistrictModal('create')}
-                                >
-                                    Add District
-                                </Button>
-                            </Space>
+                        <Row gutter={16} style={{ marginBottom: 16 }}>
+                            <Col span={6}>
+                                <Input
+                                    placeholder="Search barangay name..."
+                                    prefix={<SearchOutlined />}
+                                    value={districtSearch}
+                                    onChange={(e) => setDistrictSearch(e.target.value)}
+                                    allowClear
+                                />
+                            </Col>
+                            <Col flex="auto" style={{ textAlign: 'right' }}>
+                                <Space>
+                                    <Button icon={<ReloadOutlined />} onClick={() => { loadDistricts(); loadAllBarangays(); }}>
+                                        Refresh
+                                    </Button>
+                                    <Button
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => openDistrictModal('create')}
+                                    >
+                                        Add District
+                                    </Button>
+                                </Space>
+                            </Col>
                         </Row>
                         <Table
                             columns={districtColumns}
-                            dataSource={districts}
+                            dataSource={districtSearch
+                                ? districts.filter(d =>
+                                    allBarangays.some(b =>
+                                        b.district === d.name &&
+                                        b.name.toLowerCase().includes(districtSearch.toLowerCase())
+                                    )
+                                )
+                                : districts
+                            }
                             rowKey="id"
                             loading={districtLoading}
                             pagination={false}
                             expandable={{
                                 expandedRowRender: (record) => {
-                                    const districtBarangays = barangays.filter(b => b.district === record.name);
+                                    const districtBarangays = allBarangays.filter(b => b.district === record.name);
+                                    const searchLower = districtSearch?.toLowerCase() || '';
                                     return (
                                         <div style={{ padding: '8px 0' }}>
                                             <Text strong style={{ marginBottom: 8, display: 'block' }}>
@@ -650,11 +740,19 @@ function BranchManagement() {
                                             </Text>
                                             {districtBarangays.length > 0 ? (
                                                 <Space size={[4, 8]} wrap>
-                                                    {districtBarangays.map(b => (
-                                                        <Tag key={b.id} color="blue" icon={<EnvironmentOutlined />}>
-                                                            {b.name}
-                                                        </Tag>
-                                                    ))}
+                                                    {districtBarangays.map(b => {
+                                                        const isMatch = searchLower && b.name.toLowerCase().includes(searchLower);
+                                                        return (
+                                                            <Tag
+                                                                key={b.id}
+                                                                color={isMatch ? 'gold' : 'blue'}
+                                                                icon={<EnvironmentOutlined />}
+                                                                style={isMatch ? { fontWeight: 'bold', borderWidth: 2 } : {}}
+                                                            >
+                                                                {b.name}
+                                                            </Tag>
+                                                        );
+                                                    })}
                                                 </Space>
                                             ) : (
                                                 <Text type="secondary">No barangays assigned to this district</Text>
@@ -663,6 +761,15 @@ function BranchManagement() {
                                     );
                                 },
                                 rowExpandable: () => true,
+                                defaultExpandAllRows: false,
+                                expandedRowKeys: districtSearch
+                                    ? districts
+                                        .filter(d => allBarangays.some(b =>
+                                            b.district === d.name &&
+                                            b.name.toLowerCase().includes(districtSearch.toLowerCase())
+                                        ))
+                                        .map(d => d.id)
+                                    : undefined,
                                 expandIcon: ({ expanded, onExpand, record }) =>
                                     expanded ? (
                                         <DownOutlined style={{ cursor: 'pointer', fontSize: 12 }} onClick={e => onExpand(record, e)} />
@@ -778,7 +885,7 @@ function BranchManagement() {
                     showSearch
                     maxTagCount="responsive"
                 >
-                    {barangays.map(barangay => (
+                    {allBarangays.map(barangay => (
                         <Option key={barangay.id} value={barangay.id}>
                             {barangay.name}
                             {barangay.branch_name && barangay.branch_id !== assignTargetBranch?.id && (
@@ -809,6 +916,40 @@ function BranchManagement() {
                         <Input.TextArea rows={2} placeholder="Optional description" />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            {/* District Barangay Assignment Modal */}
+            <Modal
+                title={`Manage Barangays - ${districtAssignTarget?.name}`}
+                open={districtAssignModalVisible}
+                onCancel={() => setDistrictAssignModalVisible(false)}
+                onOk={handleDistrictBulkAssign}
+                confirmLoading={submitting}
+                width={800}
+            >
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                    Select barangays to assign to this district.
+                    Previously assigned barangays from other districts will be automatically reassigned.
+                </Text>
+                <Select
+                    mode="multiple"
+                    placeholder="Select barangays"
+                    style={{ width: '100%' }}
+                    value={selectedDistrictBarangayIds}
+                    onChange={setSelectedDistrictBarangayIds}
+                    optionFilterProp="children"
+                    showSearch
+                    maxTagCount="responsive"
+                >
+                    {allBarangays.map(barangay => (
+                        <Option key={barangay.id} value={barangay.id}>
+                            {barangay.name}
+                            {barangay.district && barangay.district !== districtAssignTarget?.name && (
+                                <Text type="secondary"> (currently: {barangay.district})</Text>
+                            )}
+                        </Option>
+                    ))}
+                </Select>
             </Modal>
         </div>
     );
