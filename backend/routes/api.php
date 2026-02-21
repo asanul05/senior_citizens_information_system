@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\PreRegistrationController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\SeniorAuthController;
+use App\Http\Controllers\Api\BenefitComplaintController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,6 +50,10 @@ Route::prefix('senior')->group(function () {
     Route::get('/profile', [SeniorAuthController::class, 'profile']);
     Route::get('/benefits', [SeniorAuthController::class, 'benefits']);
     Route::get('/dashboard-stats', [SeniorAuthController::class, 'dashboardStats']);
+
+    // Senior Complaints
+    Route::post('/complaints', [BenefitComplaintController::class, 'seniorStore']);
+    Route::get('/complaints', [BenefitComplaintController::class, 'seniorIndex']);
 });
 
 // Protected routes
@@ -151,6 +156,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/statistics', [\App\Http\Controllers\Api\BenefitController::class, 'statistics']);
         Route::post('/claims', [\App\Http\Controllers\Api\BenefitController::class, 'store']);
         Route::patch('/claims/{id}/status', [\App\Http\Controllers\Api\BenefitController::class, 'updateStatus']);
+
+        // Benefit Complaints (admin)
+        Route::get('/complaints', [BenefitComplaintController::class, 'index']);
+        Route::get('/complaints/{id}', [BenefitComplaintController::class, 'show']);
+        Route::patch('/complaints/{id}/respond', [BenefitComplaintController::class, 'respond']);
     });
 
     // Get benefit claims for a specific senior

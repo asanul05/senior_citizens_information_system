@@ -25,6 +25,7 @@ import Benefits from "./pages/Benefits";
 import Accounts from "./pages/admin/Accounts";
 import BranchManagement from "./pages/admin/BranchManagement";
 import BenefitSettings from "./pages/admin/BenefitSettings";
+import BenefitComplaints from "./pages/admin/BenefitComplaints";
 import Announcements from "./pages/Announcements";
 import Archives from "./pages/Archives";
 
@@ -40,6 +41,7 @@ import Apply from "./pages/public/Apply";
 import SeniorLogin from "./pages/senior/SeniorLogin";
 import SeniorDashboard from "./pages/senior/SeniorDashboard";
 import SeniorBenefits from "./pages/senior/SeniorBenefits";
+import SeniorComplaints from "./pages/senior/SeniorComplaints";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -97,7 +99,7 @@ function App() {
                 path="/senior/announcements"
                 element={<SeniorDashboard />}
               />
-              <Route path="/senior/complaints" element={<SeniorDashboard />} />
+              <Route path="/senior/complaints" element={<SeniorComplaints />} />
 
               {/* ============ ADMIN PORTAL ROUTES ============ */}
               <Route
@@ -133,7 +135,7 @@ function App() {
                 />
                 <Route
                   path="complaints"
-                  element={<ComingSoon title="Complaints" />}
+                  element={<BenefitComplaints />}
                 />
                 <Route path="announcements" element={<Announcements />} />
                 <Route path="archives" element={<Archives />} />
