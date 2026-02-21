@@ -18,15 +18,15 @@ class AnnouncementController extends Controller
         $user = $request->user();
         $perPage = $request->get('per_page', 15);
         
-        $query = Announcement::with(['type', 'barangay', 'createdBy'])
-            ->when(!$user->isMainAdmin(), function ($q) use ($user) {
-                // Show announcements for user's accessible barangays or general (null barangay)
-                $barangayIds = $user->getAccessibleBarangayIds();
-                $q->where(function ($sq) use ($barangayIds) {
-                    $sq->whereNull('barangay_id')
-                        ->orWhereIn('barangay_id', $barangayIds);
-                });
+        $query = Announcement::with(['type', 'barangay', 'createdBy']);
+
+        if (!$user->isMainAdmin()) {
+            $barangayIds = $user->getAccessibleBarangayIds();
+            $query->where(function ($q) use ($barangayIds) {
+                $q->whereNull('barangay_id')
+                    ->orWhereIn('barangay_id', $barangayIds);
             });
+        }
 
         // Published filter
         if ($request->has('is_published')) {

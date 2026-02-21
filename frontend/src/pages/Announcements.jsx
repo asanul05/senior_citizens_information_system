@@ -332,6 +332,7 @@ const Announcements = () => {
         }
         footer={null}
         width={600}
+        centered
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item name="title" label="Title" rules={[{ required: true }]}>
