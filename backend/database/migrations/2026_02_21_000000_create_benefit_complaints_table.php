@@ -9,6 +9,29 @@ return new class extends Migration
     // Run the migrations.
     public function up(): void
     {
+        if (Schema::hasTable('benefit_complaints')) {
+            // Table already exists (partial creation on Railway) — just ensure foreign keys & indexes
+            Schema::table('benefit_complaints', function (Blueprint $table) {
+                // Add foreign keys only if they don't already exist
+                try {
+                    $table->foreign('senior_id')->references('id')->on('senior_citizens')->onDelete('cascade');
+                } catch (\Exception $e) {}
+                try {
+                    $table->foreign('benefit_claim_id')->references('id')->on('benefit_claims')->onDelete('set null');
+                } catch (\Exception $e) {}
+                try {
+                    $table->foreign('responded_by')->references('id')->on('users')->onDelete('set null');
+                } catch (\Exception $e) {}
+                try {
+                    $table->index('status');
+                } catch (\Exception $e) {}
+                try {
+                    $table->index('created_at');
+                } catch (\Exception $e) {}
+            });
+            return;
+        }
+
         Schema::create('benefit_complaints', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('senior_id');
@@ -21,7 +44,7 @@ return new class extends Migration
             $table->timestamp('responded_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('senior_id')->references('id')->on('seniors')->onDelete('cascade');
+            $table->foreign('senior_id')->references('id')->on('senior_citizens')->onDelete('cascade');
             $table->foreign('benefit_claim_id')->references('id')->on('benefit_claims')->onDelete('set null');
             $table->foreign('responded_by')->references('id')->on('users')->onDelete('set null');
 

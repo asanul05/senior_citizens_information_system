@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('benefit_complaints', 'category')) {
+            return;
+        }
+
         Schema::table('benefit_complaints', function (Blueprint $table) {
             $table->string('category', 50)->default('benefit')->after('benefit_claim_id');
         });
@@ -15,8 +19,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('benefit_complaints', function (Blueprint $table) {
-            $table->dropColumn('category');
-        });
+        if (Schema::hasColumn('benefit_complaints', 'category')) {
+            Schema::table('benefit_complaints', function (Blueprint $table) {
+                $table->dropColumn('category');
+            });
+        }
     }
 };
