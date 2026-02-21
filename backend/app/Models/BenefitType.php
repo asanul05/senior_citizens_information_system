@@ -90,8 +90,15 @@ class BenefitType extends Model
         }
 
         if ($this->target_scope === 'branch' && $this->branch_id) {
+            // If specific barangays were selected for this branch, use them
+            if ($this->barangays()->count() > 0) {
+                return $this->barangays()->where('barangays.id', $barangayId)->exists();
+            }
+            // Otherwise check all barangays under the branch
             return Barangay::where('id', $barangayId)
-                ->where('branch_id', $this->branch_id)
+                ->whereHas('branches', function ($q) {
+                    $q->where('branches.id', $this->branch_id);
+                })
                 ->exists();
         }
 
@@ -100,6 +107,11 @@ class BenefitType extends Model
         }
 
         if ($this->target_scope === 'district' && $this->district_id) {
+            // If specific barangays were selected for this district, use them
+            if ($this->barangays()->count() > 0) {
+                return $this->barangays()->where('barangays.id', $barangayId)->exists();
+            }
+            // Otherwise check all barangays under the district
             $district = District::find($this->district_id);
             if ($district) {
                 return Barangay::where('id', $barangayId)

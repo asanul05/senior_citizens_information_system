@@ -29,7 +29,7 @@ import {
     CheckCircleOutlined,
     StopOutlined,
 } from '@ant-design/icons';
-import { benefitTypesApi, registrationApi, districtApi } from '../../services/api';
+import { benefitTypesApi, registrationApi, districtApi, barangayManagementApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const { Title, Text } = Typography;
@@ -48,6 +48,7 @@ function BenefitSettings() {
     const [branches, setBranches] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [targetScope, setTargetScope] = useState('all');
+    const [scopeBarangayMode, setScopeBarangayMode] = useState('all');
 
     const isMainAdmin = user?.role_id === 1;
 
@@ -72,7 +73,7 @@ function BenefitSettings() {
 
     const loadBarangays = async () => {
         try {
-            const response = await registrationApi.getBarangays();
+            const response = await barangayManagementApi.getList();
             setBarangays(response.data.data || []);
         } catch (error) {
             console.error('Failed to load barangays:', error);
@@ -108,6 +109,10 @@ function BenefitSettings() {
             };
             form.setFieldsValue(formValues);
             setTargetScope(record.target_scope || 'all');
+            // Determine if specific barangays were selected for district/branch scope
+            const hasSpecificBarangays = (record.target_scope === 'district' || record.target_scope === 'branch')
+                && record.barangay_ids && record.barangay_ids.length > 0;
+            setScopeBarangayMode(hasSpecificBarangays ? 'specific' : 'all');
         } else {
             form.resetFields();
             form.setFieldsValue({
@@ -115,6 +120,7 @@ function BenefitSettings() {
                 target_scope: isMainAdmin ? 'all' : 'branch',
             });
             setTargetScope(isMainAdmin ? 'all' : 'branch');
+            setScopeBarangayMode('all');
         }
         setModalVisible(true);
     };
@@ -123,6 +129,11 @@ function BenefitSettings() {
         try {
             const values = await form.validateFields();
             setSubmitting(true);
+
+            // Clear barangay_ids if scope is district/branch with 'all' barangay mode
+            if ((values.target_scope === 'district' || values.target_scope === 'branch') && scopeBarangayMode === 'all') {
+                values.barangay_ids = [];
+            }
 
             if (modalMode === 'create') {
                 await benefitTypesApi.create(values);
@@ -425,7 +436,11 @@ function BenefitSettings() {
                         help="Which barangays can access this benefit"
                     >
                         <Select
-                            onChange={(val) => setTargetScope(val)}
+                            onChange={(val) => {
+                                setTargetScope(val);
+                                setScopeBarangayMode('all');
+                                form.setFieldsValue({ barangay_ids: [], branch_id: undefined, district_id: undefined });
+                            }}
                             disabled={!isMainAdmin}
                         >
                             {isMainAdmin && <Option value="all">All Barangays</Option>}
@@ -436,31 +451,128 @@ function BenefitSettings() {
                     </Form.Item>
 
                     {targetScope === 'branch' && (
-                        <Form.Item
-                            name="branch_id"
-                            label="Field Office"
-                            rules={[{ required: targetScope === 'branch', message: 'Required' }]}
-                        >
-                            <Select placeholder="Select field office" showSearch optionFilterProp="children">
-                                {branches.map(b => (
-                                    <Option key={b.id} value={b.id}>{b.name}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
+                        <>
+                            <Form.Item
+                                name="branch_id"
+                                label="Field Office"
+                                rules={[{ required: targetScope === 'branch', message: 'Required' }]}
+                            >
+                                <Select
+                                    placeholder="Select field office"
+                                    showSearch
+                                    optionFilterProp="children"
+                                    onChange={() => {
+                                        setScopeBarangayMode('all');
+                                        form.setFieldsValue({ barangay_ids: [] });
+                                    }}
+                                >
+                                    {branches.map(b => (
+                                        <Option key={b.id} value={b.id}>{b.name}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+
+                            <Form.Item label="Barangay Coverage">
+                                <Select
+                                    value={scopeBarangayMode}
+                                    onChange={(val) => {
+                                        setScopeBarangayMode(val);
+                                        if (val === 'all') form.setFieldsValue({ barangay_ids: [] });
+                                    }}
+                                >
+                                    <Option value="all">
+                                        All barangays under {branches.find(b => b.id === form.getFieldValue('branch_id'))?.name || 'selected Field Office'}
+                                    </Option>
+                                    <Option value="specific">Specific barangays only</Option>
+                                </Select>
+                            </Form.Item>
+
+                            {scopeBarangayMode === 'specific' && (
+                                <Form.Item
+                                    name="barangay_ids"
+                                    label="Select Barangays"
+                                    rules={[{ required: true, message: 'Select at least one barangay' }]}
+                                >
+                                    <Select
+                                        mode="multiple"
+                                        placeholder="Select barangays"
+                                        showSearch
+                                        optionFilterProp="children"
+                                        style={{ width: '100%' }}
+                                    >
+                                        {barangays
+                                            .filter(b => b.branch_id === form.getFieldValue('branch_id'))
+                                            .map(b => (
+                                                <Option key={b.id} value={b.id}>{b.name}</Option>
+                                            ))}
+                                    </Select>
+                                </Form.Item>
+                            )}
+                        </>
                     )}
 
                     {targetScope === 'district' && (
-                        <Form.Item
-                            name="district_id"
-                            label="District"
-                            rules={[{ required: targetScope === 'district', message: 'Select a district' }]}
-                        >
-                            <Select placeholder="Select district" showSearch optionFilterProp="children">
-                                {districts.map(d => (
-                                    <Option key={d.id} value={d.id}>{d.name}</Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
+                        <>
+                            <Form.Item
+                                name="district_id"
+                                label="District"
+                                rules={[{ required: targetScope === 'district', message: 'Select a district' }]}
+                            >
+                                <Select
+                                    placeholder="Select district"
+                                    showSearch
+                                    optionFilterProp="children"
+                                    onChange={() => {
+                                        setScopeBarangayMode('all');
+                                        form.setFieldsValue({ barangay_ids: [] });
+                                    }}
+                                >
+                                    {districts.map(d => (
+                                        <Option key={d.id} value={d.id}>{d.name}</Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+
+                            <Form.Item label="Barangay Coverage">
+                                <Select
+                                    value={scopeBarangayMode}
+                                    onChange={(val) => {
+                                        setScopeBarangayMode(val);
+                                        if (val === 'all') form.setFieldsValue({ barangay_ids: [] });
+                                    }}
+                                >
+                                    <Option value="all">
+                                        All barangays under {districts.find(d => d.id === form.getFieldValue('district_id'))?.name || 'selected District'}
+                                    </Option>
+                                    <Option value="specific">Specific barangays only</Option>
+                                </Select>
+                            </Form.Item>
+
+                            {scopeBarangayMode === 'specific' && (
+                                <Form.Item
+                                    name="barangay_ids"
+                                    label="Select Barangays"
+                                    rules={[{ required: true, message: 'Select at least one barangay' }]}
+                                >
+                                    <Select
+                                        mode="multiple"
+                                        placeholder="Select barangays"
+                                        showSearch
+                                        optionFilterProp="children"
+                                        style={{ width: '100%' }}
+                                    >
+                                        {barangays
+                                            .filter(b => {
+                                                const selectedDistrict = districts.find(d => d.id === form.getFieldValue('district_id'));
+                                                return selectedDistrict && b.district === selectedDistrict.name;
+                                            })
+                                            .map(b => (
+                                                <Option key={b.id} value={b.id}>{b.name}</Option>
+                                            ))}
+                                    </Select>
+                                </Form.Item>
+                            )}
+                        </>
                     )}
 
                     {targetScope === 'barangays' && (

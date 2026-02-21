@@ -776,8 +776,8 @@ class BenefitController extends Controller
 
         $type = BenefitType::create($validated);
         
-        // Sync barangays if targeting specific barangays
-        if ($validated['target_scope'] === 'barangays' && !empty($barangayIds)) {
+        // Sync barangays if targeting specific barangays (for barangays, district, or branch scope)
+        if (in_array($validated['target_scope'], ['barangays', 'district', 'branch'])) {
             $type->barangays()->sync($barangayIds);
         }
 
@@ -856,7 +856,7 @@ class BenefitController extends Controller
 
         $type->update($validated);
         
-        // Sync barangays if provided
+        // Sync barangays if provided (for barangays, district, or branch scope)
         if ($barangayIds !== null) {
             $type->barangays()->sync($barangayIds);
         }
