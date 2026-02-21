@@ -101,12 +101,11 @@ const AdminLayout = () => {
                 ...(isMainAdmin() ? [{ key: '/admin/benefits/configuration', label: 'Benefits Configuration' }] : []),
             ],
         },
-        // Complaints - temporarily hidden
-        // {
-        //     key: '/admin/complaints',
-        //     icon: <ExclamationCircleOutlined />,
-        //     label: 'Complaints',
-        // },
+        {
+            key: '/admin/complaints',
+            icon: <ExclamationCircleOutlined />,
+            label: 'Complaints',
+        },
         {
             key: '/admin/announcements',
             icon: <NotificationOutlined />,

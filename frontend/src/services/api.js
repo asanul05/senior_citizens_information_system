@@ -372,4 +372,13 @@ export const benefitTypesApi = {
   toggle: (id) => api.patch(`/admin/benefit-types/${id}/toggle`),
 };
 
+// Benefit Complaints API (admin)
+export const benefitComplaintsApi = {
+  getList: (params) => api.get("/benefits/complaints", { params }),
+
+  show: (id) => api.get(`/benefits/complaints/${id}`),
+
+  respond: (id, data) => api.patch(`/benefits/complaints/${id}/respond`, data),
+};
+
 export default api;
