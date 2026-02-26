@@ -199,10 +199,10 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                     {senior?.branch?.name || '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label={<><PhoneOutlined /> Mobile</>}>
-                    {senior?.contact?.mobile || '-'}
+                    {senior?.contact?.mobile_number || '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Telephone">
-                    {senior?.contact?.telephone || '-'}
+                    {senior?.contact?.telephone_number || '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label={<><MailOutlined /> Email</>} span={2}>
                     {senior?.contact?.email || '-'}

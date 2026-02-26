@@ -662,6 +662,7 @@ const NewApplication = () => {
                 street: allData.street,
                 mobile_number: allData.mobile_number,
                 telephone_number: allData.telephone_number,
+                email: allData.email,
 
                 // Socioeconomic
                 educational_attainment_id: allData.educational_attainment_id,
@@ -938,6 +939,11 @@ const NewApplication = () => {
                 <Col xs={24} sm={12} md={6}>
                     <Form.Item name="telephone_number" label="Telephone Number">
                         <Input placeholder="(062) XXX-XXXX" size="large" />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="email" label="Email">
+                        <Input placeholder="email@example.com" size="large" />
                     </Form.Item>
                 </Col>
                 <Col xs={24} sm={12} md={6}>

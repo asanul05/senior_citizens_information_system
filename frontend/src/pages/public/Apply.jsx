@@ -218,6 +218,7 @@ const Apply = () => {
                 // Contact
                 mobile_number: formData.mobile_number,
                 telephone_number: formData.telephone_number,
+                email: formData.email,
 
                 // Background
                 educational_attainment_id: formData.educational_attainment_id,
@@ -657,6 +658,13 @@ const Apply = () => {
                                                 <Input placeholder="(062) XXX-XXXX" size="large" />
                                             </Form.Item>
                                         </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="email" label="Email">
+                                                <Input placeholder="email@example.com" size="large" />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                    <Row gutter={16}>
                                         <Col xs={24} sm={12}>
                                             <Form.Item name="monthly_salary" label="Monthly Salary">
                                                 <InputNumber

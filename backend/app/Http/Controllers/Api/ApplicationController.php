@@ -290,6 +290,7 @@ class ApplicationController extends Controller
         $contactRecord = Contact::create([
             'mobile_number' => $contact['mobile_number'] ?? null,
             'telephone_number' => $contact['telephone_number'] ?? null,
+            'email' => $contact['email'] ?? null,
             'house_number' => $contact['house_number'] ?? null,
             'street' => $contact['street'] ?? null,
             'barangay_id' => $personal['barangay_id'] ?? null,
