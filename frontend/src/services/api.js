@@ -304,7 +304,7 @@ export const accountsApi = {
     api.get(`/admin/accounts/barangays-by-branch/${branchId}`),
 };
 
-// Branch (Field Office) Management API
+// Field Office Management API
 export const branchApi = {
   getList: () => api.get('/admin/branches'),
 

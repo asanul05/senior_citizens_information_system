@@ -199,7 +199,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{id}/reset-password', [\App\Http\Controllers\Api\AccountController::class, 'resetPassword']);
         });
 
-        // Branch (Field Office) Management
+        // Field Office Management
         Route::prefix('admin/branches')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\BranchManagementController::class, 'indexBranches']);
             Route::get('/{id}', [\App\Http\Controllers\Api\BranchManagementController::class, 'showBranch']);

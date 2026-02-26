@@ -155,7 +155,7 @@ const AdminLayout = () => {
     const getRoleBadgeColor = (roleId) => {
         switch (roleId) {
             case 1: return '#52c41a'; // Main Admin - Green
-            case 2: return '#1890ff'; // Branch Admin - Blue
+            case 2: return '#1890ff'; // FO Admin - Blue
             case 3: return '#faad14'; // Barangay Admin - Gold
             default: return '#8c8c8c';
         }

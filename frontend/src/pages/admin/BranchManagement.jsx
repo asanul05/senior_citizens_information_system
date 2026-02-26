@@ -40,7 +40,7 @@ const { Option } = Select;
 const { TabPane } = Tabs;
 
 function BranchManagement() {
-    // Branch state
+    // Field Office state
     const [branches, setBranches] = useState([]);
     const [branchLoading, setBranchLoading] = useState(false);
     const [branchModalVisible, setBranchModalVisible] = useState(false);
@@ -87,7 +87,7 @@ function BranchManagement() {
     }, []);
 
     // ==========================================
-    // BRANCH OPERATIONS
+    // FIELD OFFICE OPERATIONS
     // ==========================================
     const loadBranches = async () => {
         setBranchLoading(true);
@@ -782,7 +782,7 @@ function BranchManagement() {
                 </Tabs>
             </Card>
 
-            {/* Branch Modal */}
+            {/* Field Office Modal */}
             <Modal
                 title={branchModalMode === 'create' ? 'Add Field Office' : 'Edit Field Office'}
                 open={branchModalVisible}
@@ -814,7 +814,7 @@ function BranchManagement() {
                     <Form.Item name="email" label="Email">
                         <Input type="email" />
                     </Form.Item>
-                    <Form.Item name="branch_head" label="Branch Head">
+                    <Form.Item name="branch_head" label="Field Office Head">
                         <Input />
                     </Form.Item>
                 </Form>
