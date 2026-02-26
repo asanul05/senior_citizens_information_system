@@ -83,24 +83,34 @@ const NewApplication = () => {
     const [preRegistrationId, setPreRegistrationId] = useState(null);
     const [preRegistrationRef, setPreRegistrationRef] = useState(null);
 
+    // Age category helper
+    const getAgeCategory = (age) => {
+        if (age >= 100) return { label: 'Centenarian', color: 'gold' };
+        if (age >= 90) return { label: 'Nonagenarian', color: 'purple' };
+        if (age >= 80) return { label: 'Octogenarian', color: 'blue' };
+        if (age >= 70) return { label: 'Septuagenarian', color: 'cyan' };
+        if (age >= 60) return { label: 'Sexagenarian', color: 'green' };
+        return null;
+    };
+
     // Target sectors from original form
     const targetSectors = [
-        { value: 'PNGNA', label: 'PNGNA', description: 'Member of national senior citizens organization' },
-        { value: 'WEPC', label: 'WEPC', description: 'Female senior citizens in empowerment programs' },
-        { value: 'PWD', label: 'PWD', description: 'Senior with recognized disability' },
-        { value: 'YNSP', label: 'YNSP', description: 'Special care program' },
-        { value: 'PASP', label: 'PASP', description: 'Hope and support program members' },
-        { value: 'KIA/WIA', label: 'KIA/WIA', description: '' },
+        { value: 'PNGNA', label: 'PNGNA', description: 'Pambansang Nagkakaisa ng mga Nakatatanda' },
+        { value: 'WEPC', label: 'WEPC', description: 'Women Empowerment Program for the Community' },
+        { value: 'PWD', label: 'PWD', description: 'Person with Disability' },
+        { value: 'YNSP', label: 'YNSP', description: 'Yakap ng Nagkakaisa sa Serbisyo ng Pangulo' },
+        { value: 'PASP', label: 'PASP', description: 'Pag-asa at Suporta ng Pangulo' },
+        { value: 'KIA/WIA', label: 'KIA/WIA', description: 'Killed in Action / Wounded in Action' },
     ];
 
     const subCategories = [
         { value: 'Solo Parents', label: 'Solo Parents', description: 'Senior citizen raising children alone' },
-        { value: 'Indigenous Person (IP)', label: 'Indigenous Person (IP)', description: '' },
+        { value: 'Indigenous Person (IP)', label: 'IP - Indigenous Person', description: '' },
         { value: 'Recovering Person who used drugs', label: 'Recovering Person who used drugs', description: '' },
-        { value: "4P's DSWD Beneficiaries", label: "4P's DSWD Beneficiaries", description: '' },
+        { value: "4P's DSWD Beneficiaries", label: "4P's (DSWD Beneficiaries)", description: 'Pantawid Pamilyang Pilipino Program' },
         { value: 'Street Dwellers', label: 'Street Dwellers', description: '' },
-        { value: 'Psychosocial/Mental/Learning Disability', label: 'Psychosocial/Mental/Learning Disability', description: '' },
-        { value: 'Stateless Person/Asylum', label: 'Stateless Person/Asylum', description: '' },
+        { value: 'Psychosocial/Mental/Learning Disability', label: 'Psychosocial / Mental / Learning Disability', description: '' },
+        { value: 'Stateless Person/Asylum', label: 'Stateless Person / Asylum Seeker', description: '' },
     ];
 
     // Load lookup options on mount
@@ -690,63 +700,54 @@ const NewApplication = () => {
             </Title>
 
             <Row gutter={16}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="first_name"
                         label={<span>First Name <span style={{ color: '#fa8c16' }}>*</span></span>}
                         rules={[{ required: true, message: 'First name is required' }]}
                     >
-                        <Input placeholder="Enter first name" size="large" />
+                        <Input placeholder="First name" size="large" />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item name="middle_name" label="Middle Name/Middle Initial">
-                        <Input placeholder="Enter middle name" size="large" />
+                        <Input placeholder="Middle name" size="large" />
                     </Form.Item>
                 </Col>
-            </Row>
-
-            <Row gutter={16}>
-                <Col xs={24}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="last_name"
                         label={<span>Last Name <span style={{ color: '#fa8c16' }}>*</span></span>}
                         rules={[{ required: true, message: 'Last name is required' }]}
                     >
-                        <Input placeholder="Enter last name" size="large" />
+                        <Input placeholder="Last name" size="large" />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="extension" label="Extension">
+                        <Input placeholder="Jr., Sr., III" size="large" />
                     </Form.Item>
                 </Col>
             </Row>
 
             <Row gutter={16}>
-                <Col xs={24} sm={12}>
-                    <Form.Item name="extension" label="Extension">
-                        <Input placeholder="Jr., Sr., III, etc." size="large" />
-                    </Form.Item>
-                </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="house_number"
                         label="House No."
                     >
-                        <Input placeholder="House number (optional)" size="large" />
+                        <Input placeholder="House number" size="large" />
                     </Form.Item>
                 </Col>
-            </Row>
-
-            <Row gutter={16}>
-                <Col xs={24}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="street"
                         label="Street"
                     >
-                        <Input placeholder="Street name (optional)" size="large" />
+                        <Input placeholder="Street name" size="large" />
                     </Form.Item>
                 </Col>
-            </Row>
-
-            <Row gutter={16}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="barangay_id"
                         label={<span>Barangay <span style={{ color: '#fa8c16' }}>*</span></span>}
@@ -768,7 +769,7 @@ const NewApplication = () => {
                         </Select>
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item label="City, Province, Postal Code">
                         <Input
                             value="Zamboanga City, Philippines, 7000"
@@ -781,7 +782,7 @@ const NewApplication = () => {
             </Row>
 
             <Row gutter={16}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="birthdate"
                         label={<span>Date of Birth <span style={{ color: '#fa8c16' }}>*</span></span>}
@@ -800,7 +801,7 @@ const NewApplication = () => {
                         <DatePicker
                             size="large"
                             style={{ width: '100%' }}
-                            placeholder="Select or type date (YYYY-MM-DD)"
+                            placeholder="YYYY-MM-DD"
                             format={['YYYY-MM-DD', 'MM/DD/YYYY', 'DD/MM/YYYY']}
                             onChange={handleBirthdateChange}
                             showToday={false}
@@ -808,7 +809,7 @@ const NewApplication = () => {
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         label={<span>Age <span style={{ color: '#fa8c16' }}>*</span></span>}
                     >
@@ -817,14 +818,16 @@ const NewApplication = () => {
                             readOnly
                             size="large"
                             style={{ backgroundColor: '#f5f5f5' }}
-                            placeholder="Calculated from birthdate"
+                            placeholder="From birthdate"
+                            suffix={calculatedAge !== null && getAgeCategory(calculatedAge) ? (
+                                <Tag color={getAgeCategory(calculatedAge).color} style={{ marginRight: 0 }}>
+                                    {getAgeCategory(calculatedAge).label}
+                                </Tag>
+                            ) : null}
                         />
                     </Form.Item>
                 </Col>
-            </Row>
-
-            <Row gutter={16}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="gender_id"
                         label={<span>Sex <span style={{ color: '#fa8c16' }}>*</span></span>}
@@ -834,9 +837,7 @@ const NewApplication = () => {
                             placeholder="Select Sex"
                             size="large"
                             onChange={(value) => {
-                                // Clear civil status if it becomes invalid for the new gender
                                 const currentCivilStatus = form.getFieldValue('civil_status_id');
-                                // Widow(4) only for Female(2), Widower(5) only for Male(1)
                                 if ((value === 1 && currentCivilStatus === 4) ||
                                     (value === 2 && currentCivilStatus === 5)) {
                                     form.setFieldValue('civil_status_id', undefined);
@@ -851,18 +852,17 @@ const NewApplication = () => {
                         </Select>
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item
                         name="civil_status_id"
                         label={<span>Civil Status <span style={{ color: '#fa8c16' }}>*</span></span>}
                         rules={[{ required: true, message: 'Civil Status is required' }]}
                         dependencies={['gender_id']}
                     >
-                        <Select placeholder="Select Civil Status" size="large">
+                        <Select placeholder="Select" size="large">
                             {lookupOptions?.civil_statuses?.filter((cs) => {
-                                // Widow(4) only for Female(2), Widower(5) only for Male(1)
-                                if (cs.id === 4 && selectedGenderId === 1) return false; // Hide Widow for Male
-                                if (cs.id === 5 && selectedGenderId === 2) return false; // Hide Widower for Female
+                                if (cs.id === 4 && selectedGenderId === 1) return false;
+                                if (cs.id === 5 && selectedGenderId === 2) return false;
                                 return true;
                             }).map((cs) => (
                                 <Option key={cs.id} value={cs.id}>
@@ -880,9 +880,19 @@ const NewApplication = () => {
             </Title>
 
             <Row gutter={16}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="mobile_number" label="Mobile Number">
+                        <Input placeholder="09XX-XXX-XXXX" size="large" />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="telephone_number" label="Telephone Number">
+                        <Input placeholder="(062) XXX-XXXX" size="large" />
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item name="educational_attainment_id" label="Educational Attainment">
-                        <Select placeholder="Select Educational Attainment" size="large" allowClear>
+                        <Select placeholder="Select" size="large" allowClear>
                             {lookupOptions?.educational_attainments?.map((ea) => (
                                 <Option key={ea.id} value={ea.id}>
                                     {ea.name}
@@ -891,20 +901,7 @@ const NewApplication = () => {
                         </Select>
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
-                    <Form.Item name="mobile_number" label="Mobile Number">
-                        <Input placeholder="09XX-XXX-XXXX" size="large" />
-                    </Form.Item>
-                </Col>
-            </Row>
-
-            <Row gutter={16}>
-                <Col xs={24} sm={12}>
-                    <Form.Item name="telephone_number" label="Telephone Number">
-                        <Input placeholder="(062) XXX-XXXX" size="large" />
-                    </Form.Item>
-                </Col>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item name="monthly_salary" label="Monthly Salary">
                         <InputNumber
                             placeholder="0.00"
@@ -1426,7 +1423,16 @@ const NewApplication = () => {
                         {data.birthdate?.format('MMMM D, YYYY') || '-'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Age">
-                        {calculatedAge !== null ? `${calculatedAge} years old` : '-'}
+                        {calculatedAge !== null ? (
+                            <Space>
+                                {`${calculatedAge} years old`}
+                                {getAgeCategory(calculatedAge) && (
+                                    <Tag color={getAgeCategory(calculatedAge).color}>
+                                        {getAgeCategory(calculatedAge).label}
+                                    </Tag>
+                                )}
+                            </Space>
+                        ) : '-'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Sex">
                         {selectedGender?.name || '-'}

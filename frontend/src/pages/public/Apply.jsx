@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin, InputNumber } from 'antd';
+import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin, InputNumber, Tag } from 'antd';
 import {
     UserOutlined,
     UsergroupAddOutlined,
@@ -68,22 +68,22 @@ const Apply = () => {
     ];
 
     const targetSectors = [
-        { value: 'PNGNA', label: 'PNGNA', description: 'Member of national senior citizens organization' },
-        { value: 'WEPC', label: 'WEPC', description: 'Female senior citizens in empowerment programs' },
-        { value: 'PWD', label: 'PWD', description: 'Senior with recognized disability' },
-        { value: 'YNSP', label: 'YNSP', description: 'Special care program' },
-        { value: 'PASP', label: 'PASP', description: 'Hope and support program members' },
-        { value: 'KIA/WIA', label: 'KIA/WIA', description: '' },
+        { value: 'PNGNA', label: 'PNGNA', description: 'Pambansang Nagkakaisa ng mga Nakatatanda' },
+        { value: 'WEPC', label: 'WEPC', description: 'Women Empowerment Program for the Community' },
+        { value: 'PWD', label: 'PWD', description: 'Person with Disability' },
+        { value: 'YNSP', label: 'YNSP', description: 'Yakap ng Nagkakaisa sa Serbisyo ng Pangulo' },
+        { value: 'PASP', label: 'PASP', description: 'Pag-asa at Suporta ng Pangulo' },
+        { value: 'KIA/WIA', label: 'KIA/WIA', description: 'Killed in Action / Wounded in Action' },
     ];
 
     const subCategories = [
         { value: 'Solo Parents', label: 'Solo Parents' },
-        { value: 'Indigenous Person (IP)', label: 'Indigenous Person (IP)' },
+        { value: 'Indigenous Person (IP)', label: 'IP - Indigenous Person' },
         { value: 'Recovering Person who used drugs', label: 'Recovering Person who used drugs' },
-        { value: "4P's DSWD Beneficiaries", label: "4P's DSWD Beneficiaries" },
+        { value: "4P's DSWD Beneficiaries", label: "4P's (DSWD Beneficiaries)" },
         { value: 'Street Dwellers', label: 'Street Dwellers' },
-        { value: 'Psychosocial/Mental/Learning Disability', label: 'Psychosocial/Mental/Learning Disability' },
-        { value: 'Stateless Person/Asylum', label: 'Stateless Person/Asylum' },
+        { value: 'Psychosocial/Mental/Learning Disability', label: 'Psychosocial / Mental / Learning Disability' },
+        { value: 'Stateless Person/Asylum', label: 'Stateless Person / Asylum Seeker' },
     ];
 
     const steps = [
@@ -122,6 +122,15 @@ const Apply = () => {
         const age = today.diff(birth, 'year');
         setCalculatedAge(age >= 0 ? age : null);
     }, []);
+
+    const getAgeCategory = (age) => {
+        if (age >= 100) return { label: 'Centenarian', color: 'gold' };
+        if (age >= 90) return { label: 'Nonagenarian', color: 'purple' };
+        if (age >= 80) return { label: 'Octogenarian', color: 'blue' };
+        if (age >= 70) return { label: 'Septuagenarian', color: 'cyan' };
+        if (age >= 60) return { label: 'Sexagenarian', color: 'green' };
+        return null;
+    };
 
     const handleBirthdateChange = (date) => {
         calculateAge(date);
@@ -565,6 +574,11 @@ const Apply = () => {
                                                     size="large"
                                                     style={{ backgroundColor: '#f5f5f5' }}
                                                     placeholder="Calculated from birthdate"
+                                                    suffix={calculatedAge !== null && getAgeCategory(calculatedAge) ? (
+                                                        <Tag color={getAgeCategory(calculatedAge).color} style={{ marginRight: 0 }}>
+                                                            {getAgeCategory(calculatedAge).label}
+                                                        </Tag>
+                                                    ) : null}
                                                 />
                                             </Form.Item>
                                         </Col>

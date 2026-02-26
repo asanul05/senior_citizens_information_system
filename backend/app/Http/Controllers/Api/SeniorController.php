@@ -48,7 +48,7 @@ class SeniorController extends Controller
             }
         }
 
-        // Age categories filter (octogenarians, nonagenarians, centenarians)
+        // Age categories filter
         if ($ageCategories = $request->get('age_categories')) {
             $categories = is_array($ageCategories) ? $ageCategories : explode(',', $ageCategories);
             
@@ -56,6 +56,12 @@ class SeniorController extends Controller
                 foreach ($categories as $category) {
                     $category = trim($category);
                     switch ($category) {
+                        case 'sexagenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 60 AND 69');
+                            break;
+                        case 'septuagenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 70 AND 79');
+                            break;
                         case 'octogenarians':
                             $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 80 AND 89');
                             break;
