@@ -157,38 +157,63 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         </Card>
     );
 
-    const renderPersonalDetails = () => (
-        <Card size="small" title="Personal Information">
-            <Descriptions column={2} size="small" bordered>
-                <Descriptions.Item label={<><CalendarOutlined /> Birthdate</>}>
-                    {senior?.birthdate ? dayjs(senior.birthdate).format('MMMM D, YYYY') : '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Age">
-                    {getAge(senior?.birthdate)} years old
-                </Descriptions.Item>
-                <Descriptions.Item label="Gender">
-                    <Space>
-                        {getGenderIcon(senior?.gender_id)}
-                        {senior?.gender?.name || (senior?.gender_id === 1 ? 'Male' : 'Female')}
-                    </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Civil Status">
-                    {senior?.civil_status?.name || '-'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Educational Attainment" span={2}>
-                    {senior?.educational_attainment?.level || '-'}
-                </Descriptions.Item>
-            </Descriptions>
-        </Card>
-    );
+    const renderPersonalDetails = () => {
+        const appData = getApplicantData();
+        const targetSectors = senior?.target_sectors?.length ? senior.target_sectors : (appData?.target_sectors || []);
+        const subCategories = senior?.sub_categories?.length ? senior.sub_categories : (appData?.sub_categories || []);
+
+        return (
+            <Card size="small" title="Personal Information">
+                <Descriptions column={2} size="small" bordered>
+                    <Descriptions.Item label={<><CalendarOutlined /> Birthdate</>}>
+                        {senior?.birthdate ? dayjs(senior.birthdate).format('MMMM D, YYYY') : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Age">
+                        {getAge(senior?.birthdate)} years old
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Gender">
+                        <Space>
+                            {getGenderIcon(senior?.gender_id)}
+                            {senior?.gender?.name || (senior?.gender_id === 1 ? 'Male' : 'Female')}
+                        </Space>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Civil Status">
+                        {senior?.civil_status?.name || '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Educational Attainment" span={2}>
+                        {senior?.educational_attainment?.level || '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Occupation">
+                        {senior?.occupation || '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Monthly Salary">
+                        {senior?.monthly_salary ? formatCurrency(senior.monthly_salary) : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Other Skills" span={2}>
+                        {senior?.other_skills || '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Target Sectors" span={2}>
+                        {targetSectors.length > 0 ? (
+                            <Space wrap>{targetSectors.map((s, i) => <Tag key={i} color="blue">{s}</Tag>)}</Space>
+                        ) : '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Sub-Categories" span={2}>
+                        {subCategories.length > 0 ? (
+                            <Space wrap>{subCategories.map((c, i) => <Tag key={i} color="green">{c}</Tag>)}</Space>
+                        ) : '-'}
+                    </Descriptions.Item>
+                </Descriptions>
+            </Card>
+        );
+    };
 
     const renderAddressContact = () => (
         <Card size="small" title="Address & Contact" style={{ marginTop: 16 }}>
             <Descriptions column={2} size="small" bordered>
                 <Descriptions.Item label={<><HomeOutlined /> Address</>} span={2}>
                     {[
-                        senior?.house_number,
-                        senior?.street,
+                        senior?.contact?.house_number,
+                        senior?.contact?.street,
                         senior?.barangay?.name
                     ].filter(Boolean).join(', ') || '-'}
                 </Descriptions.Item>
@@ -314,8 +339,8 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
 
     const renderAssociation = () => {
         const appData = getApplicantData();
-        const targetSectors = appData?.target_sectors || [];
-        const subCategories = appData?.sub_categories || [];
+        const targetSectors = senior?.target_sectors?.length ? senior.target_sectors : (appData?.target_sectors || []);
+        const subCategories = senior?.sub_categories?.length ? senior.sub_categories : (appData?.sub_categories || []);
 
         return (
             <div>

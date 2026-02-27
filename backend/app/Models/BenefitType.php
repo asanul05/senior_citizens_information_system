@@ -22,6 +22,9 @@ class BenefitType extends Model
         'district_id',
         'created_by',
         'is_active',
+        'required_sectors',
+        'required_sub_categories',
+        'association_mode',
     ];
 
     protected $casts = [
@@ -29,6 +32,8 @@ class BenefitType extends Model
         'is_one_time' => 'boolean',
         'is_active' => 'boolean',
         'claim_interval_days' => 'integer',
+        'required_sectors' => 'array',
+        'required_sub_categories' => 'array',
     ];
 
     /**
@@ -119,6 +124,52 @@ class BenefitType extends Model
                     ->exists();
             }
             return false;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a senior is eligible based on target sectors / sub-categories.
+     */
+    public function isEligibleForAssociation(SeniorCitizen $senior): bool
+    {
+        $requiredSectors = $this->required_sectors ?? [];
+        $requiredSubCats = $this->required_sub_categories ?? [];
+
+        // No restrictions = everyone eligible
+        if (empty($requiredSectors) && empty($requiredSubCats)) {
+            return true;
+        }
+
+        $seniorSectors = $senior->target_sectors ?? [];
+        $seniorSubCats = $senior->sub_categories ?? [];
+
+        if ($this->association_mode === 'all') {
+            // Senior must have ALL required sectors AND ALL required sub-categories
+            foreach ($requiredSectors as $sector) {
+                if (!in_array($sector, $seniorSectors)) {
+                    return false;
+                }
+            }
+            foreach ($requiredSubCats as $subCat) {
+                if (!in_array($subCat, $seniorSubCats)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // 'any' mode: senior must match at least ONE from either list
+        foreach ($requiredSectors as $sector) {
+            if (in_array($sector, $seniorSectors)) {
+                return true;
+            }
+        }
+        foreach ($requiredSubCats as $subCat) {
+            if (in_array($subCat, $seniorSubCats)) {
+                return true;
+            }
         }
 
         return false;

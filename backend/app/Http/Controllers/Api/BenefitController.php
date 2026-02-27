@@ -220,6 +220,11 @@ class BenefitController extends Controller
                     continue;
                 }
 
+                // Check association eligibility (target sectors / sub-categories)
+                if (!$benefitType->isEligibleForAssociation($senior)) {
+                    continue;
+                }
+
                 $eligibleSeniors[] = [
                     'senior_id' => $senior->id,
                     'osca_id' => $senior->osca_id,
@@ -310,6 +315,11 @@ class BenefitController extends Controller
             foreach ($seniors as $senior) {
                 // Check target scope eligibility (district, branch, barangays)
                 if ($senior->barangay_id && !$benefitType->isEligibleForBarangay($senior->barangay_id)) {
+                    continue;
+                }
+
+                // Check association eligibility (target sectors / sub-categories)
+                if (!$benefitType->isEligibleForAssociation($senior)) {
                     continue;
                 }
 
@@ -560,6 +570,11 @@ class BenefitController extends Controller
         if ($isEligible && $senior->barangay_id) {
             $isEligible = $type->isEligibleForBarangay($senior->barangay_id);
         }
+
+        // Check association eligibility (target sectors / sub-categories)
+        if ($isEligible) {
+            $isEligible = $type->isEligibleForAssociation($senior);
+        }
             
             // Check if already claimed
             $existingClaim = $senior->benefitClaims
@@ -739,6 +754,11 @@ class BenefitController extends Controller
             'district_id' => 'nullable|exists:districts,id',
             'barangay_ids' => 'nullable|array',
             'barangay_ids.*' => 'exists:barangays,id',
+            'required_sectors' => 'nullable|array',
+            'required_sectors.*' => 'string',
+            'required_sub_categories' => 'nullable|array',
+            'required_sub_categories.*' => 'string',
+            'association_mode' => 'sometimes|in:any,all',
         ]);
 
         // Validate max_age >= min_age if provided
@@ -834,6 +854,11 @@ class BenefitController extends Controller
             'district_id' => 'nullable|exists:districts,id',
             'barangay_ids' => 'nullable|array',
             'barangay_ids.*' => 'exists:barangays,id',
+            'required_sectors' => 'nullable|array',
+            'required_sectors.*' => 'string',
+            'required_sub_categories' => 'nullable|array',
+            'required_sub_categories.*' => 'string',
+            'association_mode' => 'sometimes|in:any,all',
         ]);
 
         // Validate max_age >= min_age if both are set

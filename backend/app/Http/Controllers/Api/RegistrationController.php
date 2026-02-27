@@ -437,6 +437,7 @@ class RegistrationController extends Controller
             'street' => 'nullable|string|max:255',
             'mobile_number' => 'nullable|string|max:20',
             'telephone_number' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
             'educational_attainment_id' => 'nullable|integer',
             'monthly_salary' => 'nullable|numeric',
             'occupation' => 'nullable|string|max:200',
@@ -466,6 +467,7 @@ class RegistrationController extends Controller
                     'street' => $request->street,
                     'mobile_number' => $request->mobile_number,
                     'telephone_number' => $request->telephone_number,
+                    'email' => $request->email,
                 ],
                 'background_info' => [
                     'educational_attainment_id' => $request->educational_attainment_id,
