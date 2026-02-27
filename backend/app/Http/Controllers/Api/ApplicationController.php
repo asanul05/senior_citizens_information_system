@@ -367,6 +367,8 @@ class ApplicationController extends Controller
             'monthly_salary' => $background['monthly_salary'] ?? 0,
             'occupation' => $background['occupation'] ?? null,
             'other_skills' => $background['other_skills'] ?? null,
+            'target_sectors' => $data['target_sectors'] ?? [],
+            'sub_categories' => $data['sub_categories'] ?? [],
             'registration_date' => now(),
             'registration_status_id' => 2, // Approved
             'registered_by' => $user->id,

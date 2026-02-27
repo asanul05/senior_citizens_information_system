@@ -160,6 +160,7 @@ const NewApplication = () => {
                 street: prefillData.street,
                 mobile_number: prefillData.mobile_number,
                 telephone_number: prefillData.telephone_number,
+                email: prefillData.email,
                 educational_attainment_id: prefillData.educational_attainment_id,
                 monthly_salary: prefillData.monthly_salary,
                 occupation: prefillData.occupation,
@@ -226,6 +227,7 @@ const NewApplication = () => {
                     street: contact.street,
                     mobile_number: contact.mobile_number,
                     telephone_number: contact.telephone_number,
+                    email: contact.email,
                     educational_attainment_id: background.educational_attainment_id,
                     monthly_salary: background.monthly_salary,
                     occupation: background.occupation,
@@ -341,6 +343,7 @@ const NewApplication = () => {
                     street: allData.street,
                     mobile_number: allData.mobile_number,
                     telephone_number: allData.telephone_number,
+                    email: allData.email,
                     educational_attainment_id: allData.educational_attainment_id,
                     monthly_salary: allData.monthly_salary,
                     occupation: allData.occupation,
@@ -549,13 +552,19 @@ const NewApplication = () => {
 
     const handleNext = async () => {
         try {
-            const values = await form.validateFields();
-            const newFormData = { ...formData, ...values };
+            // Validate required/rule-based fields first
+            await form.validateFields();
+            // Capture ALL field values (including optional fields without rules like email)
+            const allValues = form.getFieldsValue();
+            const definedValues = Object.fromEntries(
+                Object.entries(allValues).filter(([, v]) => v !== undefined)
+            );
+            const newFormData = { ...formData, ...definedValues };
             setFormData(newFormData);
 
             // Check for duplicates after step 1 (Personal Info)
             if (currentStep === 0) {
-                const duplicateResult = await checkDuplicate(values);
+                const duplicateResult = await checkDuplicate(newFormData);
 
                 // If duplicates found, show warning modal instead of proceeding
                 if (duplicateResult?.has_duplicate) {
@@ -592,6 +601,12 @@ const NewApplication = () => {
     };
 
     const handlePrev = () => {
+        // Save current step's field values before going back
+        const currentValues = form.getFieldsValue();
+        const definedValues = Object.fromEntries(
+            Object.entries(currentValues).filter(([, v]) => v !== undefined)
+        );
+        setFormData(prev => ({ ...prev, ...definedValues }));
         setCurrentStep(currentStep - 1);
     };
 

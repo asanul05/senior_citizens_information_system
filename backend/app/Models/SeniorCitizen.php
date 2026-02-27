@@ -24,6 +24,8 @@ class SeniorCitizen extends Model
         'monthly_salary',
         'occupation',
         'other_skills',
+        'target_sectors',
+        'sub_categories',
         'socioeconomic_status_id',
         'mobility_level_id',
         'barangay_id',
@@ -47,6 +49,8 @@ class SeniorCitizen extends Model
         'is_deceased' => 'boolean',
         'thumbmark_verified' => 'boolean',
         'monthly_salary' => 'decimal:2',
+        'target_sectors' => 'array',
+        'sub_categories' => 'array',
     ];
 
     protected $appends = ['age', 'full_name'];

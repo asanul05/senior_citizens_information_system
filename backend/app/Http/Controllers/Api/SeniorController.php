@@ -269,6 +269,11 @@ class SeniorController extends Controller
             'mobile_number' => 'nullable|string|max:50',
             'telephone_number' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:100',
+            // Association fields
+            'target_sectors' => 'nullable|array',
+            'target_sectors.*' => 'string',
+            'sub_categories' => 'nullable|array',
+            'sub_categories.*' => 'string',
         ]);
 
         // If changing barangay, verify user has access to new barangay

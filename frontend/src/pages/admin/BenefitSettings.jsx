@@ -19,6 +19,7 @@ import {
     Tooltip,
     Alert,
     Divider,
+    Radio,
 } from 'antd';
 import {
     PlusOutlined,
@@ -28,6 +29,7 @@ import {
     GiftOutlined,
     CheckCircleOutlined,
     StopOutlined,
+    TeamOutlined,
 } from '@ant-design/icons';
 import { benefitTypesApi, registrationApi, districtApi, barangayManagementApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -248,6 +250,31 @@ function BenefitSettings() {
             },
         },
         {
+            title: 'Eligibility',
+            key: 'eligibility',
+            render: (_, record) => {
+                const sectors = record.required_sectors || [];
+                const subCats = record.required_sub_categories || [];
+                if (sectors.length === 0 && subCats.length === 0) {
+                    return <Text type="secondary">All seniors</Text>;
+                }
+                const mode = record.association_mode === 'all' ? 'ALL of' : 'ANY of';
+                const items = [...sectors, ...subCats];
+                return (
+                    <Tooltip title={`Must match ${mode}: ${items.join(', ')}`}>
+                        <Space size={2} wrap>
+                            <TeamOutlined style={{ color: '#722ed1' }} />
+                            <Text style={{ fontSize: 12 }}>{mode}:</Text>
+                            {items.slice(0, 2).map(item => (
+                                <Tag key={item} color="purple" style={{ fontSize: 11 }}>{item}</Tag>
+                            ))}
+                            {items.length > 2 && <Tag>+{items.length - 2}</Tag>}
+                        </Space>
+                    </Tooltip>
+                );
+            },
+        },
+        {
             title: 'Status',
             dataIndex: 'is_active',
             key: 'is_active',
@@ -318,7 +345,7 @@ function BenefitSettings() {
 
                 <Alert
                     message="Benefit Eligibility"
-                    description="Seniors are automatically eligible for benefits based on their age and barangay. Set the minimum age and target barangays for each benefit type."
+                    description="Seniors are automatically eligible for benefits based on their age, barangay, and association (target sectors / sub-categories). Configure eligibility criteria for each benefit type."
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
@@ -594,6 +621,67 @@ function BenefitSettings() {
                             </Select>
                         </Form.Item>
                     )}
+
+                    <Divider orientation="left">Association Eligibility</Divider>
+
+                    <Alert
+                        message="Optional: Restrict this benefit to seniors with specific associations"
+                        description="Leave both fields empty to allow all seniors. If filled, only seniors matching the selected sectors/sub-categories will be eligible."
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                    />
+
+                    <Form.Item
+                        name="required_sectors"
+                        label="Required Target Sectors"
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="Leave empty for no restriction"
+                            allowClear
+                            style={{ width: '100%' }}
+                        >
+                            <Option value="PNGNA">PNGNA</Option>
+                            <Option value="WEPC">WEPC</Option>
+                            <Option value="PWD">PWD</Option>
+                            <Option value="YNSP">YNSP</Option>
+                            <Option value="PASP">PASP</Option>
+                            <Option value="KIA/WIA">KIA/WIA</Option>
+                        </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="required_sub_categories"
+                        label="Required Sub-Categories"
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="Leave empty for no restriction"
+                            allowClear
+                            style={{ width: '100%' }}
+                        >
+                            <Option value="Solo Parents">Solo Parents</Option>
+                            <Option value="Indigenous Person (IP)">Indigenous Person (IP)</Option>
+                            <Option value="Recovering Person who used drugs">Recovering Person who used drugs</Option>
+                            <Option value="4P's DSWD Beneficiaries">4P's (DSWD Beneficiaries)</Option>
+                            <Option value="Street Dwellers">Street Dwellers</Option>
+                            <Option value="Psychosocial/Mental/Learning Disability">Psychosocial/Mental/Learning Disability</Option>
+                            <Option value="Stateless Person/Asylum">Stateless Person/Asylum</Option>
+                        </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="association_mode"
+                        label="Matching Mode"
+                        help="'Must match ALL' = senior must belong to every selected item. 'Must match ANY' = senior only needs at least one."
+                        initialValue="any"
+                    >
+                        <Radio.Group>
+                            <Radio.Button value="any">Must match ANY (at least one)</Radio.Button>
+                            <Radio.Button value="all">Must match ALL</Radio.Button>
+                        </Radio.Group>
+                    </Form.Item>
                 </Form>
             </Modal>
         </div>
