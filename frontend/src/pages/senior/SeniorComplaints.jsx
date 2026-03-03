@@ -42,6 +42,8 @@ const CATEGORIES = [
     { value: 'other', label: 'Other', color: '#8c8c8c', description: 'Other concerns not listed above' },
 ];
 
+const COOLDOWN_SECONDS = 120; 
+
 const SeniorComplaints = () => {
     const [senior, setSenior] = useState(null);
     const [complaints, setComplaints] = useState([]);
@@ -51,6 +53,7 @@ const SeniorComplaints = () => {
     const [benefitClaims, setBenefitClaims] = useState([]);
     const [complaintForm] = Form.useForm();
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [cooldownRemaining, setCooldownRemaining] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -64,6 +67,15 @@ const SeniorComplaints = () => {
         fetchComplaints(seniorData.id);
         fetchBenefitClaims(seniorData.id);
     }, [navigate]);
+
+    // Cooldown countdown timer
+    useEffect(() => {
+        if (cooldownRemaining <= 0) return;
+        const timer = setInterval(() => {
+            setCooldownRemaining((prev) => (prev <= 1 ? 0 : prev - 1));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [cooldownRemaining]);
 
     const fetchComplaints = async (seniorId) => {
         try {
@@ -131,9 +143,16 @@ const SeniorComplaints = () => {
             });
             message.success('Complaint filed successfully!');
             setComplaintModal(false);
+            setCooldownRemaining(COOLDOWN_SECONDS);
             fetchComplaints(senior.id);
         } catch (error) {
-            message.error('Failed to file complaint. Please try again.');
+            if (error.response?.status === 429) {
+                message.warning(error.response.data?.message || 'Please wait before filing another complaint.');
+                setCooldownRemaining(COOLDOWN_SECONDS);
+                setComplaintModal(false);
+            } else {
+                message.error('Failed to file complaint. Please try again.');
+            }
         } finally {
             setSubmitting(false);
         }
@@ -178,19 +197,26 @@ const SeniorComplaints = () => {
                 </Button>
 
                 {/* File Complaint Button */}
-                <Card style={{ borderRadius: 12, marginBottom: 24, textAlign: 'center', background: '#fff5f5', border: '1px dashed #ff4d4f' }}>
+                <Card style={{ borderRadius: 12, marginBottom: 24, textAlign: 'center', background: cooldownRemaining > 0 ? '#f5f5f5' : '#fff5f5', border: `1px dashed ${cooldownRemaining > 0 ? '#d9d9d9' : '#ff4d4f'}` }}>
                     <Title level={5} style={{ margin: 0, marginBottom: 8 }}>Have a concern?</Title>
                     <Paragraph type="secondary" style={{ marginBottom: 16 }}>
-                        File a complaint and OSCA will review and respond to your concern.
+                        {cooldownRemaining > 0
+                            ? `Please wait before filing another complaint.`
+                            : 'File a complaint and OSCA will review and respond to your concern.'}
                     </Paragraph>
                     <Button
                         type="primary"
                         size="large"
                         icon={<PlusOutlined />}
                         onClick={openComplaintModal}
-                        style={{ background: '#e74c3c', borderColor: '#e74c3c' }}
+                        disabled={cooldownRemaining > 0}
+                        style={cooldownRemaining > 0
+                            ? {}
+                            : { background: '#e74c3c', borderColor: '#e74c3c' }}
                     >
-                        File a New Complaint
+                        {cooldownRemaining > 0
+                            ? `Wait ${Math.floor(cooldownRemaining / 60)}:${String(cooldownRemaining % 60).padStart(2, '0')}`
+                            : 'File a New Complaint'}
                     </Button>
                 </Card>
 
@@ -219,8 +245,8 @@ const SeniorComplaints = () => {
                                 style={{
                                     borderRadius: 12,
                                     borderLeft: `4px solid ${complaint.status === 'open' ? '#ff4d4f' :
-                                            complaint.status === 'in_review' ? '#faad14' :
-                                                complaint.status === 'resolved' ? '#52c41a' : '#d9d9d9'
+                                        complaint.status === 'in_review' ? '#faad14' :
+                                            complaint.status === 'resolved' ? '#52c41a' : '#d9d9d9'
                                         }`,
                                 }}
                             >
