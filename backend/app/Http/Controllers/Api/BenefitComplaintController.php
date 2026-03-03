@@ -24,8 +24,39 @@ class BenefitComplaintController extends Controller
             'message' => 'required|string|max:2000',
         ]);
 
+        $seniorId = $validated['senior_id'];
+
+        // --- Spam Prevention ---
+
+        // 1) Cooldown: prevent filing another complaint within N minutes
+        $cooldownMinutes = 2; 
+        $recentComplaint = BenefitComplaint::where('senior_id', $seniorId)
+            ->where('created_at', '>=', now()->subMinutes($cooldownMinutes))
+            ->exists();
+
+        if ($recentComplaint) {
+            return response()->json([
+                'success' => false,
+                'message' => "Please wait {$cooldownMinutes} minutes before filing another complaint.",
+            ], 429);
+        }
+
+        // 2) Daily limit: max N complaints per senior per day
+        $dailyLimit = 5; 
+        $todayCount = BenefitComplaint::where('senior_id', $seniorId)
+            ->whereDate('created_at', today())
+            ->count();
+
+        if ($todayCount >= $dailyLimit) {
+            return response()->json([
+                'success' => false,
+                'message' => "You have reached the daily limit of {$dailyLimit} complaints. Please try again tomorrow.",
+            ], 429);
+        }
+
+
         $complaint = BenefitComplaint::create([
-            'senior_id' => $validated['senior_id'],
+            'senior_id' => $seniorId,
             'category' => $validated['category'],
             'benefit_claim_id' => $validated['benefit_claim_id'] ?? null,
             'subject' => $validated['subject'],
