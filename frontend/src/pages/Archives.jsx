@@ -82,8 +82,8 @@ const Archives = () => {
   };
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setFilters((prev) => ({ ...prev, search: value }));
+  const value = e.target.value;
+  setFilters((prev) => ({ ...prev, search: value }));
   };
 
   const handleReasonChange = (value) => {
@@ -220,7 +220,18 @@ const Archives = () => {
               placeholder="Search by name or OSCA ID"
               prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
               allowClear
+              value={filters.search}
               onChange={handleSearchChange}
+              onPressEnter={() => fetchArchives(1, pagination.pageSize)} // Trigger on Enter key
+              suffix={
+                <Button 
+                  type="primary" 
+                  size="small" 
+                  onClick={() => fetchArchives(1, pagination.pageSize)}
+                >
+                  Search
+                </Button>
+              }
             />
           </Col>
           <Col xs={12} md={5}>
