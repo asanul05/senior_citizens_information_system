@@ -277,20 +277,18 @@ class ArchiveController extends Controller
 
         // Fetch audit logs for this record
         $auditLogs = DB::table('audit_logs')
-            ->leftJoin('users', 'users.id', '=', 'audit_logs.user_id')
-            ->where('target_type', $targetType)
-            ->where('target_id', $referenceId)
-            ->orderBy('created_at')
-            ->select([
-                'audit_logs.id',
-                'audit_logs.action',
-                'audit_logs.description',
-                'audit_logs.old_values',
-                'audit_logs.new_values',
-                'audit_logs.created_at',
-                DB::raw("CONCAT_WS(' ', users.first_name, users.last_name) as user_name")
-            ])
-            ->get();
+        ->leftJoin('users', 'users.id', '=', 'audit_logs.user_id')
+        ->select(
+            'audit_logs.id',
+            'audit_logs.action',
+            'audit_logs.description',
+            'audit_logs.created_at',
+            'users.name as user_name' // <--- Changed from CONCAT_WS
+        )
+        ->where('target_type', 'senior_citizen') 
+        ->where('target_id', $id)
+        ->orderBy('created_at', 'asc')
+        ->get();
 
         $events = [];
 
