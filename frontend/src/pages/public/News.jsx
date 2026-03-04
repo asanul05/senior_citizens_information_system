@@ -268,13 +268,15 @@ const News = () => {
         open={isModalVisible}
         onCancel={handleCloseModal}
         footer={[
-          <Button key="close" onClick={handleCloseModal}>
-            Close
-          </Button>,
+        <Button key="close" onClick={handleCloseModal}>
+          Close
+        </Button>,
         ]}
         width={800}
         centered
         destroyOnClose
+        getContainer={false} 
+        blockScroll={false}
       >
         {selectedItem && (
           <div style={{ padding: "10px 0" }}>

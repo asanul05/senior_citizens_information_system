@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Row, Col, Button, Card, Statistic, Typography, Spin } from 'antd';
+import { 
+  Row, Col, Button, Card, Statistic, Typography, 
+  Spin, Modal, Tag, Space, Divider, Image 
+} from 'antd'; // Added Modal, Tag, Space, Divider, Image
 import {
   ArrowRightOutlined,
   TeamOutlined,
@@ -10,6 +13,8 @@ import {
   SafetyCertificateOutlined,
   RightOutlined,
   LeftOutlined,
+  EnvironmentOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { publicApi } from '../../services/api';
@@ -477,6 +482,10 @@ const ServicesPreview = () => {
 const AnnouncementsPreview = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // MODAL STATES
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
@@ -485,23 +494,19 @@ const AnnouncementsPreview = () => {
         const response = await publicApi.getAnnouncements();
         const apiData = response.data?.data || [];
 
-        const mapped = apiData.slice(0, 3).map((item) => {
-          const content = item.content || '';
-          const excerpt =
-            content.length > 160 ? `${content.slice(0, 157)}...` : content;
-
-          return {
-            id: item.id,
-            title: item.title,
-            type: item.type || 'news',
-            date: item.date || item.published_at || item.created_at,
-            excerpt,
-          };
-        });
+        const mapped = apiData.slice(0, 3).map((item) => ({
+          id: item.id,
+          title: item.title,
+          type: item.type?.name?.toLowerCase() || 'news',
+          date: item.event_date || item.published_at || item.created_at,
+          content: item.description || item.content, // Full content for modal
+          location: item.location,
+          target_audience: item.target_audience,
+          media: item.media || [],
+        }));
 
         setAnnouncements(mapped);
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error('Failed to load announcements preview', error);
       } finally {
         setLoading(false);
@@ -511,39 +516,33 @@ const AnnouncementsPreview = () => {
     fetchAnnouncements();
   }, []);
 
+  const handleOpenModal = (item) => {
+    setSelectedItem(item);
+    setIsModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedItem(null);
+    setIsModalVisible(false);
+  };
+
   const getTypeColor = (type) => {
     const colors = { event: '#4338ca', notice: '#059669', advisory: '#dc2626' };
     return colors[type] || '#6b7280';
   };
 
+  // Helper for image paths
+  const getImageUrl = (path) => `${import.meta.env.VITE_API_URL}/storage/${path}`;
+
   return (
     <section style={{ padding: '80px 24px', background: '#f9fafb' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div
-          style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            marginBottom: 32,
-              flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <Text
-              style={{
-                color: '#4338ca',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-                fontSize: 13,
-              }}
-            >
+            <Text style={{ color: '#4338ca', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, fontSize: 13 }}>
               Stay Updated
             </Text>
-            <Title level={2} style={{ marginTop: 8, marginBottom: 0 }}>
-              Latest Announcements
-            </Title>
+            <Title level={2} style={{ marginTop: 8, marginBottom: 0 }}>Latest Announcements</Title>
           </div>
           <Link to="/news">
             <Button style={{ borderRadius: 8, borderColor: '#d1d5db' }}>
@@ -551,56 +550,37 @@ const AnnouncementsPreview = () => {
             </Button>
           </Link>
         </div>
+
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60 }}>
-            <Spin size="large" />
-          </div>
+          <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>
         ) : (
           <Row gutter={[24, 24]}>
             {announcements.map((item) => (
               <Col xs={24} md={8} key={item.id}>
                 <Card
                   hoverable
-                  style={{
-                    height: '100%',
-                    borderRadius: 12,
-                    border: '1px solid #e5e7eb',
-                  }}
+                  onClick={() => handleOpenModal(item)} // CLICK TO OPEN MODAL
+                  style={{ height: '100%', borderRadius: 12, border: '1px solid #e5e7eb', overflow: 'hidden' }}
                   bodyStyle={{ padding: 24 }}
+                  cover={item.media?.length > 0 ? (
+                    <img 
+                      alt="cover" 
+                      src={getImageUrl(item.media[0].file_path)} 
+                      style={{ height: 180, objectFit: 'cover' }}
+                    />
+                  ) : null}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      marginBottom: 12,
-                    }}
-                  >
-                    <span
-                      style={{
-                        padding: '2px 10px',
-                        background: `${getTypeColor(item.type)}15`,
-                        color: getTypeColor(item.type),
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        textTransform: 'capitalize',
-                      }}
-                    >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <span style={{ padding: '2px 10px', background: `${getTypeColor(item.type)}15`, color: getTypeColor(item.type), borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
                       {item.type}
                     </span>
                     <span style={{ color: '#9ca3af', fontSize: 12 }}>
-                      <CalendarOutlined />{' '}
-                      {dayjs(item.date).format('MMM D, YYYY')}
+                      <CalendarOutlined /> {dayjs(item.date).format('MMM D, YYYY')}
                     </span>
                   </div>
-                  <Title level={5} style={{ marginBottom: 8 }}>
-                    {item.title}
-                  </Title>
-                  <Paragraph
-                    style={{ color: '#6b7280', marginBottom: 0, fontSize: 14 }}
-                  >
-                    {item.excerpt}
+                  <Title level={5} style={{ marginBottom: 8 }}>{item.title}</Title>
+                  <Paragraph style={{ color: '#6b7280', marginBottom: 0, fontSize: 14 }} ellipsis={{ rows: 2 }}>
+                    {item.content}
                   </Paragraph>
                 </Card>
               </Col>
@@ -608,6 +588,76 @@ const AnnouncementsPreview = () => {
           </Row>
         )}
       </div>
+
+      {/* DETAIL MODAL */}
+      <Modal
+        title={null}
+        open={isModalVisible}
+        onCancel={handleCloseModal}
+        footer={[<Button key="close" onClick={handleCloseModal}>Close</Button>]}
+        width={800}
+        centered
+        destroyOnClose
+        getContainer={false} 
+        blockScroll={false} 
+      >
+        {selectedItem && (
+          <div style={{ padding: '10px 0' }}>
+            <Title level={3}>{selectedItem.title}</Title>
+            
+            <Space style={{ marginBottom: 16 }} split={<Divider type="vertical" />}>
+              <Tag color="blue">{selectedItem.type?.toUpperCase()}</Tag>
+              <Text type="secondary">
+                <CalendarOutlined /> {dayjs(selectedItem.date).format('MMMM D, YYYY')}
+              </Text>
+            </Space>
+
+            {/* Image Gallery */}
+            {selectedItem.media?.length > 0 && (
+              <div style={{ marginBottom: 24, textAlign: 'center', background: '#f5f5f5', borderRadius: 8, padding: 10 }}>
+                <Image.PreviewGroup>
+                  <Row gutter={[8, 8]} justify="center">
+                    {selectedItem.media.map((file, index) => (
+                      <Col key={file.id} span={index === 0 ? 24 : 6}>
+                        <Image
+                          style={{ maxHeight: index === 0 ? 400 : 120, objectFit: 'cover', borderRadius: 8, width: '100%' }}
+                          src={getImageUrl(file.file_path)}
+                        />
+                      </Col>
+                    ))}
+                  </Row>
+                </Image.PreviewGroup>
+              </div>
+            )}
+
+            {/* Event Info Card */}
+            {(selectedItem.location || selectedItem.target_audience) && (
+              <Card size="small" style={{ marginBottom: 20, background: '#fafafa', border: 'none' }}>
+                <Row gutter={16}>
+                  {selectedItem.location && (
+                    <Col span={12}>
+                      <Text strong><EnvironmentOutlined /> Location</Text>
+                      <Paragraph>{selectedItem.location}</Paragraph>
+                    </Col>
+                  )}
+                  {selectedItem.target_audience && (
+                    <Col span={12}>
+                      <Text strong><InfoCircleOutlined /> Who can attend</Text>
+                      <Paragraph>{selectedItem.target_audience}</Paragraph>
+                    </Col>
+                  )}
+                </Row>
+              </Card>
+            )}
+
+            <Divider />
+            
+            <Paragraph style={{ fontSize: 16, lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>
+              {selectedItem.content}
+            </Paragraph>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 };
