@@ -88,9 +88,9 @@ const Announcements = () => {
   }, [filters]);
 
   const closeModal = () => {
-    setFormModal({ visible: false, mode: "create", item: null });
-    form.resetFields();
-    setMediaList([]);
+  setFormModal({ visible: false, mode: "create", item: null });
+  form.resetFields();
+  setMediaList([]);
   };
 
   const openCreateModal = () => {
@@ -100,15 +100,18 @@ const Announcements = () => {
   };
 
   const openEditModal = (item) => {
-  form.resetFields();
-
-  form.setFieldsValue({
+  const mappedItem = {
     ...item,
-    content: item.description, 
+    content: item.description,
     event_date: item.event_date ? dayjs(item.event_date) : null,
-  });
+  };
 
-  setFormModal({ visible: true, mode: "edit", item });
+  setFormModal({ 
+    visible: true, 
+    mode: "edit", 
+    item: mappedItem // Store the mapped item here
+  });
+  
   loadMedia(item.id);
   };
 
@@ -185,12 +188,11 @@ const Announcements = () => {
 
   Modal.confirm({
     title: "Save as Draft?",
-    content: "You have unsaved changes. Save as draft before closing?",
+    content: "You have unsaved changes. Would you like to save as a draft?",
     okText: "Save as Draft",
     cancelText: "Discard",
     onOk: async () => {
-      // FIX: Use getFieldsValue() instead of validateFields() 
-      // This grabs whatever is typed without checking for "required" rules
+      // Just get the values directly—no validation required
       const values = form.getFieldsValue(); 
       await processSubmit(values, false); 
     },
@@ -362,25 +364,28 @@ const Announcements = () => {
       </Card>
 
       <Modal
-        title={
-          formModal.mode === "create" ? "New Announcement" : "Edit Announcement"
-        }
+        // BUG FIX: The key ensures the form re-initializes with NEW data every time
+        key={formModal.item ? `edit-${formModal.item.id}` : 'create'}
+        title={formModal.mode === "create" ? "New Announcement" : "Edit Announcement"}
         open={formModal.visible}
         onCancel={handleCancel}
         footer={null}
         width={600}
         centered
+        // Ensure the form is destroyed when closed so it doesn't leak data
+        destroyOnClose={true}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form 
+              form={form} 
+            layout="vertical" 
+            onFinish={handleSubmit}
+            // BUG FIX: Set the initial values here
+            initialValues={formModal.item || {}} 
+        >
           <Form.Item name="title" label="Title" rules={[{ required: true }]}>
             <Input placeholder="Announcement title" />
           </Form.Item>
-
-          <Form.Item
-            name="content"
-            label="Content"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="content" label="Content" rules={[{ required: true }]}>
             <TextArea rows={4} placeholder="Announcement content..." />
           </Form.Item>
 
