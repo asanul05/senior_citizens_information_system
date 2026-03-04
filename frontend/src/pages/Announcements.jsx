@@ -1,35 +1,12 @@
 import { useState, useEffect } from "react";
 import {
-  Table,
-  Card,
-  Input,
-  Select,
-  Button,
-  Space,
-  Tag,
-  Row,
-  Col,
-  Typography,
-  Modal,
-  Form,
-  DatePicker,
-  Switch,
-  message,
-  Popconfirm,
-  Upload,
-  List,
-  Alert,
+  Table, Card, Input, Select, Button, Space, Tag, Row, Col,
+  Typography, Modal, Form, DatePicker, message, Popconfirm, Upload, List,
 } from "antd";
 import {
-  SearchOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  NotificationOutlined,
-  CalendarOutlined,
-  EnvironmentOutlined,
-  PaperClipOutlined,
-  UploadOutlined, // Added this missing import
+  SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined,
+  NotificationOutlined, CalendarOutlined, EnvironmentOutlined,
+  PaperClipOutlined, UploadOutlined,
 } from "@ant-design/icons";
 import { announcementsApi } from "../services/api";
 import dayjs from "dayjs";
@@ -107,23 +84,32 @@ const Announcements = () => {
     const delayDebounce = setTimeout(() => {
       fetchAnnouncements(1);
     }, 300);
-
     return () => clearTimeout(delayDebounce);
   }, [filters]);
 
+  const closeModal = () => {
+    setFormModal({ visible: false, mode: "create", item: null });
+    form.resetFields();
+    setMediaList([]);
+  };
+
   const openCreateModal = () => {
     form.resetFields();
-    setMediaList([]); // Clear media list on new creation
+    setMediaList([]); 
     setFormModal({ visible: true, mode: "create", item: null });
   };
 
   const openEditModal = (item) => {
-    form.setFieldsValue({
-      ...item,
-      event_date: item.event_date ? dayjs(item.event_date) : null,
-    });
-    setFormModal({ visible: true, mode: "edit", item });
-    loadMedia(item.id);
+  form.resetFields();
+
+  form.setFieldsValue({
+    ...item,
+    content: item.description, 
+    event_date: item.event_date ? dayjs(item.event_date) : null,
+  });
+
+  setFormModal({ visible: true, mode: "edit", item });
+  loadMedia(item.id);
   };
 
   const loadMedia = async (announcementId) => {
@@ -135,35 +121,81 @@ const Announcements = () => {
     }
   };
 
-  const handleSubmit = async (values) => {
-    try {
-      const data = {
-        ...values,
-        event_date: values.event_date?.format("YYYY-MM-DD"),
-      };
+  const processSubmit = async (values, isPublished) => {
+  try {
+    const data = {
+      ...values,
+      // Handle the date formatting only if a date exists
+      event_date: values.event_date ? values.event_date.format("YYYY-MM-DD") : null,
+      is_published: isPublished,
+    };
 
-      if (formModal.mode === "create") {
-        const res = await announcementsApi.create(data);
-        message.success("Announcement created");
+    if (formModal.mode === "create") {
+      const res = await announcementsApi.create(data);
+      const createdId = res.data?.data?.id;
 
-        const created = res.data?.data;
-        if (created?.id) {
-          setFormModal({ visible: true, mode: "edit", item: created });
-          loadMedia(created.id);
-        } else {
-          setFormModal({ visible: false, mode: "create", item: null });
-        }
-      } else {
-        await announcementsApi.update(formModal.item.id, data);
-        message.success("Announcement updated");
-        if (formModal.item) {
-          loadMedia(formModal.item.id);
+      // Handle media if any
+      if (createdId && mediaList.length > 0) {
+        for (const media of mediaList) {
+          if (media.originFileObj) {
+            const formData = new FormData();
+            formData.append("file", media.originFileObj);
+            await announcementsApi.uploadMedia(createdId, formData);
+          }
         }
       }
-      fetchAnnouncements(pagination.current);
-    } catch (error) {
+      message.success(isPublished ? "Announcement published" : "Draft saved");
+    } else {
+      await announcementsApi.update(formModal.item.id, data);
+      message.success(isPublished ? "Announcement updated" : "Draft updated");
+    }
+    
+    fetchAnnouncements(pagination.current);
+    closeModal(); 
+  } catch (error) {
+    // If it's a validation error from the backend, show it
+    if (error.response?.status === 422 && isPublished) {
+      message.error("Please fill in all required fields before publishing.");
+    } else {
       message.error("Failed to save announcement");
     }
+  }
+  };
+
+  const handleSubmit = async (values) => {
+    await processSubmit(values, true); 
+  };
+
+  const handleCancel = () => {
+  if (!form.isFieldsTouched()) {
+    closeModal();
+    return;
+  }
+
+  if (formModal.item?.is_published) {
+    Modal.confirm({
+      title: "Discard Changes?",
+      content: "You have unsaved changes. Exit without saving?",
+      okText: "Discard",
+      okType: 'danger',
+      onOk: () => closeModal(),
+    });
+    return;
+  }
+
+  Modal.confirm({
+    title: "Save as Draft?",
+    content: "You have unsaved changes. Save as draft before closing?",
+    okText: "Save as Draft",
+    cancelText: "Discard",
+    onOk: async () => {
+      // FIX: Use getFieldsValue() instead of validateFields() 
+      // This grabs whatever is typed without checking for "required" rules
+      const values = form.getFieldsValue(); 
+      await processSubmit(values, false); 
+    },
+    onCancel: () => closeModal(),
+  });
   };
 
   const handleDelete = async (id) => {
@@ -191,8 +223,8 @@ const Announcements = () => {
     },
     {
       title: "Content",
-      dataIndex: "content",
-      key: "content",
+      dataIndex: "description", // Matches backend column
+      key: "description",
       width: 300,
       render: (content) => (
         <Paragraph
@@ -280,7 +312,6 @@ const Announcements = () => {
         </Text>
       </div>
 
-      {/* Filters */}
       <Card style={{ marginBottom: 16, borderRadius: 8 }}>
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} sm={10}>
@@ -315,7 +346,6 @@ const Announcements = () => {
         </Row>
       </Card>
 
-      {/* Table */}
       <Card style={{ borderRadius: 8 }}>
         <Table
           columns={columns}
@@ -331,15 +361,12 @@ const Announcements = () => {
         />
       </Card>
 
-      {/* Create/Edit Modal */}
       <Modal
         title={
           formModal.mode === "create" ? "New Announcement" : "Edit Announcement"
         }
         open={formModal.visible}
-        onCancel={() =>
-          setFormModal({ visible: false, mode: "create", item: null })
-        }
+        onCancel={handleCancel}
         footer={null}
         width={600}
         centered
@@ -389,15 +416,6 @@ const Announcements = () => {
             </Col>
           </Row>
 
-          <Form.Item
-            name="is_published"
-            label="Publish"
-            valuePropName="checked"
-          >
-            <Switch checkedChildren="Published" unCheckedChildren="Draft" />
-          </Form.Item>
-
-          {/* Media Upload Section */}
           <Card
             type="inner"
             title={
@@ -412,15 +430,14 @@ const Announcements = () => {
               showUploadList={false}
               customRequest={async ({ file, onSuccess, onError }) => {
                 if (formModal.mode === "create") {
-                  // For create mode, just add to a temporary list
                   setMediaList((prev) => [
                     ...prev,
                     {
                       uid: file.uid,
                       name: file.name,
                       status: "done",
-                      url: URL.createObjectURL(file), // for preview
-                      originFileObj: file, // keep the file object
+                      url: URL.createObjectURL(file), 
+                      originFileObj: file,
                     },
                   ]);
                   onSuccess();
@@ -441,7 +458,6 @@ const Announcements = () => {
                   onSuccess && onSuccess(res.data);
                   message.success("File uploaded");
                 } catch (err) {
-                  console.error("Upload failed", err);
                   onError && onError(err);
                   message.error("Failed to upload file");
                 } finally {
@@ -516,15 +532,9 @@ const Announcements = () => {
 
           <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
             <Space>
-              <Button
-                onClick={() =>
-                  setFormModal({ visible: false, mode: "create", item: null })
-                }
-              >
-                Cancel
-              </Button>
+              <Button onClick={handleCancel}>Cancel</Button>
               <Button type="primary" htmlType="submit">
-                {formModal.mode === "create" ? "Create" : "Save Changes"}
+                {formModal.mode === "create" ? "Create & Publish" : "Save Changes"}
               </Button>
             </Space>
           </Form.Item>
