@@ -15,14 +15,13 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { seniorsApi, registrationApi } from "../services/api";
-import { useAuth } from "../contexts/AuthContext";
 
 const { Option } = Select;
 const { TextArea } = Input;
 
 function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
-  const { user } = useAuth();
   const [form] = Form.useForm();
+  const isDeceased = Form.useWatch("is_deceased", form);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [senior, setSenior] = useState(null);
@@ -62,7 +61,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
         is_active: seniorData.is_active,
         is_deceased: seniorData.is_deceased,
         mobile_number: seniorData.contact?.mobile,
-        telephone: seniorData.contact?.telephone,
+        telephone_number: seniorData.contact?.telephone_number,
         email: seniorData.contact?.email,
         notes: seniorData.notes,
       });
@@ -111,7 +110,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
       onClose();
     } catch (error) {
       if (error.errorFields) {
-        // Form validation error
+        message.warning("Please complete required fields before saving.");
         return;
       }
       console.error("Failed to update senior:", error);
@@ -276,7 +275,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="telephone" label="Telephone">
+              <Form.Item name="telephone_number" label="Telephone">
                 <Input />
               </Form.Item>
             </Col>
@@ -299,7 +298,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
                 <Switch
                   checkedChildren="Yes"
                   unCheckedChildren="No"
-                  disabled={form.getFieldValue("is_deceased")}
+                  disabled={!!isDeceased}
                 />
               </Form.Item>
             </Col>

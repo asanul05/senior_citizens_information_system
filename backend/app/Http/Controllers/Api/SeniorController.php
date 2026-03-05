@@ -7,6 +7,7 @@ use App\Models\SeniorCitizen;
 use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SeniorController extends Controller
 {
@@ -137,7 +138,7 @@ class SeniorController extends Controller
                 'message' => 'Senior not found or not accessible',
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('Error fetching senior: ' . $e->getMessage());
+            Log::error('Error fetching senior: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load senior information: ' . $e->getMessage(),
