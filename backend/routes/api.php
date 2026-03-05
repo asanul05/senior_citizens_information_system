@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/applications/statistics', [ApplicationController::class, 'statistics']);
     Route::get('/applications/{id}', [ApplicationController::class, 'show']);
     Route::patch('/applications/{id}/status', [ApplicationController::class, 'updateStatus']);
+    Route::patch('/applications/{id}/notes', [ApplicationController::class, 'updateNotes']);
 
     // ID Printing
     Route::get('/id-printing', [IdPrintingController::class, 'index']);

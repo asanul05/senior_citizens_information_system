@@ -78,6 +78,8 @@ export const applicationsApi = {
   getStatistics: () => api.get('/applications/statistics'),
 
   updateStatus: (id, data) => api.patch(`/applications/${id}/status`, data),
+
+  updateNotes: (id, data) => api.patch(`/applications/${id}/notes`, data),
 };
 
 // ID Printing API
