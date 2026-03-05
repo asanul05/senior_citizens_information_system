@@ -131,6 +131,11 @@ class PublicController extends Controller
             'family_members' => 'nullable|array',
             'target_sectors' => 'nullable|array',
             'sub_categories' => 'nullable|array',
+            // Registration type
+            'registration_type' => 'required|in:self,assisted',
+            'assistant_name' => 'nullable|required_if:registration_type,assisted|string|max:200',
+            'assistant_relationship' => 'nullable|required_if:registration_type,assisted|string|max:100',
+            'assistant_contact' => ['nullable', 'required_if:registration_type,assisted', 'string', 'max:20', 'regex:/^09\d{9}$/'],
         ]);
 
         if ($validator->fails()) {
@@ -215,6 +220,13 @@ class PublicController extends Controller
                 'family_members' => $request->family_members ?? [],
                 'target_sectors' => $request->target_sectors ?? [],
                 'sub_categories' => $request->sub_categories ?? [],
+                // Registration type & assistant
+                'registration_type' => $request->registration_type,
+                'assistant_info' => $request->registration_type === 'assisted' ? [
+                    'name' => $request->assistant_name,
+                    'relationship' => $request->assistant_relationship,
+                    'contact' => $request->assistant_contact,
+                ] : null,
             ],
             'status' => PreRegistration::STATUS_PENDING,
         ]);
