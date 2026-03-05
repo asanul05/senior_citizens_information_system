@@ -328,6 +328,18 @@ class SeniorController extends Controller
             }
         }
 
+        // Keep status flags consistent: deceased seniors cannot be active.
+        if (array_key_exists('is_deceased', $validated)) {
+            if ($validated['is_deceased']) {
+                $validated['is_active'] = false;
+                if (!$senior->deceased_date) {
+                    $validated['deceased_date'] = now()->toDateString();
+                }
+            } else {
+                $validated['deceased_date'] = null;
+            }
+        }
+
         try {
             DB::beginTransaction();
 
