@@ -5,306 +5,178 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
 use App\Models\AnnouncementMedia;
-use App\Traits\LogsAudit;
+use App\Models\AnnouncementType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AnnouncementController extends Controller
 {
-    use LogsAudit;
-    /**
-     * Get paginated list of announcements.
-     */
     public function index(Request $request)
     {
         $user = $request->user();
         $perPage = $request->get('per_page', 15);
-        
         $query = Announcement::with(['type', 'barangay', 'createdBy']);
 
         if (!$user->isMainAdmin()) {
             $barangayIds = $user->getAccessibleBarangayIds();
             $query->where(function ($q) use ($barangayIds) {
-                $q->whereNull('barangay_id')
-                    ->orWhereIn('barangay_id', $barangayIds);
+                $q->whereNull('barangay_id')->orWhereIn('barangay_id', $barangayIds);
             });
         }
 
-        // Published filter
         if ($request->has('is_published')) {
             $query->where('is_published', $request->boolean('is_published'));
         }
 
-        // Type filter
-        if ($typeId = $request->get('type_id')) {
-            $query->where('type_id', $typeId);
-        }
-
-        // Search
         if ($search = $request->get('search')) {
             $query->where('title', 'like', "%{$search}%");
         }
 
-        $query->orderBy('created_at', 'desc');
-
-        $announcements = $query->paginate($perPage);
-
         return response()->json([
             'success' => true,
-            'data' => $announcements,
+            'data' => $query->orderBy('created_at', 'desc')->paginate($perPage),
         ]);
     }
 
-    /**
-     * Get single announcement.
-     */
-    public function show($id)
-    {
-        $announcement = Announcement::with(['type', 'barangay', 'createdBy', 'media'])->findOrFail($id);
-
-        return response()->json([
-            'success' => true,
-            'data' => $announcement,
-        ]);
-    }
-
-    /**
-     * Create announcement.
-     */
     public function store(Request $request)
     {
+        $isPublished = $request->boolean('is_published');
+
         $request->validate([
-            'title' => 'required|string|max:255',
-            'content' => 'required|string',
-            'type_id' => 'required|exists:announcement_types,id',
-            'event_date' => 'nullable|date',
-            'location' => 'nullable|string|max:255',
-            'target_audience' => 'nullable|string|max:255',
+            'title' => $isPublished ? 'required|string|max:255' : 'nullable|string|max:255',
+            'content' => $isPublished ? 'required|string' : 'nullable|string',
+            'type_id' => $isPublished ? 'required|exists:announcement_types,id' : 'nullable|exists:announcement_types,id',
             'is_published' => 'boolean',
         ]);
 
-        $user = $request->user();
+        // Default type_id if none provided for draft
+        $typeId = $request->input('type_id');
+        if (!$typeId && !$isPublished) {
+            $defaultType = AnnouncementType::first();
+            $typeId = $defaultType ? $defaultType->id : 1;
+        }
 
         $announcement = Announcement::create([
-            'title' => $request->input('title'),
-            'description' => $request->input('content'),
-            'type_id' => $request->input('type_id'),
+            'title' => $request->input('title') ?: 'Untitled Draft',
+            'description' => $request->input('content') ?: '', 
+            'type_id' => $typeId,
             'event_date' => $request->input('event_date'),
             'location' => $request->input('location'),
             'target_audience' => $request->input('target_audience'),
-            'is_published' => $request->boolean('is_published'),
-            'published_date' => $request->boolean('is_published') ? now() : null,
-            'created_by' => $user->id,
+            'is_published' => $isPublished,
+            'published_date' => $isPublished ? now() : null,
+            'created_by' => $request->user()->id,
         ]);
 
-        $this->logAudit(
-            'announcement_create', 'announcements', $announcement->id,
-            "Announcement created: {$announcement->title}",
-            null,
-            ['title' => $announcement->title, 'is_published' => $announcement->is_published],
-            $announcement->title
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Announcement created successfully',
-            'data' => $announcement->load(['type', 'barangay']),
-        ], 201);
+        return response()->json(['success' => true, 'data' => $announcement], 201);
     }
 
-    /**
-     * Update announcement.
-     */
     public function update(Request $request, $id)
     {
+        $announcement = Announcement::findOrFail($id);
+        
+        $isPublished = $request->has('is_published') ? $request->boolean('is_published') : $announcement->is_published;
+
         $request->validate([
-            'title' => 'string|max:255',
-            'content' => 'string',
-            'type_id' => 'nullable|exists:announcement_types,id',
-            'event_date' => 'nullable|date',
-            'location' => 'nullable|string|max:255',
-            'target_audience' => 'nullable|string|max:255',
+            'title' => $isPublished ? 'required|string|max:255' : 'nullable|string|max:255',
+            'content' => $isPublished ? 'required|string' : 'nullable|string',
+            'type_id' => $isPublished ? 'required|exists:announcement_types,id' : 'nullable|exists:announcement_types,id',
             'is_published' => 'boolean',
         ]);
 
-        $announcement = Announcement::findOrFail($id);
-
-        $updateData = [];
-
+        $updateData = $request->only(['event_date', 'location', 'target_audience']);
+        
         if ($request->has('title')) {
-            $updateData['title'] = $request->input('title');
-        }
-        if ($request->has('content')) {
-            $updateData['description'] = $request->input('content');
+            $updateData['title'] = $request->input('title') ?: 'Untitled Draft';
         }
         if ($request->has('type_id')) {
-            $updateData['type_id'] = $request->input('type_id');
+            $typeId = $request->input('type_id');
+            if (!$typeId && !$isPublished) {
+                $typeId = $announcement->type_id ?: (AnnouncementType::first()->id ?? 1);
+            }
+            $updateData['type_id'] = $typeId;
         }
-        if ($request->has('event_date')) {
-            $updateData['event_date'] = $request->input('event_date');
-        }
-        if ($request->has('location')) {
-            $updateData['location'] = $request->input('location');
-        }
-        if ($request->has('target_audience')) {
-            $updateData['target_audience'] = $request->input('target_audience');
-        }
-        if ($request->has('is_published')) {
-            $updateData['is_published'] = $request->boolean('is_published');
 
-            // Set published_date if publishing for first time
-            if ($request->boolean('is_published') && !$announcement->is_published) {
+        if ($request->has('content')) {
+            $updateData['description'] = $request->input('content') ?: ''; // Map 'content' to 'description'
+        }
+
+        if ($request->has('is_published')) {
+            $updateData['is_published'] = $isPublished;
+            if ($isPublished && !$announcement->is_published) {
                 $updateData['published_date'] = now();
             }
         }
 
-        // Detect publish action
-        if (isset($updateData['is_published']) && $updateData['is_published'] && !$announcement->getOriginal('is_published')) {
-            $actionKey = 'announcement_publish';
-            $desc = "Announcement published: {$announcement->title}";
-        } else {
-            $actionKey = 'announcement_update';
-            $desc = "Announcement updated: {$announcement->title}";
-        }
-
         $announcement->update($updateData);
 
-        $this->logAudit(
-            $actionKey, 'announcements', $announcement->id,
-            $desc, null, null,
-            $announcement->title
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Announcement updated successfully',
-            'data' => $announcement->fresh(['type', 'barangay', 'media']),
-        ]);
+        return response()->json(['success' => true, 'data' => $announcement->fresh(['type', 'media'])]);
     }
 
-    /**
-     * Delete announcement.
-     */
-    public function destroy($id)
-    {
-        $announcement = Announcement::findOrFail($id);
-
-        $this->logAudit(
-            'announcement_delete', 'announcements', $announcement->id,
-            "Announcement deleted: {$announcement->title}",
-            null, null,
-            $announcement->title
-        );
-
-        $announcement->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Announcement deleted successfully',
-        ]);
-    }
-
-    /**
-     * List media files for an announcement.
-     */
-    public function mediaIndex($id)
-    {
-        $announcement = Announcement::findOrFail($id);
-
-        $media = $announcement->media
-            ->map(function (AnnouncementMedia $media) {
-                return [
-                    'id' => $media->id,
-                    'file_path' => $media->file_path,
-                    'media_type' => $media->media_type,
-                    'uploaded_at' => optional($media->uploaded_at)->toIso8601String(),
-                    'url' => asset('storage/' . $media->file_path),
-                ];
-            });
-
-        return response()->json([
-            'success' => true,
-            'data' => $media,
-        ]);
-    }
-
-    /**
-     * Upload media for an announcement.
-     */
     public function uploadMedia(Request $request, $id)
     {
+        // 1. Ensure the announcement actually exists before uploading files
         $announcement = Announcement::findOrFail($id);
+        
+        // 2. Authorize the action (Example)
+        // $this->authorize('update', $announcement);
 
-        $request->validate([
-            'file' => 'required|file|max:5120', // 5MB
-        ]);
-
+        $request->validate(['file' => 'required|file|max:20480']);
         $file = $request->file('file');
-        $mime = $file->getMimeType();
-
-        if (str_starts_with($mime, 'image/')) {
-            $mediaType = 'image';
-        } elseif (str_starts_with($mime, 'video/')) {
-            $mediaType = 'video';
-        } else {
-            $mediaType = 'document';
-        }
-
-        $extension = $file->getClientOriginalExtension();
-        $filename = time() . '_' . uniqid() . '.' . $extension;
-
-        $path = $file->storeAs(
-            'uploads/announcements/' . $announcement->id,
-            $filename,
-            'public'
-        );
-
+        
+        $path = $file->store('announcements/' . $announcement->id, 'public');
+        
         $media = AnnouncementMedia::create([
             'announcement_id' => $announcement->id,
             'file_path' => $path,
-            'media_type' => $mediaType,
-            'uploaded_at' => now(),
+            'media_type' => str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'document',
         ]);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Media uploaded successfully',
-            'data' => [
-                'id' => $media->id,
-                'file_path' => $media->file_path,
-                'media_type' => $media->media_type,
-                'uploaded_at' => optional($media->uploaded_at)->toIso8601String(),
-                'url' => asset('storage/' . $media->file_path),
-            ],
-        ], 201);
+            'success' => true, 
+            'data' => array_merge($media->toArray(), ['url' => asset('storage/' . $path)])
+        ]);
     }
 
-    /**
-     * Delete a media file.
-     */
-    public function destroyMedia($mediaId)
+    public function destroy($id)
     {
-        $media = AnnouncementMedia::findOrFail($mediaId);
+        $announcement = Announcement::with('media')->findOrFail($id);
+        
+        // 1. Authorize the action (Example)
+        // $this->authorize('delete', $announcement);
 
+        // 2. Prevent storage leaks by deleting associated files first
+        if ($announcement->media) {
+            foreach ($announcement->media as $media) {
+                Storage::disk('public')->delete($media->file_path);
+            }
+            // Optionally, delete the empty directory
+            Storage::disk('public')->deleteDirectory('announcements/' . $announcement->id);
+        }
+
+        $announcement->delete();
+        
+        return response()->json(['success' => true]);
+    }
+
+    public function mediaIndex($id)
+    {
+        $media = AnnouncementMedia::where('announcement_id', $id)->get()->map(function($m) {
+            return array_merge($m->toArray(), ['url' => asset('storage/' . $m->file_path)]);
+        });
+        return response()->json(['success' => true, 'data' => $media]);
+    }
+
+    public function destroyMedia($id)
+    {
+        $media = AnnouncementMedia::findOrFail($id);
         Storage::disk('public')->delete($media->file_path);
         $media->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Media deleted successfully',
-        ]);
+        return response()->json(['success' => true]);
     }
 
-    /**
-     * Get announcement types for dropdown.
-     */
     public function types()
     {
-        $types = \App\Models\AnnouncementType::all();
-
-        return response()->json([
-            'success' => true,
-            'data' => $types,
-        ]);
+        return response()->json(['success' => true, 'data' => AnnouncementType::all()]);
     }
 }

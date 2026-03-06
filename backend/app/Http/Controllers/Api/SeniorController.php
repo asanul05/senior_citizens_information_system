@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Archive;
 use App\Models\SeniorCitizen;
 use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SeniorController extends Controller
 {
@@ -137,7 +139,7 @@ class SeniorController extends Controller
                 'message' => 'Senior not found or not accessible',
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('Error fetching senior: ' . $e->getMessage());
+            Log::error('Error fetching senior: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load senior information: ' . $e->getMessage(),
@@ -286,6 +288,7 @@ class SeniorController extends Controller
         
         // Find senior with access check
         $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+        $wasDeceasedBefore = (bool) $senior->is_deceased;
         
         // Validate request
         $validated = $request->validate([
@@ -328,6 +331,18 @@ class SeniorController extends Controller
             }
         }
 
+        // Keep status flags consistent: deceased seniors cannot be active.
+        if (array_key_exists('is_deceased', $validated)) {
+            if ($validated['is_deceased']) {
+                $validated['is_active'] = false;
+                if (!$senior->deceased_date) {
+                    $validated['deceased_date'] = now()->toDateString();
+                }
+            } else {
+                $validated['deceased_date'] = null;
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -353,6 +368,42 @@ class SeniorController extends Controller
             // Update senior record
             $senior->fill(array_diff_key($validated, array_flip(['mobile_number', 'telephone_number', 'email'])));
             $senior->save();
+
+            // Archive once when the senior is newly marked as deceased.
+            if (!$wasDeceasedBefore && (bool) $senior->is_deceased) {
+                $alreadyArchived = Archive::query()
+                    ->where('archive_type', 'senior_citizen')
+                    ->where('reference_id', $senior->id)
+                    ->where('archive_reason', 'deceased')
+                    ->exists();
+
+                if (!$alreadyArchived) {
+                    Archive::create([
+                        'archive_type' => 'senior_citizen',
+                        'reference_id' => $senior->id,
+                        'archive_data' => [
+                            'id' => $senior->id,
+                            'osca_id' => $senior->osca_id,
+                            'first_name' => $senior->first_name,
+                            'middle_name' => $senior->middle_name,
+                            'last_name' => $senior->last_name,
+                            'extension' => $senior->extension,
+                            'birthdate' => optional($senior->birthdate)->format('Y-m-d'),
+                            'gender_id' => $senior->gender_id,
+                            'barangay_id' => $senior->barangay_id,
+                            'branch_id' => $senior->branch_id,
+                            'registration_date' => optional($senior->registration_date)->format('Y-m-d'),
+                        ],
+                        'archive_reason' => 'deceased',
+                        'archive_notes' => $validated['notes'] ?? 'Automatically archived after being marked deceased.',
+                        'original_created_at' => $senior->created_at,
+                        'original_updated_at' => $senior->updated_at,
+                        'deceased_date' => $senior->deceased_date,
+                        'archived_by' => $user->id,
+                        'archived_at' => now(),
+                    ]);
+                }
+            }
 
             // Update contact info if provided
             if (isset($validated['mobile_number']) || isset($validated['telephone_number']) || isset($validated['email'])) {
