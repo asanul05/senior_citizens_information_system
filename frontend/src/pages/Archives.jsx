@@ -21,6 +21,7 @@ import {
   FolderOutlined,
   SearchOutlined,
   ClockCircleOutlined,
+  SyncOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { archivesApi } from "../services/api";
@@ -40,7 +41,7 @@ const Archives = () => {
   const [filters, setFilters] = useState({
     search: "",
     reason: undefined,
-    archive_type: "senior_citizen",
+    archive_type: undefined, // 1. Changed from "senior_citizen" to undefined
     from_date: undefined,
     to_date: undefined,
   });
@@ -54,13 +55,13 @@ const Archives = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchArchives = async (page = 1, pageSize = 10) => {
+  const fetchArchives = async (page = 1, pageSize = 10, currentFilters = filters) => {
     setLoading(true);
     try {
       const params = {
         page,
         per_page: pageSize,
-        ...filters,
+        ...currentFilters,
       };
       const response = await archivesApi.getList(params);
       const payload = response.data?.data;
@@ -70,7 +71,6 @@ const Archives = () => {
         setPagination({ current: current_page, pageSize: per_page, total });
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to load archives", error);
       message.error("Failed to load archives");
     } finally {
@@ -83,32 +83,57 @@ const Archives = () => {
   };
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setFilters((prev) => ({ ...prev, search: value }));
+  const value = e.target.value;
+  setFilters((prev) => ({ ...prev, search: value }));
+  if (value === "") {
+    fetchArchives(1, pagination.pageSize, { ...filters, search: "" });
+  }
   };
 
   const handleReasonChange = (value) => {
-    setFilters((prev) => ({ ...prev, reason: value || undefined }));
+  const newReason = value === "" ? undefined : (value || undefined);
+  const newFilters = { ...filters, reason: newReason };
+  setFilters(newFilters);
+  fetchArchives(1, pagination.pageSize, newFilters);
   };
 
   const handleTypeChange = (value) => {
-    setFilters((prev) => ({ ...prev, archive_type: value || undefined }));
+    // Treat empty string or null as undefined to remove the filter
+    const newType = value === "" ? undefined : (value || undefined);
+    const newFilters = { ...filters, archive_type: newType };
+    
+    setFilters(newFilters);
+    fetchArchives(1, pagination.pageSize, newFilters);
   };
 
   const handleDateRangeChange = (dates) => {
-    if (!dates || dates.length === 0) {
-      setFilters((prev) => ({
-        ...prev,
-        from_date: undefined,
-        to_date: undefined,
-      }));
-    } else {
-      setFilters((prev) => ({
-        ...prev,
-        from_date: dates[0].format("YYYY-MM-DD"),
-        to_date: dates[1].format("YYYY-MM-DD"),
-      }));
-    }
+  let newFilters;
+  if (!dates || dates.length === 0) {
+    newFilters = { ...filters, from_date: undefined, to_date: undefined };
+  } else {
+    newFilters = {
+      ...filters,
+      from_date: dates[0].format("YYYY-MM-DD"),
+      to_date: dates[1].format("YYYY-MM-DD"),
+    };
+  }
+  setFilters(newFilters);
+  fetchArchives(1, pagination.pageSize, newFilters);
+  };
+
+  const handleReset = () => {
+  const initialFilters = {
+    search: "",
+    reason: undefined,
+    archive_type: undefined,
+    from_date: undefined, // Or archived_date if you changed it
+    to_date: undefined,
+  };
+  
+  setFilters(initialFilters);
+  
+  // Reset pagination to page 1 and fetch with empty filters
+  fetchArchives(1, pagination.pageSize, initialFilters);
   };
 
   const applyFilters = () => {
@@ -130,7 +155,6 @@ const Archives = () => {
       setSelected(detailRes.data?.data || null);
       setTimeline(timelineRes.data?.data?.events || []);
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error("Failed to load archive details", error);
       message.error("Failed to load archive details");
     } finally {
@@ -139,22 +163,62 @@ const Archives = () => {
   };
 
   const columns = [
-    {
-      title: "Name",
-      key: "name",
-      render: (_, record) => (
-        <Button type="link" onClick={() => openDetails(record)}>
-          {record.full_name || record.username}
+  {
+    title: "Name & Identifier",
+    key: "name_id",
+    render: (_, record) => (
+      <Space direction="vertical" size={0}>
+        <Button 
+          type="link" 
+          onClick={() => openDetails(record)} 
+          style={{ padding: 0, height: 'auto', fontWeight: 600 }}
+        >
+          {record.full_name || record.username || "Unknown"}
         </Button>
-      ),
-    },
-    {
-      title: "Archived At",
-      dataIndex: "archived_at",
-      key: "archived_at",
-      width: 170,
-      render: (date) => (date ? dayjs(date).format("MMM D, YYYY HH:mm") : "-"),
-    },
+        {record.archive_type === "senior_citizen" ? (
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            ID: {record.osca_id || "No OSCA ID"}
+          </Text>
+        ) : (
+          <Text type="secondary" style={{ fontSize: '12px' }}>
+            Emp ID: {record.employee_id || "N/A"}
+          </Text>
+        )}
+      </Space>
+    ),
+  },
+  {
+    title: "Archive Type",
+    dataIndex: "archive_type",
+    key: "archive_type",
+    render: (type) => (
+      <Tag color={type === "senior_citizen" ? "blue" : "purple"}>
+        {type === "senior_citizen" ? "Senior Citizen" : "Admin User"}
+      </Tag>
+    ),
+  },
+  {
+    title: "Reason",
+    dataIndex: "archive_reason",
+    key: "archive_reason",
+    render: (reason) => (
+      <Tag icon={<FolderOutlined />} color="default">
+        {reason ? reason.toUpperCase() : "N/A"}
+      </Tag>
+    ),
+  },
+  {
+    title: "Archived At",
+    dataIndex: "archived_at",
+    key: "archived_at",
+    width: 180,
+    render: (date) => (
+      <Space>
+        <ClockCircleOutlined style={{ color: '#bfbfbf' }} />
+        {date ? dayjs(date).format("MMM D, YYYY HH:mm") : "-"}
+      </Space>
+    ),
+  },
   ];
 
   return (
@@ -169,49 +233,72 @@ const Archives = () => {
       </div>
 
       <Card style={{ marginBottom: 16, borderRadius: 8 }}>
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} md={6}>
-            <Input
-              placeholder="Search by name or OSCA ID"
-              prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
-              allowClear
-              onChange={handleSearchChange}
-            />
-          </Col>
-          <Col xs={12} md={5}>
-            <Select
-              placeholder="Archive type"
-              defaultValue="senior_citizen"
-              style={{ width: "100%" }}
-              onChange={handleTypeChange}
-            >
-              <Option value="senior_citizen">Senior Citizens</Option>
-              <Option value="admin_user">Admin Users</Option>
-            </Select>
-          </Col>
-          <Col xs={12} md={5}>
-            <Select
-              placeholder="Reason"
-              allowClear
-              style={{ width: "100%" }}
-              onChange={handleReasonChange}
-            >
-              <Option value="deceased">Deceased</Option>
-              <Option value="deactivated">Deactivated</Option>
-              <Option value="transferred">Transferred</Option>
-              <Option value="other">Other</Option>
-            </Select>
-          </Col>
-          <Col xs={24} md={6}>
-            <RangePicker
-              style={{ width: "100%" }}
-              onChange={handleDateRangeChange}
-            />
-          </Col>
-          <Col xs={24} md={2} style={{ textAlign: "right" }}>
-            <Space>
-              <a onClick={applyFilters}>Apply</a>
-            </Space>
+  <Row gutter={[16, 16]} align="middle">
+    {/* Search Input */}
+    <Col xs={24} md={5}>
+      <Input
+        placeholder="Search by name or OSCA/Emp ID"
+        prefix={<SearchOutlined style={{ color: "#bfbfbf" }} />}
+        allowClear
+        value={filters.search}
+        onChange={handleSearchChange}
+        onPressEnter={() => fetchArchives(1, pagination.pageSize)}
+        style={{ width: "100%" }}
+      />
+    </Col>
+
+    {/* Archive Type Select */}
+    <Col xs={12} md={4}>
+      <Select
+        placeholder="Archive type"
+        value={filters.archive_type || ""}
+        style={{ width: "100%" }}
+        onChange={handleTypeChange}
+      >
+        <Option value="">All Types</Option>
+        <Option value="senior_citizen">Senior Citizens</Option>
+        <Option value="admin_user">Admin Users</Option>
+      </Select>
+    </Col>
+
+    {/* Reason Select */}
+    <Col xs={12} md={4}>
+      <Select
+        placeholder="Reason"
+        value={filters.reason || ""}
+        allowClear
+        style={{ width: "100%" }}
+        onChange={handleReasonChange}
+      >
+        <Option value="">All Reasons</Option>
+        <Option value="deceased">Deceased</Option>
+        <Option value="deactivated">Deactivated</Option>
+        <Option value="transferred">Transferred</Option>
+        <Option value="other">Other</Option>
+      </Select>
+    </Col>
+
+    {/* Date Range Picker */}
+    <Col xs={24} md={6}>
+      <RangePicker
+        style={{ width: "100%" }}
+        // The key forces the component to re-render and clear text when reset is clicked
+        key={filters.from_date ? 'active' : 'reset'} 
+        onChange={handleDateRangeChange}
+        value={filters.from_date ? [dayjs(filters.from_date), dayjs(filters.to_date)] : null}
+      />
+    </Col>
+
+    {/* The New Reset Button */}
+    <Col xs={24} md={5}>
+      <Button 
+        block 
+        icon={<SyncOutlined />} 
+        onClick={handleReset}
+        type="default"
+      >
+        Reset Filters
+      </Button>
           </Col>
         </Row>
       </Card>
@@ -295,7 +382,7 @@ const Archives = () => {
                   : "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Archived By">
-                {selected.archived_by_name || "-"}
+                {selected.archived_by_name || "Main Admin"}
               </Descriptions.Item>
               {selected.barangay && (
                 <Descriptions.Item label="Barangay">

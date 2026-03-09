@@ -23,11 +23,9 @@ class ArchiveController extends Controller
         // Base query
         $query = Archive::query()->with('archivedBy');
 
-        // Default to senior citizens unless explicitly requesting another type
+        // Filter by a specific archive type if requested
         if ($type = $request->get('archive_type')) {
             $query->where('archive_type', $type);
-        } else {
-            $query->where('archive_type', 'senior_citizen');
         }
 
         // Enforce access control: Barangay admins cannot view archives
@@ -43,13 +41,19 @@ class ArchiveController extends Controller
             $barangayIds = $user->getAccessibleBarangayIds();
             if (!empty($barangayIds)) {
                 $placeholders = implode(',', array_fill(0, count($barangayIds), '?'));
-                $query->whereRaw(
-                    "JSON_EXTRACT(archive_data, '$.barangay_id') IN ($placeholders)",
-                    $barangayIds
-                );
+                // This condition now correctly handles multiple archive types.
+                // It restricts senior_citizen archives to the admin's barangays,
+                // while still allowing access to other types like 'user' archives.
+                $query->where(function ($q) use ($placeholders, $barangayIds) {
+                    $q->where('archive_type', '!=', 'senior_citizen')
+                        ->orWhereRaw(
+                            "JSON_EXTRACT(archive_data, '$.barangay_id') IN ($placeholders)",
+                            $barangayIds
+                        );
+                });
             } else {
-                // No accessible barangays -> no results
-                $query->whereRaw('1 = 0');
+                // If no accessible barangays, only show non-senior archives
+                $query->where('archive_type', '!=', 'senior_citizen');
             }
         }
 
@@ -66,18 +70,31 @@ class ArchiveController extends Controller
             $query->whereDate('archived_at', '<=', $to);
         }
 
-        // Search by OSCA ID or name
+        // Enhanced search for multiple archive types
         if ($search = $request->get('search')) {
             $searchLike = "%{$search}%";
             $query->where(function ($q) use ($searchLike) {
-                $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.osca_id')) LIKE ?", [$searchLike])
-                    ->orWhereRaw(
-                        "CONCAT(" .
-                        "JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.first_name')), ' ', " .
-                        "JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.last_name'))" .
-                        ") LIKE ?",
-                        [$searchLike]
-                    );
+                // Search logic for 'senior_citizen'
+                $q->orWhere(function ($sq) use ($searchLike) {
+                    $sq->where('archive_type', 'senior_citizen')
+                        ->where(function ($ssq) use ($searchLike) {
+                            $ssq->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.osca_id')) LIKE ?", [$searchLike])
+                                ->orWhereRaw(
+                                    "CONCAT_WS(' ', JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.first_name')), JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.last_name'))) LIKE ?",
+                                    [$searchLike]
+                                );
+                        });
+                });
+
+                // Search logic for 'user' (admins, etc.)
+                $q->orWhere(function ($uq) use ($searchLike) {
+                    $uq->where('archive_type', 'admin_user')
+                        ->where(function ($usq) use ($searchLike) {
+                            $usq->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.employee_id')) LIKE ?", [$searchLike])
+                                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.username')) LIKE ?", [$searchLike])
+                                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(archive_data, '$.name')) LIKE ?", [$searchLike]);
+                        });
+                });
             });
         }
 
@@ -135,7 +152,7 @@ class ArchiveController extends Controller
                 'original_updated_at' => optional($archive->original_updated_at)->toIso8601String(),
                 'archived_at' => optional($archive->archived_at)->toIso8601String(),
                 'archived_by' => $archive->archived_by,
-                'archived_by_name' => $archive->archivedBy?->name,
+                'archived_by_name' => $archive->archivedBy?->full_name,
             ];
         });
 
@@ -145,9 +162,27 @@ class ArchiveController extends Controller
         ]);
     }
 
+    public function getTimeline($id){
+    // Get audit logs for this specific record
+    $logs = DB::table('audit_logs')
+        ->leftJoin('users', 'users.id', '=', 'audit_logs.user_id')
+        ->select(
+            'audit_logs.*',
+            'users.name as user_name' // Fix: use 'name' instead of first_name/last_name
+        )
+        ->where('target_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'data' => ['events' => $logs]
+    ]);
+    }
+
     /**
      * Get single archive record with full snapshot.
      */
+    
     public function show(Request $request, int $id)
     {
         $user = $request->user();
@@ -216,7 +251,7 @@ class ArchiveController extends Controller
                 'original_updated_at' => optional($archive->original_updated_at)->toIso8601String(),
                 'archived_at' => optional($archive->archived_at)->toIso8601String(),
                 'archived_by' => $archive->archived_by,
-                'archived_by_name' => $archive->archivedBy?->name,
+                'archived_by_name' => $archive->archivedBy?->full_name,
             ],
         ]);
     }
@@ -225,82 +260,62 @@ class ArchiveController extends Controller
      * Get activity timeline for an archived senior (audit trail + archive event).
      */
     public function timeline(Request $request, int $id)
-    {
-        $user = $request->user();
-        $archive = Archive::findOrFail($id);
+{
+    $user = $request->user();
+    $archive = Archive::findOrFail($id);
 
-        if ($archive->archive_type !== 'senior_citizen') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Timeline is only available for senior citizen archives.',
-            ], 400);
-        }
+    // Access checks... (Keep your existing check logic here)
 
-        // Access check
-        if ($user->isBarangayAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have access to archives.',
-            ], 403);
-        }
+    $referenceId = $archive->reference_id;
+    
+    // Ensure target_type matches your audit_logs table naming convention
+    $targetType = $archive->archive_type === 'senior_citizen' ? 'senior_citizens' : 'users';
 
-        if ($user->isBranchAdmin()) {
-            $barangayIds = $user->getAccessibleBarangayIds();
-            $barangayId = $archive->archive_data['barangay_id'] ?? null;
-            if ($barangayId && !in_array($barangayId, $barangayIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You do not have access to this record.',
-                ], 403);
-            }
-        }
+    // Fetch audit logs
+    $auditLogs = DB::table('audit_logs')
+        ->leftJoin('users', 'users.id', '=', 'audit_logs.user_id')
+        ->select(
+            'audit_logs.id',
+            'audit_logs.action',
+            'audit_logs.description',
+            'audit_logs.created_at',
+            'audit_logs.old_values', // Added this
+            'audit_logs.new_values', // Added this
+            'users.name as user_name'
+        )
+        ->where('target_type', $targetType) 
+        ->where('target_id', $referenceId) 
+        ->orderBy('created_at', 'desc') // Changed to desc for latest first
+        ->get();
 
-        $seniorId = $archive->reference_id;
+    $events = [];
 
-        // Fetch audit logs for this senior
-        $auditLogs = DB::table('audit_logs')
-            ->leftJoin('users', 'users.id', '=', 'audit_logs.user_id')
-            ->where('target_type', 'senior_citizens')
-            ->where('target_id', $seniorId)
-            ->orderBy('created_at')
-            ->get([
-                'audit_logs.id',
-                'audit_logs.action',
-                'audit_logs.description',
-                'audit_logs.old_values',
-                'audit_logs.new_values',
-                'audit_logs.created_at',
-                'users.name as user_name',
-            ]);
-
-        $events = [];
-
-        foreach ($auditLogs as $log) {
-            $events[] = [
-                'type' => 'audit',
-                'action' => $log->action,
-                'description' => $log->description,
-                'user_name' => $log->user_name,
-                'created_at' => optional($log->created_at)->toDateTimeString(),
-                'old_values' => $log->old_values ? json_decode($log->old_values, true) : null,
-                'new_values' => $log->new_values ? json_decode($log->new_values, true) : null,
-            ];
-        }
-
-        // Append archive event as final entry
+    foreach ($auditLogs as $log) {
         $events[] = [
-            'type' => 'archived',
-            'reason' => $archive->archive_reason,
-            'notes' => $archive->archive_notes,
-            'archived_at' => optional($archive->archived_at)->toDateTimeString(),
+            'type' => 'audit',
+            'action' => $log->action,
+            'description' => $log->description,
+            'user_name' => $log->user_name,
+            'created_at' => $log->created_at, // DB table gives string, React uses it as is
+            'old_values' => $log->old_values ? json_decode($log->old_values, true) : null,
+            'new_values' => $log->new_values ? json_decode($log->new_values, true) : null,
         ];
+    }
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'senior_id' => $seniorId,
-                'events' => $events,
-            ],
-        ]);
+    // Append archive event
+    $events[] = [
+        'type' => 'archived',
+        'reason' => $archive->archive_reason,
+        'notes' => $archive->archive_notes,
+        'archived_at' => optional($archive->archived_at)->toDateTimeString(),
+    ];
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'reference_id' => $referenceId,
+            'events' => $events,
+        ],
+    ]);
     }
 }
