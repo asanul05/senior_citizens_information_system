@@ -18,7 +18,7 @@ class ArchiveController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $perPage = (int) $request->get('per_page', 15);
+        $perPage = (int) $request->get('per_page', 10);
 
         // Base query
         $query = Archive::query()->with('archivedBy');

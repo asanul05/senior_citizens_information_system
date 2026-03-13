@@ -19,7 +19,7 @@ class ApplicationController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 10);
         
         $query = Application::with(['senior', 'senior.barangay', 'applicationType', 'submitter', 'approver'])
             ->when(!$user->isMainAdmin(), function ($q) use ($user) {

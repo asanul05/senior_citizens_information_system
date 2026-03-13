@@ -20,7 +20,7 @@ const PreRegistrations = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState([]);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
     const [filters, setFilters] = useState({ search: '', status: '', barangay_id: '' });
     const [stats, setStats] = useState({});
     const [barangays, setBarangays] = useState([]);

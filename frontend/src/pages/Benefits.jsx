@@ -55,8 +55,8 @@ const Benefits = () => {
     const [eligible, setEligible] = useState([]);
     const [benefitTypes, setBenefitTypes] = useState([]);
     const [statistics, setStatistics] = useState({});
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
-    const [eligiblePagination, setEligiblePagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+    const [eligiblePagination, setEligiblePagination] = useState({ current: 1, pageSize: 10, total: 0 });
 
     // Senior History Modal
     const [historyModalVisible, setHistoryModalVisible] = useState(false);

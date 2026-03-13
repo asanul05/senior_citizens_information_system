@@ -58,8 +58,8 @@ class AccountController extends Controller
         }
 
         $accounts = $query->orderBy('role_id')
-            ->orderBy('first_name')
-            ->paginate($request->get('per_page', 15));
+            ->orderBy('created_at', 'desc')
+            ->paginate($request->get('per_page', 10));
 
         return response()->json([
             'success' => true,

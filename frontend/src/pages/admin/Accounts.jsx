@@ -37,7 +37,7 @@ function Accounts() {
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [options, setOptions] = useState({ roles: [], branches: [], barangays: [] });
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
     const [filters, setFilters] = useState({ search: '', role_id: null, is_active: null });
 
     // Modal states

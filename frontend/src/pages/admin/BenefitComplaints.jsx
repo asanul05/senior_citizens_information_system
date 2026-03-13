@@ -45,7 +45,7 @@ const CATEGORY_CONFIG = {
 function BenefitComplaints() {
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
     const [statistics, setStatistics] = useState({});
     const [filters, setFilters] = useState({ search: '', status: null, category: null });
     const [detailModal, setDetailModal] = useState(false);

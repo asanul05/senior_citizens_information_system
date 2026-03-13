@@ -44,7 +44,7 @@ class BenefitController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 10);
         $currentYear = now()->year;
 
         $query = BenefitClaim::with(['senior', 'senior.barangay', 'benefitType', 'processor', 'claimer', 'approver', 'releaser', 'rejecter'])
@@ -157,7 +157,7 @@ class BenefitController extends Controller
     public function eligible(Request $request)
     {
         $user = $request->user();
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 10);
         $currentYear = now()->year;
 
         // Get benefit types (optionally filtered)

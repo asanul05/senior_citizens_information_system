@@ -46,7 +46,7 @@ const IdPrinting = () => {
     const [items, setItems] = useState([]);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 15,
+        pageSize: 10,
         total: 0,
     });
     const [filters, setFilters] = useState({
@@ -81,7 +81,7 @@ const IdPrinting = () => {
     const [activeTab, setActiveTab] = useState('queue');
     const [noIdSeniors, setNoIdSeniors] = useState([]);
     const [noIdLoading, setNoIdLoading] = useState(false);
-    const [noIdPagination, setNoIdPagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [noIdPagination, setNoIdPagination] = useState({ current: 1, pageSize: 10, total: 0 });
     const [noIdSearch, setNoIdSearch] = useState('');
 
     useEffect(() => {

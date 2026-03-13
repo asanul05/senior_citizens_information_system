@@ -48,7 +48,7 @@ const Seniors = () => {
     const [seniors, setSeniors] = useState([]);
     const [pagination, setPagination] = useState({
         current: 1,
-        pageSize: 15,
+        pageSize: 10,
         total: 0,
     });
     const [filters, setFilters] = useState({

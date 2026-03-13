@@ -17,7 +17,7 @@ class IdPrintingController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 10);
         
         $query = IdPrintingQueue::with(['senior', 'senior.barangay', 'requestedBy'])
             ->when(!$user->isMainAdmin(), function ($q) use ($user) {
@@ -54,9 +54,9 @@ class IdPrintingController extends Controller
             });
         }
 
-        // Sort by priority (express > urgent > normal) then by requested date
+        // Sort by priority (express > urgent > normal) then by most recent first
         $query->orderByRaw("FIELD(priority, 'express', 'urgent', 'normal')")
-            ->orderBy('requested_date', 'asc');
+            ->orderBy('requested_date', 'desc');
 
         $items = $query->paginate($perPage);
 
@@ -513,7 +513,7 @@ class IdPrintingController extends Controller
     public function seniorsWithoutId(Request $request)
     {
         $user = $request->user();
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 10);
 
         $query = SeniorCitizen::with(['barangay', 'gender'])
             ->whereNotNull('osca_id')

@@ -505,7 +505,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         <Card size="small" title="Senior IDs" style={{ marginTop: 16 }}>
             {senior?.senior_ids?.length > 0 ? (
                 <Table
-                    dataSource={senior.senior_ids}
+                    dataSource={[...senior.senior_ids].sort((a, b) => b.id - a.id)}
                     rowKey="id"
                     size="small"
                     pagination={false}

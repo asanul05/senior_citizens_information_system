@@ -49,7 +49,7 @@ class PreRegistrationController extends Controller
         }
 
         $preRegistrations = $query->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 15));
+            ->paginate($request->get('per_page', 10));
 
         return response()->json($preRegistrations);
     }

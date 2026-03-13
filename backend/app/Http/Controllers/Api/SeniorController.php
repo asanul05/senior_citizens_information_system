@@ -19,7 +19,7 @@ class SeniorController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $perPage = $request->get('per_page', 15);
+        $perPage = $request->get('per_page', 10);
         
         $query = SeniorCitizen::with(['barangay', 'branch', 'gender', 'civilStatus', 'registrationStatus'])
             ->accessibleBy($user);

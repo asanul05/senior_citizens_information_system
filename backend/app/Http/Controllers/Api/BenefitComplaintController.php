@@ -142,7 +142,7 @@ class BenefitComplaintController extends Controller
         }
 
         $complaints = $query->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 15));
+            ->paginate($request->get('per_page', 10));
 
         $complaints->getCollection()->transform(function ($complaint) {
             return [
