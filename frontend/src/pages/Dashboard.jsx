@@ -43,7 +43,7 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const [statsRes, eventsRes, ageRes, genderRes, heatmapRes, assistanceRes] = await Promise.all([
+            const results = await Promise.allSettled([
                 dashboardApi.getStats(),
                 dashboardApi.getUpcomingEvents(),
                 dashboardApi.getAgeDistribution(),
@@ -52,16 +52,27 @@ const Dashboard = () => {
                 benefitsApi.getDistribution({ year: currentYear }),
             ]);
 
-            const apiStats = statsRes.data.data.stats || {};
-            setStats(prev => ({
-                ...prev,
-                ...apiStats,
-            }));
-            setEvents(eventsRes.data.data.events);
-            setAgeData(ageRes.data.data.distribution);
-            setGenderData(genderRes.data.data.distribution);
-            setBarangayData(heatmapRes.data.data.distribution || []);
-            setAssistanceData(assistanceRes.data.data.distribution || []);
+            const [statsRes, eventsRes, ageRes, genderRes, heatmapRes, assistanceRes] = results;
+
+            if (statsRes.status === 'fulfilled') {
+                const apiStats = statsRes.value.data.data.stats || {};
+                setStats(prev => ({ ...prev, ...apiStats }));
+            }
+            if (eventsRes.status === 'fulfilled') {
+                setEvents(eventsRes.value.data.data.events);
+            }
+            if (ageRes.status === 'fulfilled') {
+                setAgeData(ageRes.value.data.data.distribution);
+            }
+            if (genderRes.status === 'fulfilled') {
+                setGenderData(genderRes.value.data.data.distribution);
+            }
+            if (heatmapRes.status === 'fulfilled') {
+                setBarangayData(heatmapRes.value.data.data.distribution || []);
+            }
+            if (assistanceRes.status === 'fulfilled') {
+                setAssistanceData(assistanceRes.value.data.data.distribution || []);
+            }
         } catch (error) {
             console.error('Dashboard data fetch error:', error);
         } finally {
@@ -222,64 +233,6 @@ const Dashboard = () => {
                         </Card>
                     </Col>
                 ))}
-            </Row>
-
-            {/* Barangay Breakdown */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24}>
-                    <Card
-                        title="Top Barangays by Registered Seniors"
-                        style={{ borderRadius: 12 }}
-                        bodyStyle={{ height: 320 }}
-                    >
-                        {topBarangays.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={topBarangays}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Bar dataKey="total" name="Registered Seniors" radius={[4, 4, 0, 0]}>
-                                        {topBarangays.map((entry, index) => (
-                                            <Cell
-                                                key={`brgy-cell-${entry.name}`}
-                                                fill={COLORS[index % COLORS.length]}
-                                            />
-                                        ))}
-                                    </Bar>
-                                    <Legend
-                                        align="right"
-                                        verticalAlign="top"
-                                        content={() => (
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, marginBottom: 4 }}>
-                                                {topBarangays.map((item, index) => (
-                                                    <span
-                                                        key={`brgy-legend-${item.name}`}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                                                    >
-                                                        <span
-                                                            style={{
-                                                                width: 10,
-                                                                height: 10,
-                                                                borderRadius: 2,
-                                                                backgroundColor: COLORS[index % COLORS.length],
-                                                            }}
-                                                        />
-                                                        {item.name} ({item.total.toLocaleString()})
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                                <Text type="secondary">No data available</Text>
-                            </div>
-                        )}
-                    </Card>
-                </Col>
             </Row>
 
             {/* Charts Row */}
@@ -475,6 +428,64 @@ const Dashboard = () => {
                                                             }}
                                                         />
                                                         {item.name} ({(item.total_claims || 0).toLocaleString()})
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                <Text type="secondary">No data available</Text>
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Barangay Breakdown */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24}>
+                    <Card
+                        title="Top Barangays by Registered Seniors"
+                        style={{ borderRadius: 12 }}
+                        bodyStyle={{ height: 320 }}
+                    >
+                        {topBarangays.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={topBarangays}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="total" name="Registered Seniors" radius={[4, 4, 0, 0]}>
+                                        {topBarangays.map((entry, index) => (
+                                            <Cell
+                                                key={`brgy-cell-${entry.name}`}
+                                                fill={COLORS[index % COLORS.length]}
+                                            />
+                                        ))}
+                                    </Bar>
+                                    <Legend
+                                        align="right"
+                                        verticalAlign="top"
+                                        content={() => (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, marginBottom: 4 }}>
+                                                {topBarangays.map((item, index) => (
+                                                    <span
+                                                        key={`brgy-legend-${item.name}`}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                width: 10,
+                                                                height: 10,
+                                                                borderRadius: 2,
+                                                                backgroundColor: COLORS[index % COLORS.length],
+                                                            }}
+                                                        />
+                                                        {item.name} ({item.total.toLocaleString()})
                                                     </span>
                                                 ))}
                                             </div>
