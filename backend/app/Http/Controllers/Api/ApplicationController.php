@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\SeniorCitizen;
 use App\Models\Contact;
 use App\Models\Barangay;
+use App\Models\IdPrintingQueue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -310,9 +311,36 @@ class ApplicationController extends Controller
                     } else if ($application->senior_id && $application->senior) {
                         // RENEWAL: Update existing senior with any changed info from applicant_data
                         $this->updateSeniorFromRenewal($application, $user);
+                        $seniorId = $application->senior_id;
                     }
                     $updateData['approved_by'] = $user->id;
                     $updateData['approval_date'] = now();
+
+                    // Auto-add to ID printing queue
+                    if (isset($seniorId)) {
+                        // Generate queue number: QN-YYYYMMDD-XXXX
+                        $today = now()->format('Ymd');
+                        $lastQueue = IdPrintingQueue::where('queue_number', 'like', "QN-{$today}-%")
+                            ->orderBy('queue_number', 'desc')
+                            ->first();
+                        $sequence = 1;
+                        if ($lastQueue) {
+                            $lastSequence = (int) substr($lastQueue->queue_number, -4);
+                            $sequence = $lastSequence + 1;
+                        }
+                        $queueNumber = sprintf("QN-%s-%04d", $today, $sequence);
+
+                        IdPrintingQueue::create([
+                            'senior_id' => $seniorId,
+                            'application_id' => $application->id,
+                            'queue_number' => $queueNumber,
+                            'id_type' => $application->application_type_id == 1 ? 'new' : 'renewal',
+                            'status' => 'pending',
+                            'priority' => 'normal',
+                            'requested_by' => $user->id,
+                            'requested_date' => now(),
+                        ]);
+                    }
                     break;
                     
                 case 'Rejected':

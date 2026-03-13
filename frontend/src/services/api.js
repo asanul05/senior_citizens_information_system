@@ -102,6 +102,8 @@ export const idPrintingApi = {
   bulkPrint: (ids) => api.post('/id-printing/bulk-print', { ids }),
 
   bulkClaim: (ids) => api.post('/id-printing/bulk-claim', { ids }),
+
+  getSeniorsWithoutId: (params) => api.get('/id-printing/seniors-without-id', { params }),
 };
 
 // Announcements API

@@ -8,17 +8,20 @@ class SeniorId extends Model
 {
     protected $table = 'senior_ids';
 
+    const UPDATED_AT = null; // Table only has created_at, no updated_at
+
     protected $fillable = [
         'senior_id',
         'id_number',
         'issue_date',
-        'expiry_date',
         'is_active',
+        'status_id',
+        'printed_by',
+        'print_date',
     ];
 
     protected $casts = [
         'issue_date' => 'date',
-        'expiry_date' => 'date',
         'is_active' => 'boolean',
     ];
 

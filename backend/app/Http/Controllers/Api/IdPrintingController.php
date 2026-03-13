@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\IdPrintingQueue;
 use App\Models\SeniorCitizen;
+use App\Models\SeniorId;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -191,9 +192,8 @@ class IdPrintingController extends Controller
         // Calculate age
         $age = $senior->birthdate ? $senior->birthdate->age : null;
 
-        // Issue and expiry dates
+        // Issue date (no expiry — Senior IDs don't expire)
         $issueDate = now();
-        $expiryDate = now()->addYears(3);
 
         // Photo URL (from application documents)
         $photoDoc = DB::table('application_documents')
@@ -236,7 +236,6 @@ class IdPrintingController extends Controller
                     'barangay' => $senior->barangay->name ?? null,
                     'photo_url' => $photoUrl,
                     'issue_date' => $issueDate->format('F d, Y'),
-                    'expiry_date' => $expiryDate->format('F d, Y'),
                     'qr_data' => json_encode($qrData),
                 ],
             ],
@@ -297,12 +296,16 @@ class IdPrintingController extends Controller
                 'queue_number' => $queueItem->queue_number,
                 'osca_id' => $senior->osca_id,
                 'full_name' => trim("{$senior->first_name} {$senior->middle_name} {$senior->last_name} {$senior->extension}"),
+                'first_name' => $senior->first_name,
+                'middle_name' => $senior->middle_name,
+                'last_name' => $senior->last_name,
+                'extension' => $senior->extension,
                 'birthdate' => $senior->birthdate?->format('F d, Y'),
+                'birthdate_raw' => $senior->birthdate?->format('Y-m-d'),
                 'gender' => $senior->gender->name ?? null,
                 'address' => implode(', ', $addressParts),
                 'photo_url' => $photoDoc ? asset('storage/' . $photoDoc->file_path) : null,
                 'issue_date' => now()->format('F d, Y'),
-                'expiry_date' => now()->addYears(3)->format('F d, Y'),
                 'qr_data' => json_encode([
                     'osca_id' => $senior->osca_id,
                     'name' => trim("{$senior->first_name} {$senior->last_name}"),
@@ -356,6 +359,30 @@ class IdPrintingController extends Controller
         }
 
         $item->update($updateData);
+
+        // Create senior_ids record when marked as printed or claimed
+        if (in_array($request->status, ['printed', 'claimed']) && $item->senior_id) {
+            // Skip if this queue item already generated a senior_ids record (avoid duplicates on printed→claimed)
+            $alreadyCreatedForThisQueue = SeniorId::where('senior_id', $item->senior_id)
+                ->where('id_number', $item->senior->osca_id ?? '')
+                ->where('print_date', '>=', $item->printed_date ?? now()->subMinutes(5))
+                ->exists();
+
+            if (!$alreadyCreatedForThisQueue) {
+                // Deactivate all previous active IDs for this senior
+                SeniorId::where('senior_id', $item->senior_id)->where('is_active', true)->update(['is_active' => false]);
+
+                SeniorId::create([
+                    'senior_id' => $item->senior_id,
+                    'id_number' => $item->senior->osca_id ?? '',
+                    'issue_date' => now(),
+                    'is_active' => true,
+                    'status_id' => 1,
+                    'printed_by' => $user->id,
+                    'print_date' => now(),
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -414,6 +441,12 @@ class IdPrintingController extends Controller
 
         $user = $request->user();
 
+        // Get queue items before update (for senior_ids creation)
+        $queueItems = IdPrintingQueue::with('senior')
+            ->whereIn('id', $request->ids)
+            ->whereIn('status', ['pending', 'in_progress'])
+            ->get();
+
         $updated = IdPrintingQueue::whereIn('id', $request->ids)
             ->whereIn('status', ['pending', 'in_progress'])
             ->update([
@@ -421,6 +454,24 @@ class IdPrintingController extends Controller
                 'printed_date' => now(),
                 'printed_by' => $user->id,
             ]);
+
+        // Create senior_ids records for printed items
+        foreach ($queueItems as $item) {
+            if ($item->senior_id) {
+                // Deactivate existing active IDs
+                SeniorId::where('senior_id', $item->senior_id)->where('is_active', true)->update(['is_active' => false]);
+
+                SeniorId::create([
+                    'senior_id' => $item->senior_id,
+                    'id_number' => $item->senior->osca_id ?? '',
+                    'issue_date' => now(),
+                    'is_active' => true,
+                    'status_id' => 1,
+                    'printed_by' => $user->id,
+                    'print_date' => now(),
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -453,6 +504,43 @@ class IdPrintingController extends Controller
             'success' => true,
             'message' => "{$updated} IDs marked as claimed.",
             'updated_count' => $updated,
+        ]);
+    }
+
+    /**
+     * Get seniors without an active ID record.
+     */
+    public function seniorsWithoutId(Request $request)
+    {
+        $user = $request->user();
+        $perPage = $request->get('per_page', 15);
+
+        $query = SeniorCitizen::with(['barangay', 'gender'])
+            ->whereNotNull('osca_id')
+            ->where('is_active', true)
+            ->where('is_deceased', false)
+            ->whereDoesntHave('seniorIds', function ($q) {
+                $q->where('is_active', true);
+            })
+            ->when(!$user->isMainAdmin(), function ($q) use ($user) {
+                $barangayIds = $user->getAccessibleBarangayIds();
+                $q->whereIn('barangay_id', $barangayIds);
+            });
+
+        // Search
+        if ($search = $request->get('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('osca_id', 'like', "%{$search}%");
+            });
+        }
+
+        $seniors = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $seniors,
         ]);
     }
 }
