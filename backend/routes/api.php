@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/id-printing/{id}/status', [IdPrintingController::class, 'updateStatus']);
     Route::post('/id-printing/bulk-print', [IdPrintingController::class, 'bulkPrint']);
     Route::post('/id-printing/bulk-claim', [IdPrintingController::class, 'bulkClaim']);
+    Route::get('/id-printing/seniors-without-id', [IdPrintingController::class, 'seniorsWithoutId']);
 
     // Announcements
     Route::get('/announcements', [AnnouncementController::class, 'index']);

@@ -18,6 +18,7 @@ import {
     Spin,
     Empty,
     Badge,
+    Tabs,
 } from 'antd';
 import {
     SearchOutlined,
@@ -31,6 +32,7 @@ import {
     ExclamationCircleOutlined,
     LoadingOutlined,
     GiftOutlined,
+    IdcardOutlined,
 } from '@ant-design/icons';
 import { idPrintingApi } from '../services/api';
 import IdCardPreview from '../components/IdCardPreview';
@@ -75,10 +77,23 @@ const IdPrinting = () => {
     const [form] = Form.useForm();
     const [addForm] = Form.useForm();
 
+    // SC Without ID state
+    const [activeTab, setActiveTab] = useState('queue');
+    const [noIdSeniors, setNoIdSeniors] = useState([]);
+    const [noIdLoading, setNoIdLoading] = useState(false);
+    const [noIdPagination, setNoIdPagination] = useState({ current: 1, pageSize: 15, total: 0 });
+    const [noIdSearch, setNoIdSearch] = useState('');
+
     useEffect(() => {
         fetchItems();
         fetchStatistics();
     }, [filters]);
+
+    useEffect(() => {
+        if (activeTab === 'no-id') {
+            fetchNoIdSeniors();
+        }
+    }, [activeTab, noIdSearch]);
 
     const fetchItems = async (page = 1, pageSize = 15) => {
         setLoading(true);
@@ -102,6 +117,22 @@ const IdPrinting = () => {
             setStats(response.data.data);
         } catch (error) {
             console.error('Error fetching statistics:', error);
+        }
+    };
+
+    const fetchNoIdSeniors = async (page = 1, pageSize = 15) => {
+        setNoIdLoading(true);
+        try {
+            const response = await idPrintingApi.getSeniorsWithoutId({
+                page, per_page: pageSize, search: noIdSearch,
+            });
+            const { data, current_page, per_page, total } = response.data.data;
+            setNoIdSeniors(data);
+            setNoIdPagination({ current: current_page, pageSize: per_page, total });
+        } catch (error) {
+            console.error('Error fetching seniors without ID:', error);
+        } finally {
+            setNoIdLoading(false);
         }
     };
 
@@ -460,23 +491,93 @@ const IdPrinting = () => {
                 </Row>
             </Card>
 
-            {/* Table */}
-            <Card style={{ borderRadius: 8 }}>
-                <Table
-                    rowSelection={rowSelection}
-                    columns={columns}
-                    dataSource={items}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                        ...pagination,
-                        showSizeChanger: true,
-                        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-                    }}
-                    onChange={handleTableChange}
-                    scroll={{ x: 900 }}
-                />
-            </Card>
+            {/* Tabs: Queue & SC Without ID */}
+            <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                items={[
+                    {
+                        key: 'queue',
+                        label: <span><PrinterOutlined /> Print Queue</span>,
+                        children: (
+                            <Card style={{ borderRadius: 8 }}>
+                                <Table
+                                    rowSelection={rowSelection}
+                                    columns={columns}
+                                    dataSource={items}
+                                    rowKey="id"
+                                    loading={loading}
+                                    pagination={{
+                                        ...pagination,
+                                        showSizeChanger: true,
+                                        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+                                    }}
+                                    onChange={handleTableChange}
+                                    scroll={{ x: 900 }}
+                                />
+                            </Card>
+                        ),
+                    },
+                    {
+                        key: 'no-id',
+                        label: <span><IdcardOutlined /> SC Without ID</span>,
+                        children: (
+                            <Card style={{ borderRadius: 8 }}>
+                                <div style={{ marginBottom: 16 }}>
+                                    <Input
+                                        placeholder="Search by name or OSCA ID..."
+                                        prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                                        allowClear
+                                        style={{ maxWidth: 400 }}
+                                        onChange={(e) => setNoIdSearch(e.target.value)}
+                                    />
+                                </div>
+                                <Table
+                                    columns={[
+                                        {
+                                            title: 'OSCA ID',
+                                            dataIndex: 'osca_id',
+                                            key: 'osca_id',
+                                            width: 160,
+                                            render: (id) => <Text code>{id}</Text>,
+                                        },
+                                        {
+                                            title: 'Name',
+                                            key: 'name',
+                                            render: (_, record) => (
+                                                <Text strong>
+                                                    {record.last_name}, {record.first_name} {record.middle_name || ''} {record.extension || ''}
+                                                </Text>
+                                            ),
+                                        },
+                                        {
+                                            title: 'Barangay',
+                                            key: 'barangay',
+                                            render: (_, record) => record.barangay?.name || '-',
+                                        },
+                                        {
+                                            title: 'Gender',
+                                            key: 'gender',
+                                            width: 80,
+                                            render: (_, record) => record.gender?.name || '-',
+                                        },
+                                    ]}
+                                    dataSource={noIdSeniors}
+                                    rowKey="id"
+                                    loading={noIdLoading}
+                                    pagination={{
+                                        ...noIdPagination,
+                                        showSizeChanger: true,
+                                        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} seniors without ID`,
+                                    }}
+                                    onChange={(pag) => fetchNoIdSeniors(pag.current, pag.pageSize)}
+                                    scroll={{ x: 600 }}
+                                />
+                            </Card>
+                        ),
+                    },
+                ]}
+            />
 
             {/* Status Update Modal */}
             <Modal
@@ -604,7 +705,7 @@ const IdPrinting = () => {
                 open={previewModal.visible}
                 onCancel={() => setPreviewModal({ visible: false, item: null, loading: false, cardData: null })}
                 footer={null}
-                width={420}
+                width={520}
             >
                 {previewModal.loading ? (
                     <div style={{ textAlign: 'center', padding: 40 }}>

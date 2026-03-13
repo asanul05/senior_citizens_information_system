@@ -517,14 +517,14 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                         },
                         {
                             title: 'Status',
-                            dataIndex: 'status',
-                            key: 'status',
-                            render: (status) => <Tag color={status === 'active' ? 'success' : 'default'}>{status}</Tag>,
+                            dataIndex: 'is_active',
+                            key: 'is_active',
+                            render: (isActive) => <Tag color={isActive ? 'success' : 'default'}>{isActive ? 'Active' : 'Inactive'}</Tag>,
                         },
                         {
                             title: 'Issued',
-                            dataIndex: 'issued_at',
-                            key: 'issued_at',
+                            dataIndex: 'issue_date',
+                            key: 'issue_date',
                             render: (date) => date ? dayjs(date).format('MMM D, YYYY') : '-',
                         },
                     ]}
