@@ -135,7 +135,7 @@ const AdminLayout = () => {
             label: 'Benefits',
             children: [
                 { key: '/admin/benefits', label: 'Benefits Eligibility & Claims' },
-                ...(isMainAdmin() ? [{ key: '/admin/benefits/configuration', label: 'Benefits Configuration' }] : []),
+                { key: '/admin/benefits/configuration', label: 'Benefits Configuration' },
             ],
         },
         {
