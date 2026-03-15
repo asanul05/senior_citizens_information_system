@@ -21,7 +21,6 @@ const { TextArea } = Input;
 
 function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
   const [form] = Form.useForm();
-  const isDeceased = Form.useWatch("is_deceased", form);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [senior, setSenior] = useState(null);
@@ -59,7 +58,6 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
         purok: seniorData.purok,
         educational_attainment_id: seniorData.educational_attainment_id,
         is_active: seniorData.is_active,
-        is_deceased: seniorData.is_deceased,
         mobile_number: seniorData.contact?.mobile,
         telephone_number: seniorData.contact?.telephone_number,
         email: seniorData.contact?.email,
@@ -298,24 +296,6 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
                 <Switch
                   checkedChildren="Yes"
                   unCheckedChildren="No"
-                  disabled={!!isDeceased}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                name="is_deceased"
-                label="Deceased"
-                valuePropName="checked"
-              >
-                <Switch
-                  checkedChildren="Yes"
-                  unCheckedChildren="No"
-                  onChange={(checked) => {
-                    if (checked) {
-                      form.setFieldValue("is_active", false);
-                    }
-                  }}
                 />
               </Form.Item>
             </Col>

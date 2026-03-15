@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Archive;
+use App\Models\DeceasedReport;
 use App\Models\SeniorCitizen;
 use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
@@ -126,6 +127,7 @@ class SeniorController extends Controller
                 'seniorIds',
                 'familyMembers',
                 'healthProfile',
+                'deceasedReport',
             ])
                 ->accessibleBy($user)
                 ->findOrFail($id);
@@ -479,6 +481,204 @@ class SeniorController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update senior citizen: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Report a senior citizen as deceased with full details.
+     */
+    public function reportDeceased(Request $request, $id)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+
+        if ($senior->is_deceased) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This senior citizen is already marked as deceased.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            // Step 0: Death Details
+            'date_of_death' => 'required|date|before_or_equal:today',
+            'time_of_death' => 'nullable|string|max:10',
+            'death_country' => 'nullable|string|max:100',
+            'death_province' => 'nullable|string|max:100',
+            'death_city' => 'nullable|string|max:100',
+            'death_barangay' => 'nullable|string|max:100',
+            'death_location_type' => 'nullable|string|in:hospital,residence,nursing_home,public_place,other',
+            'death_location_type_other' => 'nullable|string|max:255',
+            'cause_of_death' => 'nullable|string|max:1000',
+
+            // Step 1: Certificate & Documents
+            'certificate_number' => 'nullable|string|max:100',
+            'registry_number' => 'nullable|string|max:100',
+            'date_registered' => 'nullable|date',
+            'registered_at' => 'nullable|string|in:lcro,psa',
+            'certificate_issued_by' => 'nullable|string|max:255',
+            'certificate_issue_date' => 'nullable|date',
+            'death_certificate' => 'required|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+            'supporting_document' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120',
+            'supporting_doc_type' => 'nullable|string|in:burial_permit,hospital_cert,barangay_cert,funeral_doc,other',
+
+            // Step 2: Informant & Burial
+            'reporter_full_name' => 'required|string|max:255',
+            'relationship_to_deceased' => 'required|string|max:100',
+            'relationship_other' => 'nullable|string|max:100',
+            'reporter_contact_number' => 'required|string|max:50',
+            'reporter_address' => 'nullable|string|max:500',
+            'burial_date' => 'nullable|date',
+            'burial_location' => 'nullable|string|max:255',
+            'cemetery_name' => 'nullable|string|max:255',
+            'funeral_service_provider' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Handle file uploads
+            $certificatePath = null;
+            if ($request->hasFile('death_certificate')) {
+                $certificatePath = $request->file('death_certificate')
+                    ->store('deceased/certificates', 'public');
+            }
+
+            $supportingDocPath = null;
+            if ($request->hasFile('supporting_document')) {
+                $supportingDocPath = $request->file('supporting_document')
+                    ->store('deceased/supporting', 'public');
+            }
+
+            // Create deceased report
+            $report = DeceasedReport::create([
+                'senior_id' => $senior->id,
+                // Death details
+                'date_of_death' => $validated['date_of_death'],
+                'time_of_death' => $validated['time_of_death'] ?? null,
+                'place_of_death' => $validated['death_location_type'] ?? 'other',
+                'facility_name' => $validated['death_location_type_other'] ?? null,
+                'cause_of_death' => $validated['cause_of_death'] ?? null,
+                // Structured death location
+                'death_country' => $validated['death_country'] ?? 'Philippines',
+                'death_province' => $validated['death_province'] ?? null,
+                'death_city' => $validated['death_city'] ?? null,
+                'death_barangay' => $validated['death_barangay'] ?? null,
+                'death_location_type' => $validated['death_location_type'] ?? null,
+                'death_location_type_other' => $validated['death_location_type_other'] ?? null,
+                // Reporter
+                'reported_by' => $user->first_name . ' ' . $user->last_name,
+                'relationship_to_deceased' => $validated['relationship_to_deceased'],
+                'relationship_other' => $validated['relationship_other'] ?? null,
+                'reporter_full_name' => $validated['reporter_full_name'],
+                'reporter_contact_number' => $validated['reporter_contact_number'],
+                'reporter_address' => $validated['reporter_address'] ?? null,
+                // Certificate info
+                'death_certificate_path' => $certificatePath,
+                'certificate_number' => $validated['certificate_number'] ?? null,
+                'registry_number' => $validated['registry_number'] ?? null,
+                'date_registered' => $validated['date_registered'] ?? null,
+                'registered_at' => $validated['registered_at'] ?? null,
+                'certificate_issued_by' => $validated['certificate_issued_by'] ?? null,
+                'certificate_issue_date' => $validated['certificate_issue_date'] ?? null,
+                // Supporting docs
+                'supporting_doc_path' => $supportingDocPath,
+                'supporting_doc_type' => $validated['supporting_doc_type'] ?? null,
+                // Burial
+                'burial_date' => $validated['burial_date'] ?? null,
+                'burial_location' => $validated['burial_location'] ?? null,
+                'cemetery_name' => $validated['cemetery_name'] ?? null,
+                'funeral_service_provider' => $validated['funeral_service_provider'] ?? null,
+                // Account closure
+                'id_card_status' => 'not_applicable',
+                'benefits_terminated' => true,
+                'submitted_by' => $user->id,
+                'status' => 'submitted',
+            ]);
+
+            // Update senior status
+            $senior->update([
+                'is_deceased' => true,
+                'is_active' => false,
+                'deceased_date' => $validated['date_of_death'],
+            ]);
+
+            // Create archive record
+            $alreadyArchived = Archive::query()
+                ->where('archive_type', 'senior_citizen')
+                ->where('reference_id', $senior->id)
+                ->where('archive_reason', 'deceased')
+                ->exists();
+
+            if (!$alreadyArchived) {
+                Archive::create([
+                    'archive_type' => 'senior_citizen',
+                    'reference_id' => $senior->id,
+                    'archive_data' => [
+                        'id' => $senior->id,
+                        'osca_id' => $senior->osca_id,
+                        'first_name' => $senior->first_name,
+                        'middle_name' => $senior->middle_name,
+                        'last_name' => $senior->last_name,
+                        'extension' => $senior->extension,
+                        'birthdate' => optional($senior->birthdate)->format('Y-m-d'),
+                        'gender_id' => $senior->gender_id,
+                        'barangay_id' => $senior->barangay_id,
+                        'branch_id' => $senior->branch_id,
+                        'registration_date' => optional($senior->registration_date)->format('Y-m-d'),
+                        'date_of_death' => $validated['date_of_death'],
+                        'cause_of_death' => $validated['cause_of_death'] ?? null,
+                        'death_location_type' => $validated['death_location_type'] ?? null,
+                    ],
+                    'archive_reason' => 'deceased',
+                    'archive_notes' => 'Reported deceased by ' . $validated['reporter_full_name'] . ' (' . $validated['relationship_to_deceased'] . ')',
+                    'original_created_at' => $senior->created_at,
+                    'original_updated_at' => $senior->updated_at,
+                    'deceased_date' => $validated['date_of_death'],
+                    'archived_by' => $user->id,
+                    'archived_at' => now(),
+                ]);
+            }
+
+            // Audit log — detailed
+            $this->logAudit(
+                'senior_mark_deceased',
+                'senior_citizen',
+                $senior->id,
+                "Reported {$senior->first_name} {$senior->last_name} as deceased. " .
+                "Date of death: {$validated['date_of_death']}. " .
+                "Reported by: {$validated['reporter_full_name']} ({$validated['relationship_to_deceased']}). " .
+                "Certificate #: " . ($validated['certificate_number'] ?? 'N/A'),
+                ['is_deceased' => false, 'is_active' => $senior->getOriginal('is_active')],
+                [
+                    'is_deceased' => true,
+                    'is_active' => false,
+                    'deceased_date' => $validated['date_of_death'],
+                    'cause_of_death' => $validated['cause_of_death'] ?? null,
+                    'death_location_type' => $validated['death_location_type'] ?? null,
+                    'reporter' => $validated['reporter_full_name'],
+                    'relationship' => $validated['relationship_to_deceased'],
+                    'certificate_number' => $validated['certificate_number'] ?? null,
+                    'benefits_terminated' => true,
+                ],
+                $user->id
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Senior citizen has been reported as deceased and archived.',
+                'data' => $report,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Report deceased failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process deceased report: ' . $e->getMessage(),
             ], 500);
         }
     }

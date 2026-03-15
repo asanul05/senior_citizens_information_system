@@ -176,6 +176,11 @@ class SeniorCitizen extends Model
         return $this->hasOne(SeniorHealthProfile::class, 'senior_id');
     }
 
+    public function deceasedReport()
+    {
+        return $this->hasOne(DeceasedReport::class, 'senior_id');
+    }
+
     // Scopes
     public function scopeActive($query)
     {

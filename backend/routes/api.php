@@ -77,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/seniors/export', [SeniorController::class, 'export']);
     Route::get('/seniors/{id}', [SeniorController::class, 'show']);
     Route::put('/seniors/{id}', [SeniorController::class, 'update']);
+    Route::post('/seniors/{id}/report-deceased', [SeniorController::class, 'reportDeceased']);
 
     // Applications
     Route::get('/applications', [ApplicationController::class, 'index']);

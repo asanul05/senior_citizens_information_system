@@ -17,6 +17,7 @@ import {
     Statistic,
     Badge,
     Alert,
+    Button,
 } from 'antd';
 import {
     UserOutlined,
@@ -37,6 +38,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { seniorsApi, benefitsApi } from '../services/api';
+import ReportDeceasedModal from './ReportDeceasedModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -46,6 +48,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
     const [senior, setSenior] = useState(null);
     const [claimsLoading, setClaimsLoading] = useState(false);
     const [claims, setClaims] = useState([]);
+    const [deceasedModalVisible, setDeceasedModalVisible] = useState(false);
 
     useEffect(() => {
         if (visible && seniorId) {
@@ -646,6 +649,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
     );
 
     return (
+        <>
         <Modal
             title={
                 <Space>
@@ -656,12 +660,121 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
             open={visible}
             onCancel={onClose}
             width={900}
-            footer={null}
+            footer={
+                !senior?.is_deceased ? (
+                    <Button
+                        danger
+                        onClick={() => setDeceasedModalVisible(true)}
+                        icon={<CloseCircleOutlined />}
+                    >
+                        Report Deceased
+                    </Button>
+                ) : null
+            }
         >
             <Spin spinning={loading}>
                 {senior && (
                     <>
                         {renderBasicInfo()}
+
+                        {senior.is_deceased && senior.deceased_report && (
+                            <Card
+                                size="small"
+                                title={<span style={{ color: '#8B0000' }}>☦ Death Record</span>}
+                                style={{ marginTop: 12, border: '1px solid #ffccc7', background: '#fff2f0' }}
+                            >
+                                <Descriptions column={2} size="small" title="Death Details">
+                                    <Descriptions.Item label="Date of Death">
+                                        {senior.deceased_report.date_of_death ? dayjs(senior.deceased_report.date_of_death).format('MMM D, YYYY') : '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Time of Death">
+                                        {senior.deceased_report.time_of_death || 'Not recorded'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Location" span={2}>
+                                        {[senior.deceased_report.death_barangay, senior.deceased_report.death_city, senior.deceased_report.death_province, senior.deceased_report.death_country]
+                                            .filter(Boolean).join(', ') || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Location Type">
+                                        <Tag>{
+                                            {hospital: 'Hospital', residence: 'Residence', nursing_home: 'Nursing Home', public_place: 'Public Place', other: senior.deceased_report.death_location_type_other || 'Other'}[senior.deceased_report.death_location_type] || '-'
+                                        }</Tag>
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Cause of Death">
+                                        {senior.deceased_report.cause_of_death || 'Not specified'}
+                                    </Descriptions.Item>
+                                </Descriptions>
+
+                                <Divider style={{ margin: '8px 0' }} />
+                                <Descriptions column={2} size="small" title="Certificate Info">
+                                    <Descriptions.Item label="Certificate #">
+                                        {senior.deceased_report.certificate_number || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Registry #">
+                                        {senior.deceased_report.registry_number || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Date Registered">
+                                        {senior.deceased_report.date_registered ? dayjs(senior.deceased_report.date_registered).format('MMM D, YYYY') : '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Registered At">
+                                        {senior.deceased_report.registered_at === 'lcro' ? 'LCRO' : senior.deceased_report.registered_at === 'psa' ? 'PSA' : '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Death Certificate">
+                                        {senior.deceased_report.death_certificate_path ? (
+                                            <a href={`http://localhost:8000/storage/${senior.deceased_report.death_certificate_path}`} target="_blank" rel="noopener noreferrer">
+                                                📄 View Document
+                                            </a>
+                                        ) : '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Supporting Document">
+                                        {senior.deceased_report.supporting_doc_path ? (
+                                            <a href={`http://localhost:8000/storage/${senior.deceased_report.supporting_doc_path}`} target="_blank" rel="noopener noreferrer">
+                                                📄 View ({
+                                                    {burial_permit: 'Burial Permit', hospital_cert: 'Hospital Cert', barangay_cert: 'Barangay Cert', funeral_doc: 'Funeral Doc', other: 'Other'}[senior.deceased_report.supporting_doc_type] || 'Document'
+                                                })
+                                            </a>
+                                        ) : 'None'}
+                                    </Descriptions.Item>
+                                </Descriptions>
+
+                                <Divider style={{ margin: '8px 0' }} />
+                                <Descriptions column={2} size="small" title="Informant">
+                                    <Descriptions.Item label="Reported By">
+                                        {senior.deceased_report.reporter_full_name} ({
+                                            {child: 'Child', spouse: 'Spouse', relative: 'Relative', barangay_official: 'Barangay Official', other: senior.deceased_report.relationship_other || 'Other'}[senior.deceased_report.relationship_to_deceased] || senior.deceased_report.relationship_to_deceased
+                                        })
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Contact">
+                                        {senior.deceased_report.reporter_contact_number}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Submitted By">
+                                        {senior.deceased_report.reported_by || '-'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Address">
+                                        {senior.deceased_report.reporter_address || '-'}
+                                    </Descriptions.Item>
+                                </Descriptions>
+
+                                {(senior.deceased_report.burial_date || senior.deceased_report.cemetery_name) && (
+                                    <>
+                                        <Divider style={{ margin: '8px 0' }} />
+                                        <Descriptions column={2} size="small" title="Burial Info">
+                                            <Descriptions.Item label="Burial Date">
+                                                {senior.deceased_report.burial_date ? dayjs(senior.deceased_report.burial_date).format('MMM D, YYYY') : '-'}
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Location">
+                                                {senior.deceased_report.burial_location || '-'}
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Cemetery">
+                                                {senior.deceased_report.cemetery_name || '-'}
+                                            </Descriptions.Item>
+                                            <Descriptions.Item label="Funeral Provider">
+                                                {senior.deceased_report.funeral_service_provider || '-'}
+                                            </Descriptions.Item>
+                                        </Descriptions>
+                                    </>
+                                )}
+                            </Card>
+                        )}
 
                         <Tabs defaultActiveKey="personal" style={{ marginTop: 16 }} size="small">
                             <TabPane
@@ -730,6 +843,17 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                 )}
             </Spin>
         </Modal>
+
+        <ReportDeceasedModal
+            visible={deceasedModalVisible}
+            senior={senior}
+            onClose={() => setDeceasedModalVisible(false)}
+            onSuccess={() => {
+                fetchSenior();
+                fetchClaims();
+            }}
+        />
+        </>
     );
 }
 

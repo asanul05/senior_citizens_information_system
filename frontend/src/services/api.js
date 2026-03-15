@@ -67,6 +67,10 @@ export const seniorsApi = {
   export: (params) => api.get('/seniors/export', { params, responseType: 'blob' }),
 
   update: (id, data) => api.put(`/seniors/${id}`, data),
+
+  reportDeceased: (id, formData) => api.post(`/seniors/${id}/report-deceased`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 // Applications API
