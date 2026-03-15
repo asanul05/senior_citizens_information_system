@@ -8,11 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE deceased_reports MODIFY submitted_by BIGINT UNSIGNED NULL');
+        // Drop existing FK if it exists (idempotent)
+        try {
+            Schema::table('deceased_reports', function ($table) {
+                $table->dropForeign(['submitted_by']);
+            });
+        } catch (\Exception $e) {
+            // FK may not exist
+        }
 
-        Schema::table('deceased_reports', function ($table) {
-            $table->foreign('submitted_by')->references('id')->on('users')->onDelete('set null');
-        });
+        DB::statement('ALTER TABLE deceased_reports MODIFY submitted_by INT NULL');
     }
 
     public function down(): void
