@@ -53,6 +53,8 @@ function BenefitSettings() {
     const [scopeBarangayMode, setScopeBarangayMode] = useState('all');
 
     const isMainAdmin = user?.role_id === 1;
+    const isFOAdmin = user?.role_id === 2;
+    const isBarangayAdmin = user?.role_id === 3;
 
     useEffect(() => {
         loadBenefitTypes();
@@ -119,9 +121,9 @@ function BenefitSettings() {
             form.resetFields();
             form.setFieldsValue({
                 is_one_time: false,
-                target_scope: isMainAdmin ? 'all' : 'branch',
+                target_scope: isMainAdmin ? 'all' : isBarangayAdmin ? 'barangays' : 'branch',
             });
-            setTargetScope(isMainAdmin ? 'all' : 'branch');
+            setTargetScope(isMainAdmin ? 'all' : isBarangayAdmin ? 'barangays' : 'branch');
             setScopeBarangayMode('all');
         }
         setModalVisible(true);
@@ -468,10 +470,10 @@ function BenefitSettings() {
                                 setScopeBarangayMode('all');
                                 form.setFieldsValue({ barangay_ids: [], branch_id: undefined, district_id: undefined });
                             }}
-                            disabled={!isMainAdmin}
+                            disabled={isBarangayAdmin}
                         >
                             {isMainAdmin && <Option value="all">All Barangays</Option>}
-                            <Option value="branch">Specific Field Office</Option>
+                            {(isMainAdmin || isFOAdmin) && <Option value="branch">Specific Field Office</Option>}
                             {isMainAdmin && <Option value="district">By District</Option>}
                             <Option value="barangays">Specific Barangays</Option>
                         </Select>

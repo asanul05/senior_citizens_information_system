@@ -393,9 +393,7 @@ const Benefits = () => {
             key: 'actions',
             width: 200,
             render: (_, record) => {
-                if (!isMainAdmin) {
-                    return <Text type="secondary">View only</Text>;
-                }
+                // Backend enforces jurisdiction scope — all admins can manage claims within their scope
 
                 return (
                     <Space size="small">

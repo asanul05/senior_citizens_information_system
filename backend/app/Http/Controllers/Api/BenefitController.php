@@ -524,12 +524,16 @@ class BenefitController extends Controller
         $user = $request->user();
         $claim = BenefitClaim::findOrFail($id);
 
-        // Only Main Admin can approve/release
-        if ($user->role_id !== 1 && in_array($request->status, ['approved', 'released'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Only OSCA Main can approve or release benefit claims.',
-            ], 403);
+        // Verify the claim's senior is within the user's accessible scope
+        $senior = $claim->senior;
+        if ($senior && !$user->isMainAdmin()) {
+            $accessibleBarangayIds = $user->getAccessibleBarangayIds();
+            if ($senior->barangay_id && !in_array($senior->barangay_id, $accessibleBarangayIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only manage claims for seniors within your jurisdiction.',
+                ], 403);
+            }
         }
 
         $claim->status = $request->status;
@@ -675,8 +679,8 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        // Allow Main Admin and FO Admin
-        if (!$user->isMainAdmin() && !$user->isFOAdmin()) {
+        // Allow Main Admin, FO Admin, and Barangay Admin
+        if (!$user->isMainAdmin() && !$user->isFOAdmin() && !$user->isBarangayAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -773,8 +777,8 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        // Allow Main Admin, FO Admin to create benefits
-        if (!$user->isMainAdmin() && !$user->isFOAdmin()) {
+        // Allow Main Admin, FO Admin, and Barangay Admin to create benefits
+        if (!$user->isMainAdmin() && !$user->isFOAdmin() && !$user->isBarangayAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -805,13 +809,22 @@ class BenefitController extends Controller
             ], 422);
         }
 
-        // FO Admins can only create benefits for their branch or specific barangays within their jurisdiction
+        // FO/Barangay Admins can only create benefits within their jurisdiction
         if (!$user->isMainAdmin()) {
             $accessibleBranchIds = $user->branch_id ? [$user->branch_id] : [];
             $accessibleBarangayIds = $user->getAccessibleBarangayIds();
             
-            // Enforce branch targeting for FO admins
-            if (empty($validated['target_scope']) || $validated['target_scope'] === 'all') {
+            // Barangay admins: auto-scope to their barangay(s)
+            if ($user->isBarangayAdmin()) {
+                $validated['target_scope'] = 'barangays';
+                // If no barangay_ids provided, default to their accessible barangays
+                if (empty($validated['barangay_ids'])) {
+                    $validated['barangay_ids'] = $accessibleBarangayIds;
+                }
+            }
+            
+            // FO admins: enforce branch targeting if no scope specified
+            if ($user->isFOAdmin() && (empty($validated['target_scope']) || $validated['target_scope'] === 'all')) {
                 $validated['target_scope'] = 'branch';
                 $validated['branch_id'] = $accessibleBranchIds[0] ?? null;
             }
@@ -862,8 +875,8 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        // Allow Main Admin and FO Admin
-        if (!$user->isMainAdmin() && !$user->isFOAdmin()) {
+        // Allow Main Admin, FO Admin, and Barangay Admin
+        if (!$user->isMainAdmin() && !$user->isFOAdmin() && !$user->isBarangayAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -947,11 +960,24 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isMainAdmin()) {
+        if (!$user->isMainAdmin() && !$user->isFOAdmin() && !$user->isBarangayAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $type = BenefitType::findOrFail($id);
+
+        // Non-main admins can only toggle benefits they created or in their jurisdiction
+        if (!$user->isMainAdmin()) {
+            $accessibleBranchIds = $user->branch_id ? [$user->branch_id] : [];
+            $accessibleBarangayIds = $user->getAccessibleBarangayIds();
+            $canManage = $type->created_by === $user->id
+                || ($type->target_scope === 'branch' && in_array($type->branch_id, $accessibleBranchIds))
+                || ($type->target_scope === 'barangays' && $type->barangays()->whereIn('barangays.id', $accessibleBarangayIds)->exists());
+            if (!$canManage) {
+                return response()->json(['error' => 'You can only manage benefits within your jurisdiction'], 403);
+            }
+        }
+
         $type->is_active = !$type->is_active;
         $type->save();
 
@@ -969,11 +995,18 @@ class BenefitController extends Controller
     {
         $user = $request->user();
         
-        if (!$user->isMainAdmin()) {
+        if (!$user->isMainAdmin() && !$user->isFOAdmin() && !$user->isBarangayAdmin()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $type = BenefitType::findOrFail($id);
+
+        // Non-main admins can only delete benefits they created
+        if (!$user->isMainAdmin() && $type->created_by !== $user->id) {
+            return response()->json(['error' => 'You can only delete benefits you created'], 403);
+        }
+
+
 
         // Check if there are any claims for this type
         $claimCount = BenefitClaim::where('benefit_type_id', $id)->count();
