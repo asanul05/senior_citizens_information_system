@@ -187,9 +187,7 @@ const Applications = () => {
             'Draft': { color: 'default', icon: <FileTextOutlined /> },
             'For Verification': { color: 'processing', icon: <SyncOutlined spin /> },
             'Verified': { color: 'blue', icon: <CheckCircleOutlined /> },
-            'Approved': { color: 'success', icon: <CheckCircleOutlined /> },
-            'Printed': { color: 'purple', icon: <FileTextOutlined /> },
-            'Claimed': { color: 'green', icon: <CheckCircleOutlined /> },
+            'Approved': { color: 'success', icon: <CheckCircleOutlined /> }
         };
         const config = statusConfig[status] || { color: 'default', icon: null };
         return <Tag color={config.color} icon={config.icon}>{getDisplayLabel(status)}</Tag>;
@@ -489,8 +487,6 @@ const Applications = () => {
                             <Option value="Draft">For Verification</Option>
                             <Option value="For Verification">For Approval</Option>
                             <Option value="Approved">Approved</Option>
-                            <Option value="Printed">Printed</Option>
-                            <Option value="Claimed">Claimed</Option>
                         </Select>
                     </Col>
                     <Col xs={24} sm={8} md={5}>

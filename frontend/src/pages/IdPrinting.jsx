@@ -19,6 +19,7 @@ import {
     Empty,
     Badge,
     Tabs,
+    Popconfirm,
 } from 'antd';
 import {
     SearchOutlined,
@@ -166,6 +167,17 @@ const IdPrinting = () => {
         }
     };
 
+    const handleQuickStatus = async (itemId, newStatus) => {
+        try {
+            await idPrintingApi.updateStatus(itemId, { status: newStatus });
+            message.success(`ID marked as ${newStatus}`);
+            fetchItems(pagination.current);
+            fetchStatistics();
+        } catch (error) {
+            message.error(`Failed to mark as ${newStatus}`);
+        }
+    };
+
     // Add to Queue Modal
     const openAddModal = () => {
         setAddModal({ visible: true, loading: false });
@@ -309,7 +321,16 @@ const IdPrinting = () => {
             dataIndex: 'id_type',
             key: 'id_type',
             width: 100,
-            render: (type) => <Tag color="purple">{type?.toUpperCase()}</Tag>,
+            render: (type) => {
+                const typeMap = {
+                    new: { label: 'New', color: 'blue' },
+                    renewal: { label: 'Renewal', color: 'purple' },
+                    replace_lost: { label: 'Lost', color: 'orange' },
+                    replace_damaged: { label: 'Damaged', color: 'red' },
+                };
+                const t = typeMap[type] || { label: type, color: 'default' };
+                return <Tag color={t.color}>{t.label}</Tag>;
+            },
         },
         {
             title: 'Requested',
@@ -339,15 +360,42 @@ const IdPrinting = () => {
                             onClick={() => openPreviewModal(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="Update Status">
-                        <Button
-                            type="text"
-                            size="small"
-                            onClick={() => openStatusModal(record)}
+                    {record.status === 'pending' || record.status === 'in_progress' ? (
+                        <Popconfirm
+                            title="Mark as Printed?"
+                            description="This will record the ID as printed."
+                            onConfirm={() => handleQuickStatus(record.id, 'printed')}
+                            okText="Yes"
+                            cancelText="No"
                         >
-                            Update
-                        </Button>
-                    </Tooltip>
+                            <Tooltip title="Mark as Printed">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<PrinterOutlined />}
+                                    style={{ color: '#1890ff' }}
+                                />
+                            </Tooltip>
+                        </Popconfirm>
+                    ) : null}
+                    {record.status === 'printed' ? (
+                        <Popconfirm
+                            title="Mark as Claimed?"
+                            description="This will record the ID as claimed by the senior."
+                            onConfirm={() => handleQuickStatus(record.id, 'claimed')}
+                            okText="Yes"
+                            cancelText="No"
+                        >
+                            <Tooltip title="Mark as Claimed">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<CheckCircleOutlined />}
+                                    style={{ color: '#52c41a' }}
+                                />
+                            </Tooltip>
+                        </Popconfirm>
+                    ) : null}
                 </Space>
             ),
         },
@@ -458,7 +506,8 @@ const IdPrinting = () => {
                         >
                             <Option value="new">New</Option>
                             <Option value="renewal">Renewal</Option>
-                            <Option value="replacement">Replacement</Option>
+                            <Option value="replace_lost">Replace Lost</Option>
+                            <Option value="replace_damaged">Replace Damaged</Option>
                         </Select>
                     </Col>
                     <Col xs={24} sm={6} style={{ textAlign: 'right' }}>
@@ -675,7 +724,8 @@ const IdPrinting = () => {
                         <Select placeholder="Select type">
                             <Option value="new">New ID</Option>
                             <Option value="renewal">Renewal</Option>
-                            <Option value="replacement">Replacement (Lost/Damaged)</Option>
+                            <Option value="replace_lost">Replace Lost ID</Option>
+                            <Option value="replace_damaged">Replace Damaged ID</Option>
                         </Select>
                     </Form.Item>
 

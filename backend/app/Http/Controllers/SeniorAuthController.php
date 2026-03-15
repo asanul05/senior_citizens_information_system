@@ -277,7 +277,7 @@ class SeniorAuthController extends Controller
         $claims = $senior->benefitClaims->map(function ($claim) {
             return [
                 'id' => $claim->id,
-                'benefit_type' => $claim->benefitType->name,
+                'benefit_type' => $claim->benefitType?->name ?? 'Unknown',
                 'amount' => $claim->amount,
                 'claim_year' => $claim->claim_year,
                 'status' => $claim->status,
