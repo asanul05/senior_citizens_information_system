@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\SeniorCitizen;
+use App\Models\SeniorHealthProfile;
 use App\Models\Contact;
 use App\Models\Barangay;
 use App\Models\IdPrintingQueue;
@@ -465,10 +466,35 @@ class ApplicationController extends Controller
                         'mobile_number' => $member['mobile_number'] ?? null,
                         'telephone_number' => $member['telephone_number'] ?? null,
                         'email' => $member['email'] ?? null,
+                        'is_emergency_contact' => !empty($member['is_emergency_contact']),
                         'created_at' => now(),
                     ]);
                 }
             }
+        }
+
+        // Create health profile if provided
+        $healthProfile = $data['health_profile'] ?? null;
+        if ($healthProfile && is_array($healthProfile)) {
+            SeniorHealthProfile::create([
+                'senior_id' => $senior->id,
+                'blood_type' => $healthProfile['blood_type'] ?? null,
+                'physical_disability' => $healthProfile['physical_disability'] ?? null,
+                'health_problems' => $healthProfile['health_problems'] ?? null,
+                'health_problems_other' => $healthProfile['health_problems_other'] ?? null,
+                'dental_concerns' => $healthProfile['dental_concerns'] ?? null,
+                'dental_concerns_other' => $healthProfile['dental_concerns_other'] ?? null,
+                'visual_concerns' => $healthProfile['visual_concerns'] ?? null,
+                'visual_concerns_other' => $healthProfile['visual_concerns_other'] ?? null,
+                'hearing_concerns' => $healthProfile['hearing_concerns'] ?? null,
+                'hearing_concerns_other' => $healthProfile['hearing_concerns_other'] ?? null,
+                'social_emotional' => $healthProfile['social_emotional'] ?? null,
+                'social_emotional_other' => $healthProfile['social_emotional_other'] ?? null,
+                'area_of_difficulty' => $healthProfile['area_of_difficulty'] ?? null,
+                'maintenance_medicines' => $healthProfile['maintenance_medicines'] ?? null,
+                'has_scheduled_checkup' => $healthProfile['has_scheduled_checkup'] ?? null,
+                'checkup_frequency' => $healthProfile['checkup_frequency'] ?? null,
+            ]);
         }
 
         return $senior->id;

@@ -16,6 +16,7 @@ import {
     Empty,
     Statistic,
     Badge,
+    Alert,
 } from 'antd';
 import {
     UserOutlined,
@@ -32,6 +33,7 @@ import {
     WomanOutlined,
     TeamOutlined,
     TagOutlined,
+    HeartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { seniorsApi, benefitsApi } from '../services/api';
@@ -251,89 +253,197 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         const appData = getApplicantData();
         const appMembers = appData?.family_members || [];
         const familyMembers = dbMembers.length > 0 ? dbMembers : appMembers;
+        const emergencyContact = familyMembers.find(m => m.is_emergency_contact);
 
         return (
-            <Card size="small" title="Family Composition" style={{ marginTop: 16 }}>
-                {familyMembers.length > 0 ? (
-                    <Table
-                        dataSource={familyMembers}
-                        rowKey={(_, index) => index}
-                        size="small"
-                        pagination={false}
-                        scroll={{ x: 900 }}
-                        columns={[
-                            {
-                                title: 'Name',
-                                key: 'name',
-                                fixed: 'left',
-                                width: 180,
-                                render: (_, record) => {
-                                    const parts = [
-                                        record.first_name,
-                                        record.middle_name,
-                                        record.last_name,
-                                        record.extension,
-                                    ].filter(Boolean);
-                                    return parts.join(' ') || '-';
-                                },
-                            },
-                            {
-                                title: 'Relationship',
-                                dataIndex: 'relationship',
-                                key: 'relationship',
-                                width: 110,
-                                render: (val) => val || '-',
-                            },
-                            {
-                                title: 'Date of Birth',
-                                dataIndex: 'birthdate',
-                                key: 'birthdate',
-                                width: 120,
-                                render: (val) => val ? dayjs(val).format('MMM D, YYYY') : '-',
-                            },
-                            {
-                                title: 'Age',
-                                key: 'age',
-                                width: 60,
-                                render: (_, record) => {
-                                    if (record.birthdate) return dayjs().diff(dayjs(record.birthdate), 'year');
-                                    return record.age || record.computed_age || '-';
-                                },
-                            },
-                            {
-                                title: 'Monthly Salary',
-                                dataIndex: 'monthly_salary',
-                                key: 'monthly_salary',
-                                width: 120,
-                                render: (val) => val ? `₱${Number(val).toLocaleString()}` : '-',
-                            },
-                            {
-                                title: 'Mobile',
-                                dataIndex: 'mobile_number',
-                                key: 'mobile_number',
-                                width: 130,
-                                render: (val) => val || '-',
-                            },
-                            {
-                                title: 'Telephone',
-                                dataIndex: 'telephone_number',
-                                key: 'telephone_number',
-                                width: 130,
-                                render: (val) => val || '-',
-                            },
-                            {
-                                title: 'Email',
-                                dataIndex: 'email',
-                                key: 'email',
-                                width: 180,
-                                render: (val) => val || '-',
-                            },
-                        ]}
+            <div>
+                {emergencyContact && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        icon={<PhoneOutlined />}
+                        style={{ marginBottom: 12 }}
+                        message={
+                            <span>
+                                <strong>Emergency Contact:</strong>{' '}
+                                {[emergencyContact.first_name, emergencyContact.middle_name, emergencyContact.last_name].filter(Boolean).join(' ')}
+                                {emergencyContact.relationship && ` (${emergencyContact.relationship})`}
+                                {emergencyContact.mobile_number && ` · ${emergencyContact.mobile_number}`}
+                            </span>
+                        }
                     />
-                ) : (
-                    <Empty description="No family members recorded" />
                 )}
-            </Card>
+                <Card size="small" title="Family Composition" style={{ marginTop: emergencyContact ? 0 : 16 }}>
+                    {familyMembers.length > 0 ? (
+                        <Table
+                            dataSource={familyMembers}
+                            rowKey={(_, index) => index}
+                            size="small"
+                            pagination={false}
+                            scroll={{ x: 900 }}
+                            columns={[
+                                {
+                                    title: 'Name',
+                                    key: 'name',
+                                    fixed: 'left',
+                                    width: 180,
+                                    render: (_, record) => {
+                                        const parts = [
+                                            record.first_name,
+                                            record.middle_name,
+                                            record.last_name,
+                                            record.extension,
+                                        ].filter(Boolean);
+                                        return (
+                                            <Space>
+                                                {parts.join(' ') || '-'}
+                                                {record.is_emergency_contact && <Tag color="red" style={{ fontSize: 11 }}>EC</Tag>}
+                                            </Space>
+                                        );
+                                    },
+                                },
+                                {
+                                    title: 'Relationship',
+                                    dataIndex: 'relationship',
+                                    key: 'relationship',
+                                    width: 110,
+                                    render: (val) => val || '-',
+                                },
+                                {
+                                    title: 'Date of Birth',
+                                    dataIndex: 'birthdate',
+                                    key: 'birthdate',
+                                    width: 120,
+                                    render: (val) => val ? dayjs(val).format('MMM D, YYYY') : '-',
+                                },
+                                {
+                                    title: 'Age',
+                                    key: 'age',
+                                    width: 60,
+                                    render: (_, record) => {
+                                        if (record.birthdate) return dayjs().diff(dayjs(record.birthdate), 'year');
+                                        return record.age || record.computed_age || '-';
+                                    },
+                                },
+                                {
+                                    title: 'Monthly Salary',
+                                    dataIndex: 'monthly_salary',
+                                    key: 'monthly_salary',
+                                    width: 120,
+                                    render: (val) => val ? `₱${Number(val).toLocaleString()}` : '-',
+                                },
+                                {
+                                    title: 'Mobile',
+                                    dataIndex: 'mobile_number',
+                                    key: 'mobile_number',
+                                    width: 130,
+                                    render: (val) => val || '-',
+                                },
+                                {
+                                    title: 'Telephone',
+                                    dataIndex: 'telephone_number',
+                                    key: 'telephone_number',
+                                    width: 130,
+                                    render: (val) => val || '-',
+                                },
+                                {
+                                    title: 'Email',
+                                    dataIndex: 'email',
+                                    key: 'email',
+                                    width: 180,
+                                    render: (val) => val || '-',
+                                },
+                            ]}
+                        />
+                    ) : (
+                        <Empty description="No family members recorded" />
+                    )}
+                </Card>
+            </div>
+        );
+    };
+
+    const renderHealthProfile = () => {
+        const hp = senior?.health_profile;
+        if (!hp) {
+            return <Empty description="No health profile recorded" />;
+        }
+
+        const renderTags = (items, color = 'blue') => {
+            if (!items || !Array.isArray(items) || items.length === 0) return <Text type="secondary">None</Text>;
+            return items.map(item => <Tag key={item} color={color}>{item}</Tag>);
+        };
+
+        const frequencyLabels = {
+            monthly: 'Monthly',
+            quarterly: 'Quarterly',
+            semi_annual: 'Semi-Annual',
+            annual: 'Annual',
+        };
+
+        return (
+            <div>
+                <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }} style={{ marginBottom: 16 }}>
+                    <Descriptions.Item label="Blood Type">
+                        {hp.blood_type ? <Tag color="red">{hp.blood_type}</Tag> : <Text type="secondary">Not specified</Text>}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Physical Disability">
+                        {hp.physical_disability || <Text type="secondary">None</Text>}
+                    </Descriptions.Item>
+                </Descriptions>
+
+                <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>Health Problems / Ailments</Title>
+                <div style={{ marginBottom: 8 }}>{renderTags(hp.health_problems, 'red')}</div>
+                {hp.health_problems_other && <Text type="secondary">Others: {hp.health_problems_other}</Text>}
+
+                <Row gutter={16} style={{ marginTop: 16 }}>
+                    <Col xs={24} md={8}>
+                        <Title level={5} style={{ marginBottom: 8 }}>Dental Concerns</Title>
+                        <div style={{ marginBottom: 4 }}>{renderTags(hp.dental_concerns, 'orange')}</div>
+                        {hp.dental_concerns_other && <Text type="secondary">Others: {hp.dental_concerns_other}</Text>}
+                    </Col>
+                    <Col xs={24} md={8}>
+                        <Title level={5} style={{ marginBottom: 8 }}>Visual Concerns</Title>
+                        <div style={{ marginBottom: 4 }}>{renderTags(hp.visual_concerns, 'purple')}</div>
+                        {hp.visual_concerns_other && <Text type="secondary">Others: {hp.visual_concerns_other}</Text>}
+                    </Col>
+                    <Col xs={24} md={8}>
+                        <Title level={5} style={{ marginBottom: 8 }}>Hearing Concerns</Title>
+                        <div style={{ marginBottom: 4 }}>{renderTags(hp.hearing_concerns, 'cyan')}</div>
+                        {hp.hearing_concerns_other && <Text type="secondary">Others: {hp.hearing_concerns_other}</Text>}
+                    </Col>
+                </Row>
+
+                <Row gutter={16} style={{ marginTop: 16 }}>
+                    <Col xs={24} md={12}>
+                        <Title level={5} style={{ marginBottom: 8 }}>Social / Emotional</Title>
+                        <div style={{ marginBottom: 4 }}>{renderTags(hp.social_emotional, 'volcano')}</div>
+                        {hp.social_emotional_other && <Text type="secondary">Others: {hp.social_emotional_other}</Text>}
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <Title level={5} style={{ marginBottom: 8 }}>Area of Difficulty</Title>
+                        <div>{renderTags(hp.area_of_difficulty, 'gold')}</div>
+                    </Col>
+                </Row>
+
+                {hp.maintenance_medicines && (
+                    <div style={{ marginTop: 16 }}>
+                        <Title level={5} style={{ marginBottom: 8 }}>Maintenance Medicines</Title>
+                        <Paragraph style={{ background: '#f5f5f5', padding: 12, borderRadius: 8 }}>
+                            {hp.maintenance_medicines}
+                        </Paragraph>
+                    </div>
+                )}
+
+                <Descriptions bordered size="small" column={{ xs: 1, sm: 2 }} style={{ marginTop: 16 }}>
+                    <Descriptions.Item label="Scheduled Check-up">
+                        {hp.has_scheduled_checkup === true ? <Tag color="green">Yes</Tag> : hp.has_scheduled_checkup === false ? <Tag color="default">No</Tag> : <Text type="secondary">Not specified</Text>}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Check-up Frequency">
+                        {hp.checkup_frequency ? <Tag color="blue">{frequencyLabels[hp.checkup_frequency] || hp.checkup_frequency}</Tag> : <Text type="secondary">N/A</Text>}
+                    </Descriptions.Item>
+                </Descriptions>
+            </div>
         );
     };
 
@@ -576,6 +686,14 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                                 key="association"
                             >
                                 {renderAssociation()}
+                            </TabPane>
+                            <TabPane
+                                tab={
+                                    <span><HeartOutlined /> Health</span>
+                                }
+                                key="health"
+                            >
+                                {renderHealthProfile()}
                             </TabPane>
                             <TabPane
                                 tab={

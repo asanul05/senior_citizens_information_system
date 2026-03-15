@@ -168,6 +168,24 @@ class RegistrationController extends Controller
                 'target_sectors' => 'nullable|array',
                 'sub_categories' => 'nullable|array',
                 'application_type_id' => 'nullable|integer',
+
+                'health_profile' => 'nullable|array',
+                'health_profile.blood_type' => 'nullable|string|max:10',
+                'health_profile.physical_disability' => 'nullable|string|max:255',
+                'health_profile.health_problems' => 'nullable|array',
+                'health_profile.health_problems_other' => 'nullable|string|max:255',
+                'health_profile.dental_concerns' => 'nullable|array',
+                'health_profile.dental_concerns_other' => 'nullable|string|max:255',
+                'health_profile.visual_concerns' => 'nullable|array',
+                'health_profile.visual_concerns_other' => 'nullable|string|max:255',
+                'health_profile.hearing_concerns' => 'nullable|array',
+                'health_profile.hearing_concerns_other' => 'nullable|string|max:255',
+                'health_profile.social_emotional' => 'nullable|array',
+                'health_profile.social_emotional_other' => 'nullable|string|max:255',
+                'health_profile.area_of_difficulty' => 'nullable|array',
+                'health_profile.maintenance_medicines' => 'nullable|string',
+                'health_profile.has_scheduled_checkup' => 'nullable|boolean',
+                'health_profile.checkup_frequency' => 'nullable|string|max:50',
             ];
 
             // If NOT draft, require documents to be uploaded (check via has_documents flag)
@@ -328,6 +346,7 @@ class RegistrationController extends Controller
                 'family_members' => $request->family_members ?? [],
                 'target_sectors' => $request->target_sectors ?? [],
                 'sub_categories' => $request->sub_categories ?? [],
+                'health_profile' => $request->health_profile ?? null,
             ];
 
             // Determine status
@@ -445,6 +464,7 @@ class RegistrationController extends Controller
             'family_members' => 'nullable|array',
             'target_sectors' => 'nullable|array',
             'sub_categories' => 'nullable|array',
+            'health_profile' => 'nullable|array',
         ];
 
         $request->validate($rules, $messages);
@@ -478,6 +498,7 @@ class RegistrationController extends Controller
                 'family_members' => $request->family_members ?? [],
                 'target_sectors' => $request->target_sectors ?? [],
                 'sub_categories' => $request->sub_categories ?? [],
+                'health_profile' => $request->health_profile ?? null,
             ];
 
             $status = $isDraft ? 'Draft' : 'For Verification';

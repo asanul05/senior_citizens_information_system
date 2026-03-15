@@ -234,7 +234,13 @@ const NewApplication = () => {
                     other_skills: background.other_skills,
                     target_sectors: data.target_sectors || [],
                     sub_categories: data.sub_categories || [],
+                    health_profile: data.health_profile || {},
                 });
+
+                // Pre-fill health profile nested fields
+                if (data.health_profile) {
+                    form.setFieldsValue({ health_profile: data.health_profile });
+                }
 
                 // Set family members if any
                 if (data.family_members && data.family_members.length > 0) {
@@ -351,6 +357,7 @@ const NewApplication = () => {
                     family_members: familyMembers.filter(m => m.first_name),
                     target_sectors: allData.target_sectors || [],
                     sub_categories: allData.sub_categories || [],
+                    health_profile: allData.health_profile || null,
                     application_type_id: 1,
                     save_as_draft: true,
                 };
@@ -464,7 +471,7 @@ const NewApplication = () => {
     const addFamilyMember = () => {
         setFamilyMembers([
             ...familyMembers,
-            { id: Date.now(), first_name: '', middle_name: '', last_name: '', extension: '', birthdate: null, relationship: '', age: '', monthly_salary: '', mobile_number: '', telephone_number: '', email: '', searchQuery: '', searchResults: [], searching: false },
+            { id: Date.now(), first_name: '', middle_name: '', last_name: '', extension: '', birthdate: null, relationship: '', age: '', monthly_salary: '', mobile_number: '', telephone_number: '', email: '', is_emergency_contact: false, searchQuery: '', searchResults: [], searching: false },
         ]);
     };
 
@@ -700,6 +707,9 @@ const NewApplication = () => {
                 // Associations
                 target_sectors: allData.target_sectors || [],
                 sub_categories: allData.sub_categories || [],
+
+                // Health Profile
+                health_profile: allData.health_profile || null,
 
                 application_type_id: 1, // New ID
                 save_as_draft: saveAsDraft,
@@ -977,6 +987,9 @@ const NewApplication = () => {
                         <Input placeholder="email@example.com" size="large" />
                     </Form.Item>
                 </Col>
+            </Row>
+
+            <Row gutter={16}>
                 <Col xs={24} sm={12} md={6}>
                     <Form.Item name="educational_attainment_id" label="Educational Attainment">
                         <Select placeholder="Select" size="large" allowClear>
@@ -1001,17 +1014,175 @@ const NewApplication = () => {
                         />
                     </Form.Item>
                 </Col>
-            </Row>
-
-            <Row gutter={16}>
-                <Col xs={24} sm={12}>
+                <Col xs={24} sm={12} md={6}>
                     <Form.Item name="occupation" label="Occupation">
                         <Input placeholder="Current or previous occupation" size="large" />
                     </Form.Item>
                 </Col>
-                <Col xs={24} sm={12}>
+                {/* <Col xs={24} sm={12} md={6}>
                     <Form.Item name="other_skills" label="Other Skills">
                         <Input placeholder="Additional skills" size="large" />
+                    </Form.Item>
+                </Col> */}
+            </Row>
+
+            <Divider />
+            <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
+                Health Profile
+            </Title>
+
+            {/* 35.a Medical Concern */}
+            <Row gutter={16}>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name={['health_profile', 'blood_type']} label="Blood Type">
+                        <Select placeholder="Select Blood Type" size="large" allowClear>
+                            {['A', 'A+', 'A-', 'B', 'B+', 'B-', 'AB', 'AB+', 'AB-', 'O', 'O+', 'O-', 'Unknown'].map(bt => (
+                                <Option key={bt} value={bt}>{bt}</Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name={['health_profile', 'physical_disability']} label="Physical Disability">
+                        <Input placeholder="Type of physical disability" size="large" />
+                    </Form.Item>
+                </Col>
+            </Row>
+
+            <Row gutter={24}>
+                <Col xs={24} md={12}>
+                    <Title level={5}>Health Problems / Ailments</Title>
+                    <Form.Item name={['health_profile', 'health_problems']}>
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {[
+                                    'Hypertension',
+                                    'Arthritis/Gout',
+                                    'Coronary Heart Disease',
+                                    'Diabetes',
+                                    'Chronic Kidney Disease',
+                                    "Alzheimer's Disease",
+                                    'Chronic Obstructive Pulmonary Disease',
+                                ].map(item => (
+                                    <Checkbox key={item} value={item}>{item}</Checkbox>
+                                ))}
+                            </div>
+                        </Checkbox.Group>
+                    </Form.Item>
+                    <Form.Item name={['health_profile', 'health_problems_other']} label="Others, Specify">
+                        <Input placeholder="Other health problems" size="large" />
+                    </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                    {/* 35.b Dental Concern */}
+                    <Title level={5}>Dental Concern</Title>
+                    <Form.Item name={['health_profile', 'dental_concerns']}>
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Checkbox value="Needs Dental Care">Needs Dental Care</Checkbox>
+                            </div>
+                        </Checkbox.Group>
+                    </Form.Item>
+                    <Form.Item name={['health_profile', 'dental_concerns_other']} label="Others, Specify">
+                        <Input placeholder="Other dental concerns" size="large" />
+                    </Form.Item>
+
+                    {/* 35.c Visual Concern */}
+                    <Title level={5} style={{ marginTop: 16 }}>Visual Concern</Title>
+                    <Form.Item name={['health_profile', 'visual_concerns']}>
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Checkbox value="Eye Impairment">Eye Impairment</Checkbox>
+                                <Checkbox value="Needs Eye Care">Needs Eye Care</Checkbox>
+                            </div>
+                        </Checkbox.Group>
+                    </Form.Item>
+                    <Form.Item name={['health_profile', 'visual_concerns_other']} label="Others, Specify">
+                        <Input placeholder="Other visual concerns" size="large" />
+                    </Form.Item>
+
+                    {/* 35.d Aural/Hearing Condition */}
+                    <Title level={5} style={{ marginTop: 16 }}>Aural/Hearing Condition</Title>
+                    <Form.Item name={['health_profile', 'hearing_concerns']}>
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Checkbox value="Aural Impairment">Aural Impairment</Checkbox>
+                            </div>
+                        </Checkbox.Group>
+                    </Form.Item>
+                    <Form.Item name={['health_profile', 'hearing_concerns_other']} label="Others, Specify">
+                        <Input placeholder="Other hearing concerns" size="large" />
+                    </Form.Item>
+                </Col>
+            </Row>
+
+            <Row gutter={24}>
+                <Col xs={24} md={12}>
+                    {/* 35.e Social / Emotional */}
+                    <Title level={5}>Social / Emotional</Title>
+                    <Form.Item name={['health_profile', 'social_emotional']}>
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Checkbox value="Feeling Neglect/Rejection">Feeling Neglect / Rejection</Checkbox>
+                                <Checkbox value="Feeling Helplessness/Worthlessness">Feeling Helplessness / Worthlessness</Checkbox>
+                                <Checkbox value="Feeling Loneliness/Isolate">Feeling Loneliness / Isolate</Checkbox>
+                                <Checkbox value="Lack Leisure/Recreational Activities">Lack Leisure / Recreational Activities</Checkbox>
+                                <Checkbox value="Lack SC Friendly Environment">Lack SC Friendly Environment</Checkbox>
+                            </div>
+                        </Checkbox.Group>
+                    </Form.Item>
+                    <Form.Item name={['health_profile', 'social_emotional_other']} label="Others, Specify">
+                        <Input placeholder="Other social/emotional concerns" size="large" />
+                    </Form.Item>
+                </Col>
+
+                <Col xs={24} md={12}>
+                    {/* 35.f Area of Difficulty */}
+                    <Title level={5}>Area of Difficulty</Title>
+                    <Form.Item name={['health_profile', 'area_of_difficulty']}>
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Checkbox value="High Cost of Medicines">High Cost of Medicines</Checkbox>
+                                <Checkbox value="Lack of Medicines">Lack of Medicines</Checkbox>
+                                <Checkbox value="Lack of Medical Attention">Lack of Medical Attention</Checkbox>
+                            </div>
+                        </Checkbox.Group>
+                    </Form.Item>
+                </Col>
+            </Row>
+
+            {/* 36. Maintenance Medicines */}
+            <Row gutter={16}>
+                <Col xs={24}>
+                    <Form.Item name={['health_profile', 'maintenance_medicines']} label="List of Medicines for Maintenance">
+                        <TextArea
+                            placeholder="Type all your maintenance medicines. Example: Amlodipine 10mg, Losartan 50mg, etc."
+                            rows={3}
+                            size="large"
+                        />
+                    </Form.Item>
+                </Col>
+            </Row>
+
+            {/* 37. Scheduled Checkup */}
+            <Row gutter={16}>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name={['health_profile', 'has_scheduled_checkup']} label="Do you have a scheduled medical/physical check-up?">
+                        <Select placeholder="Select" size="large" allowClear>
+                            <Option value={true}>Yes</Option>
+                            <Option value={false}>No</Option>
+                        </Select>
+                    </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                    <Form.Item name={['health_profile', 'checkup_frequency']} label="If Yes, when is it done?">
+                        <Select placeholder="Select frequency" size="large" allowClear>
+                            <Option value="monthly">Monthly</Option>
+                            <Option value="quarterly">Quarterly</Option>
+                            <Option value="semi_annual">Semi-Annual</Option>
+                            <Option value="annual">Annual</Option>
+                        </Select>
                     </Form.Item>
                 </Col>
             </Row>
@@ -1084,14 +1255,34 @@ const NewApplication = () => {
                         <Card
                             key={member.id}
                             size="small"
-                            title={`Family Member ${index + 1}`}
+                            title={
+                                <Space>
+                                    {`Family Member ${index + 1}`}
+                                    {member.is_emergency_contact && (
+                                        <Tag color="red" style={{ marginLeft: 4 }}>Emergency Contact</Tag>
+                                    )}
+                                </Space>
+                            }
                             extra={
-                                <Button
-                                    type="text"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                    onClick={() => removeFamilyMember(member.id)}
-                                />
+                                <Space>
+                                    <Checkbox
+                                        checked={member.is_emergency_contact}
+                                        onChange={(e) => {
+                                            setFamilyMembers(prev => prev.map(m => ({
+                                                ...m,
+                                                is_emergency_contact: m.id === member.id ? e.target.checked : false,
+                                            })));
+                                        }}
+                                    >
+                                        Emergency Contact
+                                    </Checkbox>
+                                    <Button
+                                        type="text"
+                                        danger
+                                        icon={<DeleteOutlined />}
+                                        onClick={() => removeFamilyMember(member.id)}
+                                    />
+                                </Space>
                             }
                         >
                             {/* Matched Senior Indicator */}

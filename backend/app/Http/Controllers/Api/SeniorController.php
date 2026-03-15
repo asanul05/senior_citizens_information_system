@@ -125,6 +125,7 @@ class SeniorController extends Controller
                 'applications.approver',
                 'seniorIds',
                 'familyMembers',
+                'healthProfile',
             ])
                 ->accessibleBy($user)
                 ->findOrFail($id);

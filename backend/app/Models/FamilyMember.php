@@ -24,12 +24,14 @@ class FamilyMember extends Model
         'mobile_number',
         'telephone_number',
         'email',
+        'is_emergency_contact',
         'created_at',
     ];
 
     protected $casts = [
         'birthdate' => 'date',
         'monthly_salary' => 'decimal:2',
+        'is_emergency_contact' => 'boolean',
     ];
 
     protected $appends = ['computed_age'];

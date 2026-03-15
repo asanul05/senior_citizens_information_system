@@ -28,6 +28,7 @@ import {
     FileOutlined,
     ClockCircleOutlined,
     FileImageOutlined,
+    HeartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { applicationsApi } from '../services/api';
@@ -190,6 +191,7 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
     const backgroundInfo = applicantData.background_info || {};
     const targetSectors = applicantData.target_sectors || [];
     const subCategories = applicantData.sub_categories || [];
+    const healthProfile = applicantData.health_profile || null;
     // Documents come from the relationship, not applicant_data
     const documents = application?.documents || [];
     const appTypeId = application?.application_type_id || 1;
@@ -313,77 +315,176 @@ function ApplicationDetailsModal({ visible, applicationId, onClose }) {
                     <Descriptions.Item label="Occupation">
                         <FieldStatus value={backgroundInfo.occupation} label="Occupation" optional />
                     </Descriptions.Item>
-                    <Descriptions.Item label="Other Skills">
+                    {/* <Descriptions.Item label="Other Skills">
                         <FieldStatus value={backgroundInfo.other_skills} label="Other Skills" optional />
-                    </Descriptions.Item>
+                    </Descriptions.Item> */}
                 </Descriptions>
             </Card>
-        </div>
-    );
 
-    const renderFamilyTab = () => (
-        <div>
-            {familyMembers.length > 0 ? (
-                <Table
-                    dataSource={familyMembers}
-                    rowKey={(record, index) => index}
-                    size="small"
-                    pagination={false}
-                    scroll={{ x: 900 }}
-                    columns={[
-                        {
-                            title: 'Name',
-                            key: 'name',
-                            fixed: 'left',
-                            width: 200,
-                            render: (_, record) => {
-                                const parts = [
-                                    record.first_name,
-                                    record.middle_name,
-                                    record.last_name,
-                                    record.extension,
-                                ].filter(Boolean);
-                                const name = parts.join(' ') || '-';
-                                return (
-                                    <div>
-                                        <div>{name}</div>
-                                        {record.matched_senior && (
-                                            <Tag color="green" style={{ fontSize: 11, marginTop: 2 }}>
-                                                <CheckCircleOutlined /> Registered: {record.matched_senior.osca_id}
-                                            </Tag>
-                                        )}
-                                    </div>
-                                );
-                            },
-                        },
-                        { title: 'Relationship', dataIndex: 'relationship', key: 'relationship', width: 110, render: (val) => val || '-' },
-                        {
-                            title: 'Date of Birth',
-                            dataIndex: 'birthdate',
-                            key: 'birthdate',
-                            width: 120,
-                            render: (val) => val ? dayjs(val).format('MMM D, YYYY') : '-',
-                        },
-                        {
-                            title: 'Age',
-                            key: 'age',
-                            width: 60,
-                            render: (_, record) => {
-                                if (record.birthdate) return dayjs().diff(dayjs(record.birthdate), 'year');
-                                return record.age || '-';
-                            },
-                        },
-                        { title: 'Monthly Salary', dataIndex: 'monthly_salary', key: 'monthly_salary', width: 120, render: (val) => val ? `₱${Number(val).toLocaleString()}` : '-' },
-                        { title: 'Mobile', dataIndex: 'mobile_number', key: 'mobile_number', width: 130, render: (val) => val || '-' },
-                        { title: 'Telephone', dataIndex: 'telephone_number', key: 'telephone_number', width: 130, render: (val) => val || '-' },
-                        { title: 'Email', dataIndex: 'email', key: 'email', width: 180, render: (val) => val || '-' },
-                    ]}
-                />
-            ) : (
-                <Empty description="No family members listed" />
+            {healthProfile && (
+                <Card size="small" title="Health Profile" style={{ marginTop: 16 }}>
+                    <Descriptions column={2} size="small" bordered>
+                        <Descriptions.Item label="Blood Type">
+                            {healthProfile.blood_type ? <Tag color="red">{healthProfile.blood_type}</Tag> : <Text type="secondary">Not specified</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Physical Disability">
+                            {healthProfile.physical_disability || <Text type="secondary">None</Text>}
+                        </Descriptions.Item>
+                    </Descriptions>
+
+                    {healthProfile.health_problems?.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                            <Text strong>Health Problems: </Text>
+                            <Space wrap style={{ marginTop: 4 }}>
+                                {healthProfile.health_problems.map(item => <Tag key={item} color="red">{item}</Tag>)}
+                            </Space>
+                            {healthProfile.health_problems_other && <div style={{ marginTop: 4 }}><Text type="secondary">Others: {healthProfile.health_problems_other}</Text></div>}
+                        </div>
+                    )}
+
+                    <Row gutter={16} style={{ marginTop: 12 }}>
+                        {healthProfile.dental_concerns?.length > 0 && (
+                            <Col xs={24} md={8}>
+                                <Text strong>Dental: </Text>
+                                <Space wrap>{healthProfile.dental_concerns.map(i => <Tag key={i} color="orange">{i}</Tag>)}</Space>
+                                {healthProfile.dental_concerns_other && <div><Text type="secondary">Others: {healthProfile.dental_concerns_other}</Text></div>}
+                            </Col>
+                        )}
+                        {healthProfile.visual_concerns?.length > 0 && (
+                            <Col xs={24} md={8}>
+                                <Text strong>Visual: </Text>
+                                <Space wrap>{healthProfile.visual_concerns.map(i => <Tag key={i} color="purple">{i}</Tag>)}</Space>
+                                {healthProfile.visual_concerns_other && <div><Text type="secondary">Others: {healthProfile.visual_concerns_other}</Text></div>}
+                            </Col>
+                        )}
+                        {healthProfile.hearing_concerns?.length > 0 && (
+                            <Col xs={24} md={8}>
+                                <Text strong>Hearing: </Text>
+                                <Space wrap>{healthProfile.hearing_concerns.map(i => <Tag key={i} color="cyan">{i}</Tag>)}</Space>
+                                {healthProfile.hearing_concerns_other && <div><Text type="secondary">Others: {healthProfile.hearing_concerns_other}</Text></div>}
+                            </Col>
+                        )}
+                    </Row>
+
+                    {healthProfile.social_emotional?.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                            <Text strong>Social/Emotional: </Text>
+                            <Space wrap>{healthProfile.social_emotional.map(i => <Tag key={i} color="volcano">{i}</Tag>)}</Space>
+                            {healthProfile.social_emotional_other && <div><Text type="secondary">Others: {healthProfile.social_emotional_other}</Text></div>}
+                        </div>
+                    )}
+
+                    {healthProfile.area_of_difficulty?.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                            <Text strong>Area of Difficulty: </Text>
+                            <Space wrap>{healthProfile.area_of_difficulty.map(i => <Tag key={i} color="gold">{i}</Tag>)}</Space>
+                        </div>
+                    )}
+
+                    {healthProfile.maintenance_medicines && (
+                        <div style={{ marginTop: 12 }}>
+                            <Text strong>Maintenance Medicines: </Text>
+                            <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 6, marginTop: 4 }}>{healthProfile.maintenance_medicines}</div>
+                        </div>
+                    )}
+
+                    <Descriptions column={2} size="small" bordered style={{ marginTop: 12 }}>
+                        <Descriptions.Item label="Scheduled Check-up">
+                            {healthProfile.has_scheduled_checkup === true ? <Tag color="green">Yes</Tag> : healthProfile.has_scheduled_checkup === false ? <Tag>No</Tag> : <Text type="secondary">Not specified</Text>}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Check-up Frequency">
+                            {healthProfile.checkup_frequency ? <Tag color="blue">{{monthly:'Monthly',quarterly:'Quarterly',semi_annual:'Semi-Annual',annual:'Annual'}[healthProfile.checkup_frequency] || healthProfile.checkup_frequency}</Tag> : <Text type="secondary">N/A</Text>}
+                        </Descriptions.Item>
+                    </Descriptions>
+                </Card>
             )}
         </div>
     );
+
+    const renderFamilyTab = () => {
+        const emergencyContact = familyMembers.find(m => m.is_emergency_contact);
+        return (
+            <div>
+                {emergencyContact && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 12 }}
+                        message={
+                            <span>
+                                <strong>Emergency Contact:</strong>{' '}
+                                {[emergencyContact.first_name, emergencyContact.middle_name, emergencyContact.last_name].filter(Boolean).join(' ')}
+                                {emergencyContact.relationship && ` (${emergencyContact.relationship})`}
+                                {emergencyContact.mobile_number && ` · ${emergencyContact.mobile_number}`}
+                            </span>
+                        }
+                    />
+                )}
+                {familyMembers.length > 0 ? (
+                    <Table
+                        dataSource={familyMembers}
+                        rowKey={(record, index) => index}
+                        size="small"
+                        pagination={false}
+                        scroll={{ x: 900 }}
+                        columns={[
+                            {
+                                title: 'Name',
+                                key: 'name',
+                                fixed: 'left',
+                                width: 200,
+                                render: (_, record) => {
+                                    const parts = [
+                                        record.first_name,
+                                        record.middle_name,
+                                        record.last_name,
+                                        record.extension,
+                                    ].filter(Boolean);
+                                    const name = parts.join(' ') || '-';
+                                    return (
+                                        <div>
+                                            <div>
+                                                {name}
+                                                {record.is_emergency_contact && <Tag color="red" style={{ fontSize: 11, marginLeft: 4 }}>EC</Tag>}
+                                            </div>
+                                            {record.matched_senior && (
+                                                <Tag color="green" style={{ fontSize: 11, marginTop: 2 }}>
+                                                    <CheckCircleOutlined /> Registered: {record.matched_senior.osca_id}
+                                                </Tag>
+                                            )}
+                                        </div>
+                                    );
+                                },
+                            },
+                            { title: 'Relationship', dataIndex: 'relationship', key: 'relationship', width: 110, render: (val) => val || '-' },
+                            {
+                                title: 'Date of Birth',
+                                dataIndex: 'birthdate',
+                                key: 'birthdate',
+                                width: 120,
+                                render: (val) => val ? dayjs(val).format('MMM D, YYYY') : '-',
+                            },
+                            {
+                                title: 'Age',
+                                key: 'age',
+                                width: 60,
+                                render: (_, record) => {
+                                    if (record.birthdate) return dayjs().diff(dayjs(record.birthdate), 'year');
+                                    return record.age || '-';
+                                },
+                            },
+                            { title: 'Monthly Salary', dataIndex: 'monthly_salary', key: 'monthly_salary', width: 120, render: (val) => val ? `₱${Number(val).toLocaleString()}` : '-' },
+                            { title: 'Mobile', dataIndex: 'mobile_number', key: 'mobile_number', width: 130, render: (val) => val || '-' },
+                            { title: 'Telephone', dataIndex: 'telephone_number', key: 'telephone_number', width: 130, render: (val) => val || '-' },
+                            { title: 'Email', dataIndex: 'email', key: 'email', width: 180, render: (val) => val || '-' },
+                        ]}
+                    />
+                ) : (
+                    <Empty description="No family members listed" />
+                )}
+            </div>
+        );
+    };
 
     const renderAssociationTab = () => (
         <div>
