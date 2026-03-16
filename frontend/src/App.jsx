@@ -44,6 +44,8 @@ import Apply from "./pages/public/Apply";
 // Senior Portal Pages
 import SeniorLogin from "./pages/senior/SeniorLogin";
 import SeniorDashboard from "./pages/senior/SeniorDashboard";
+import SeniorProfile from "./pages/senior/SeniorProfile";
+import SeniorAnnouncements from "./pages/senior/SeniorAnnouncements";
 import SeniorBenefits from "./pages/senior/SeniorBenefits";
 import SeniorComplaints from "./pages/senior/SeniorComplaints";
 
@@ -97,11 +99,11 @@ function App() {
               {/* ============ SENIOR PORTAL ROUTES ============ */}
               <Route path="/senior/login" element={<SeniorLogin />} />
               <Route path="/senior/dashboard" element={<SeniorDashboard />} />
-              <Route path="/senior/profile" element={<SeniorDashboard />} />
+              <Route path="/senior/profile" element={<SeniorProfile />} />
               <Route path="/senior/benefits" element={<SeniorBenefits />} />
               <Route
                 path="/senior/announcements"
-                element={<SeniorDashboard />}
+                element={<SeniorAnnouncements />}
               />
               <Route path="/senior/complaints" element={<SeniorComplaints />} />
 

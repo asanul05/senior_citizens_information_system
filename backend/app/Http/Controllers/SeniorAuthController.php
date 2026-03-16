@@ -208,11 +208,24 @@ class SeniorAuthController extends Controller
         // In production, validate token from header
         $seniorId = $request->input('senior_id');
         
-        $senior = SeniorCitizen::with('barangay')->find($seniorId);
+        $senior = SeniorCitizen::with([
+            'barangay', 'gender', 'civilStatus', 'contact',
+            'familyMembers', 'healthProfile',
+        ])->find($seniorId);
 
         if (!$senior) {
             return response()->json(['message' => 'Senior not found'], 404);
         }
+
+        // Build address from contact fields
+        $contact = $senior->contact;
+        $addressParts = array_filter([
+            $contact?->house_number,
+            $contact?->street,
+            $senior->barangay?->name,
+            $contact?->city,
+        ]);
+        $address = implode(', ', $addressParts) ?: null;
 
         return response()->json([
             'data' => [
@@ -221,14 +234,21 @@ class SeniorAuthController extends Controller
                 'first_name' => $senior->first_name,
                 'middle_name' => $senior->middle_name,
                 'last_name' => $senior->last_name,
+                'extension' => $senior->extension,
                 'birthdate' => $senior->birthdate,
                 'age' => $senior->age,
-                'sex' => $senior->sex,
-                'civil_status' => $senior->civil_status,
+                'gender' => $senior->gender?->name,
+                'civil_status' => $senior->civilStatus?->name,
                 'barangay' => $senior->barangay?->name,
-                'address' => $senior->address,
-                'contact_number' => $senior->contact_number,
+                'address' => $address,
+                'mobile_number' => $contact?->mobile_number,
+                'telephone_number' => $contact?->telephone_number,
+                'email' => $contact?->email,
                 'photo' => $senior->photo_path,
+                'family_members' => $senior->familyMembers,
+                'health_profile' => $senior->healthProfile,
+                'target_sectors' => $senior->target_sectors ?? [],
+                'sub_categories' => $senior->sub_categories ?? [],
             ],
         ]);
     }
@@ -332,16 +352,11 @@ class SeniorAuthController extends Controller
             }
         }
 
-        // Count announcements (for the senior's barangay)
-        $announcements = \App\Models\Announcement::where('is_published', true)
-            ->where(function ($q) use ($senior) {
-                $q->whereNull('barangay_id')
-                    ->orWhere('barangay_id', $senior->barangay_id);
-            })
-            ->count();
+        // Count published announcements
+        $announcements = \App\Models\Announcement::published()->count();
 
-        // Count complaints
-        $complaints = \App\Models\Complaint::where('complainant_id', $seniorId)->count();
+        // Count complaints (benefit complaints filed by this senior)
+        $complaints = \App\Models\BenefitComplaint::where('senior_id', $seniorId)->count();
 
         return response()->json([
             'data' => [
