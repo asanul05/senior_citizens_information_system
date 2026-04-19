@@ -425,10 +425,15 @@ const NewApplication = () => {
     };
 
     // Handle document preview
-    const handlePreviewDocument = (filePath) => {
-        if (!filePath) return;
+    const handlePreviewDocument = (filePathOrUrl) => {
+        if (!filePathOrUrl) return;
+        // If already a full URL (from DO Spaces), use directly
+        if (filePathOrUrl.startsWith('http')) {
+            setPreviewImage(filePathOrUrl);
+            return;
+        }
         const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-        setPreviewImage(`${baseUrl}/storage/${filePath}`);
+        setPreviewImage(`${baseUrl}/storage/${filePathOrUrl}`);
     };
 
     // Calculate age from birthdate
@@ -1581,7 +1586,7 @@ const NewApplication = () => {
                                         type="text"
                                         size="small"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handlePreviewDocument(getDocumentByType(1).file_path)}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(1).url || getDocumentByType(1).file_path)}
                                     >
                                         Preview
                                     </Button>
@@ -1630,7 +1635,7 @@ const NewApplication = () => {
                                         type="text"
                                         size="small"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handlePreviewDocument(getDocumentByType(2).file_path)}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(2).url || getDocumentByType(2).file_path)}
                                     >
                                         Preview
                                     </Button>
@@ -1679,7 +1684,7 @@ const NewApplication = () => {
                                         type="text"
                                         size="small"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handlePreviewDocument(getDocumentByType(3).file_path)}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(3).url || getDocumentByType(3).file_path)}
                                     >
                                         Preview
                                     </Button>
@@ -1728,7 +1733,7 @@ const NewApplication = () => {
                                         type="text"
                                         size="small"
                                         icon={<EyeOutlined />}
-                                        onClick={() => handlePreviewDocument(getDocumentByType(4).file_path)}
+                                        onClick={() => handlePreviewDocument(getDocumentByType(4).url || getDocumentByType(4).file_path)}
                                     >
                                         Preview
                                     </Button>

@@ -247,10 +247,14 @@ const ReplaceDamagedApplication = () => {
         }
     };
 
-    const handlePreviewDocument = (filePath) => {
-        if (!filePath) return;
+    const handlePreviewDocument = (filePathOrUrl) => {
+        if (!filePathOrUrl) return;
+        if (filePathOrUrl.startsWith('http')) {
+            setPreviewImage(filePathOrUrl);
+            return;
+        }
         const baseUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || '';
-        setPreviewImage(`${baseUrl}/storage/${filePath}`);
+        setPreviewImage(`${baseUrl}/storage/${filePathOrUrl}`);
     };
 
     const handleSubmit = async (saveAsDraft = false) => {
