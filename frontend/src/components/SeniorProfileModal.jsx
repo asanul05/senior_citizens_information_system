@@ -18,6 +18,8 @@ import {
     Badge,
     Alert,
     Button,
+    Upload,
+    message,
 } from 'antd';
 import {
     UserOutlined,
@@ -35,6 +37,7 @@ import {
     TeamOutlined,
     TagOutlined,
     HeartOutlined,
+    CameraOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { seniorsApi, benefitsApi } from '../services/api';
@@ -42,6 +45,7 @@ import ReportDeceasedModal from './ReportDeceasedModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 function SeniorProfileModal({ visible, seniorId, onClose }) {
     const [loading, setLoading] = useState(false);
@@ -49,6 +53,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
     const [claimsLoading, setClaimsLoading] = useState(false);
     const [claims, setClaims] = useState([]);
     const [deceasedModalVisible, setDeceasedModalVisible] = useState(false);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
     useEffect(() => {
         if (visible && seniorId) {
@@ -109,15 +114,81 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         }).format(amount);
     };
 
+    const getPhotoSrc = () => {
+        if (!senior) return undefined;
+        if (senior.photo_url) return senior.photo_url;
+        if (senior.photo_path) return `${API_URL.replace('/api', '')}/storage/${senior.photo_path}`;
+        return undefined;
+    };
+
+    const beforeUploadPhoto = (file) => {
+        const isValidType = ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type);
+        if (!isValidType) {
+            message.error('Only JPG or PNG images are allowed.');
+            return Upload.LIST_IGNORE;
+        }
+
+        const isValidSize = file.size / 1024 / 1024 <= 5;
+        if (!isValidSize) {
+            message.error('Image must be 5MB or smaller.');
+            return Upload.LIST_IGNORE;
+        }
+
+        return true;
+    };
+
+    const handlePhotoUpload = async ({ file, onSuccess, onError }) => {
+        if (!senior?.id) {
+            onError?.(new Error('Senior not loaded'));
+            return;
+        }
+
+        try {
+            setUploadingPhoto(true);
+            const formData = new FormData();
+            formData.append('photo', file);
+
+            const response = await seniorsApi.updatePhoto(senior.id, formData);
+            const photoData = response.data?.data || {};
+
+            setSenior((prev) => ({
+                ...prev,
+                photo_path: photoData.photo_path || prev?.photo_path,
+                photo_url: photoData.photo_url || prev?.photo_url,
+            }));
+
+            message.success(response.data?.message || 'Profile photo updated successfully.');
+            onSuccess?.('ok');
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Failed to update profile photo.');
+            onError?.(error);
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
+
     const renderBasicInfo = () => (
         <Card size="small">
             <Row gutter={24}>
                 <Col span={6} style={{ textAlign: 'center' }}>
                     <Avatar
                         size={100}
+                        src={getPhotoSrc()}
                         icon={<UserOutlined />}
                         style={{ backgroundColor: senior?.gender_id === 2 ? '#eb2f96' : '#1890ff' }}
                     />
+                    <div style={{ marginTop: 10 }}>
+                        <Upload
+                            showUploadList={false}
+                            accept=".jpg,.jpeg,.png"
+                            beforeUpload={beforeUploadPhoto}
+                            customRequest={handlePhotoUpload}
+                        >
+                            <Button size="small" icon={<CameraOutlined />} loading={uploadingPhoto}>
+                                Change Photo
+                            </Button>
+                        </Upload>
+                    </div>
                     <div style={{ marginTop: 12 }}>
                         {getStatusTag(senior)}
                     </div>

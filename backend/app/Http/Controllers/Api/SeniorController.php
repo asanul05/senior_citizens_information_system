@@ -10,6 +10,7 @@ use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SeniorController extends Controller
 {
@@ -642,6 +643,70 @@ class SeniorController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update senior citizen: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update senior profile photo.
+     */
+    public function updatePhoto(Request $request, $id)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+        ]);
+
+        $disk = config('filesystems.upload_disk');
+
+        try {
+            DB::beginTransaction();
+
+            if ($senior->photo_path && Storage::disk($disk)->exists($senior->photo_path)) {
+                Storage::disk($disk)->delete($senior->photo_path);
+            }
+
+            $photoFile = $request->file('photo');
+            $extension = strtolower($photoFile->getClientOriginalExtension());
+            $fileName = 'profile_' . now()->format('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+            $directory = "uploads/seniors/{$senior->id}";
+            $filePath = "{$directory}/{$fileName}";
+
+            Storage::disk($disk)->putFileAs($directory, $photoFile, $fileName);
+            $oldPhotoPath = $senior->photo_path;
+
+            $senior->update([
+                'photo_path' => $filePath,
+            ]);
+
+            $this->logAudit(
+                'senior_photo_update',
+                'senior_citizens',
+                $senior->id,
+                "Updated profile photo for {$senior->first_name} {$senior->last_name}",
+                ['photo_path' => $oldPhotoPath],
+                ['photo_path' => $filePath],
+                $senior->full_name
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile photo updated successfully.',
+                'data' => [
+                    'photo_path' => $senior->photo_path,
+                    'photo_url' => Storage::disk($disk)->url($senior->photo_path),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update profile photo: ' . $e->getMessage(),
             ], 500);
         }
     }

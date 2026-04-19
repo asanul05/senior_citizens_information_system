@@ -43,6 +43,7 @@ import SeniorEditModal from '../components/SeniorEditModal';
 import SeniorProfileModal from '../components/SeniorProfileModal';
 
 const { Title, Text } = Typography;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const STATUS_OPTIONS = [
     { value: 'active', label: 'Active' },
@@ -401,6 +402,7 @@ const Seniors = () => {
             render: (_, record) => (
                 <Space>
                     <Avatar
+                        src={record.photo_path ? `${API_URL.replace('/api', '')}/storage/${record.photo_path}` : undefined}
                         style={{
                             backgroundColor: record.gender_id === 1 ? '#1890ff' : record.gender_id === 2 ? '#eb2f96' : '#722ed1'
                         }}

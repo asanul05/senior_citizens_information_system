@@ -68,6 +68,11 @@ export const seniorsApi = {
 
   update: (id, data) => api.put(`/seniors/${id}`, data),
 
+  updatePhoto: (id, formData) =>
+    api.post(`/seniors/${id}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
   reportDeceased: (id, formData) => api.post(`/seniors/${id}/report-deceased`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
