@@ -12,6 +12,8 @@ use App\Models\EducationalAttainment;
 use App\Models\CivilStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use App\Services\SmsService;
 
@@ -172,6 +174,7 @@ class PublicController extends Controller
             'assistant_extension' => 'nullable|string|max:10',
             'assistant_relationship' => 'nullable|required_if:registration_type,assisted|string|max:100',
             'assistant_contact' => ['nullable', 'required_if:registration_type,assisted', 'string', 'max:20', 'regex:/^09\d{9}$/'],
+            'turnstile_token' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -179,6 +182,23 @@ class PublicController extends Controller
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
             ], 422);
+        }
+
+        // Verify Turnstile CAPTCHA (only when secret is configured)
+        if (config('services.turnstile.secret')) {
+            $token = $request->input('turnstile_token');
+            if (!$token) {
+                return response()->json([
+                    'message' => 'Please complete the verification check.',
+                ], 422);
+            }
+
+            $verified = $this->verifyTurnstile($token, $request->ip());
+            if (!$verified) {
+                return response()->json([
+                    'message' => 'Verification failed. Please try again.',
+                ], 422);
+            }
         }
 
         // Normalize names for comparison (lowercase, trim)
@@ -322,5 +342,25 @@ class PublicController extends Controller
                 'notes' => $preRegistration->notes,
             ]
         ]);
+    }
+
+    /**
+     * Verify Cloudflare Turnstile token.
+    */
+    private function verifyTurnstile(string $token, ?string $ip): bool
+    {
+        try {
+            $response = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+                'secret' => config('services.turnstile.secret'),
+                'response' => $token,
+                'remoteip' => $ip,
+            ]);
+
+            $data = $response->json();
+            return $data['success'] ?? false;
+        } catch (\Exception $e) {
+            Log::error('Turnstile verification failed (public apply)', ['error' => $e->getMessage()]);
+            return true;
+        }
     }
 }

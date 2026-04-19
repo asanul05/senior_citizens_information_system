@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin, InputNumber, Tag, Checkbox } from 'antd';
 import {
@@ -21,6 +21,39 @@ import { publicApi } from '../../services/api';
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+
+const TurnstileWidget = ({ onVerify, onExpire, resetKey }) => {
+    const containerRef = useRef(null);
+    const widgetIdRef = useRef(null);
+
+    useEffect(() => {
+        if (!TURNSTILE_SITE_KEY || !window.turnstile) return;
+
+        if (widgetIdRef.current !== null) {
+            try { window.turnstile.remove(widgetIdRef.current); } catch (err) { void err; }
+            widgetIdRef.current = null;
+        }
+
+        widgetIdRef.current = window.turnstile.render(containerRef.current, {
+            sitekey: TURNSTILE_SITE_KEY,
+            callback: (token) => onVerify?.(token),
+            'expired-callback': () => onExpire?.(),
+            theme: 'light',
+            size: 'normal',
+        });
+
+        return () => {
+            if (widgetIdRef.current !== null) {
+                try { window.turnstile.remove(widgetIdRef.current); } catch (err) { void err; }
+                widgetIdRef.current = null;
+            }
+        };
+    }, [onExpire, onVerify, resetKey]);
+
+    if (!TURNSTILE_SITE_KEY) return null;
+    return <div ref={containerRef} />;
+};
 
 const Apply = () => {
     const [currentStep, setCurrentStep] = useState(0);
@@ -37,6 +70,8 @@ const Apply = () => {
     const [privacyAgreed, setPrivacyAgreed] = useState(false);
     const [registrationType, setRegistrationType] = useState(null); // 'self' or 'assisted'
     const [showRelOther, setShowRelOther] = useState(false); // toggle inline 'Other' input for relationship
+    const [turnstileToken, setTurnstileToken] = useState(null);
+    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
     // Status check state
     const [checkMode, setCheckMode] = useState(false);
@@ -219,7 +254,7 @@ const Apply = () => {
             if (currentStep < steps.length - 1) {
                 setCurrentStep(currentStep + 1);
             }
-        } catch (error) {
+        } catch {
             message.warning('Please fill in all required fields');
         }
     };
@@ -235,6 +270,11 @@ const Apply = () => {
     };
 
     const handleSubmit = async () => {
+        if (TURNSTILE_SITE_KEY && !turnstileToken) {
+            message.warning('Please complete the verification check.');
+            return;
+        }
+
         setLoading(true);
         try {
             // Prepare data for API
@@ -279,6 +319,7 @@ const Apply = () => {
                 assistant_extension: registrationType === 'assisted' ? (formData.assistant_extension || null) : null,
                 assistant_relationship: registrationType === 'assisted' ? formData.assistant_relationship : null,
                 assistant_contact: registrationType === 'assisted' ? formData.assistant_contact : null,
+                turnstile_token: turnstileToken,
             };
 
             const response = await publicApi.apply(submitData);
@@ -296,6 +337,8 @@ const Apply = () => {
             }
         } finally {
             setLoading(false);
+            setTurnstileToken(null);
+            setTurnstileResetKey((k) => k + 1);
         }
     };
 
@@ -1287,7 +1330,7 @@ const Apply = () => {
                                             <>
                                                 <Divider style={{ margin: '16px 0' }} />
                                                 <Title level={5} style={{ color: '#1890ff', marginBottom: 12 }}>Family Composition</Title>
-                                                {familyMembers.filter(m => m.first_name).map((m, i) => (
+                                                {familyMembers.filter(m => m.first_name).map((m) => (
                                                     <Card key={m.id} size="small" style={{ marginBottom: 8, background: '#fff' }}>
                                                         <Row gutter={[16, 4]}>
                                                             <Col xs={12}>
@@ -1366,6 +1409,22 @@ const Apply = () => {
                                             </ul>
                                         </Text>
                                     </Card>
+
+                                    {TURNSTILE_SITE_KEY && (
+                                        <Card style={{ marginTop: 16, borderRadius: 12 }}>
+                                            <Title level={5} style={{ marginBottom: 12 }}>
+                                                Verification Check
+                                            </Title>
+                                            <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+                                                Please complete the CAPTCHA to protect this form from automated submissions.
+                                            </Paragraph>
+                                            <TurnstileWidget
+                                                resetKey={turnstileResetKey}
+                                                onVerify={(token) => setTurnstileToken(token)}
+                                                onExpire={() => setTurnstileToken(null)}
+                                            />
+                                        </Card>
+                                    )}
                                 </div>
                             )}
 
@@ -1391,6 +1450,7 @@ const Apply = () => {
                                         type="primary"
                                         size="large"
                                         onClick={handleSubmit}
+                                        disabled={TURNSTILE_SITE_KEY && !turnstileToken}
                                         loading={loading}
                                         style={{ background: '#059669', borderRadius: 8 }}
                                     >
