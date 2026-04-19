@@ -352,7 +352,7 @@ class PublicController extends Controller
     {
         $normalizedOscaId = strtoupper(trim($oscaId));
 
-        $senior = SeniorCitizen::with(['barangay.district', 'gender'])
+        $senior = SeniorCitizen::with(['barangay', 'gender'])
             ->whereRaw('UPPER(osca_id) = ?', [$normalizedOscaId])
             ->first();
 
@@ -396,7 +396,7 @@ class PublicController extends Controller
                     'age' => $senior->age,
                     'gender' => $senior->gender?->name,
                     'barangay' => $senior->barangay?->name,
-                    'district' => $senior->barangay?->district?->name,
+                    'district' => $senior->barangay?->district,
                     'photo_url' => $photoUrl,
                     'is_active' => (bool) $senior->is_active,
                     'is_deceased' => (bool) $senior->is_deceased,
