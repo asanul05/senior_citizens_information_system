@@ -4,7 +4,6 @@ import {
     Table,
     Card,
     Input,
-    Select,
     Button,
     Space,
     Tag,
@@ -16,6 +15,8 @@ import {
     Tooltip,
     message,
     Checkbox,
+    Popover,
+    Empty,
     Modal,
     Descriptions,
     Divider,
@@ -34,13 +35,128 @@ import {
     CheckCircleOutlined,
     DollarOutlined,
     EditOutlined,
+    FilterOutlined,
+    FilterFilled,
 } from '@ant-design/icons';
 import { seniorsApi, benefitsApi, registrationApi } from '../services/api';
 import SeniorEditModal from '../components/SeniorEditModal';
 import SeniorProfileModal from '../components/SeniorProfileModal';
 
 const { Title, Text } = Typography;
-const { Option } = Select;
+
+const ColumnFilterPopover = ({ title, options, selected, onChange, labelKey = 'label', valueKey = 'value' }) => {
+    const [search, setSearch] = useState('');
+    const [tempSelected, setTempSelected] = useState(selected || []);
+    const [open, setOpen] = useState(false);
+
+    const filtered = options.filter((o) => {
+        const label = typeof o === 'string' ? o : o[labelKey];
+        return label?.toLowerCase().includes(search.toLowerCase());
+    });
+
+    const allValues = filtered.map((o) => (typeof o === 'string' ? o : o[valueKey]));
+    const allSelected = allValues.length > 0 && allValues.every((v) => tempSelected.includes(v));
+
+    const handleApply = () => {
+        onChange(tempSelected);
+        setOpen(false);
+    };
+
+    const handleClear = () => {
+        setTempSelected([]);
+    };
+
+    const handleSelectAll = () => {
+        if (allSelected) {
+            setTempSelected(tempSelected.filter((v) => !allValues.includes(v)));
+        } else {
+            const merged = [...new Set([...tempSelected, ...allValues])];
+            setTempSelected(merged);
+        }
+    };
+
+    const handleToggle = (value) => {
+        setTempSelected((prev) =>
+            prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+        );
+    };
+
+    const isActive = selected && selected.length > 0;
+
+    const content = (
+        <div style={{ width: 250 }}>
+            <Input
+                placeholder={`Search ${title}...`}
+                prefix={<SearchOutlined />}
+                size="small"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                allowClear
+                style={{ marginBottom: 8 }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Button type="link" size="small" onClick={handleSelectAll} style={{ padding: 0 }}>
+                    {allSelected ? 'Deselect All' : 'Select All'}
+                </Button>
+                <Button type="link" size="small" onClick={handleClear} style={{ padding: 0 }} danger>
+                    Clear
+                </Button>
+            </div>
+            <div style={{ maxHeight: 220, overflowY: 'auto', borderTop: '1px solid #f0f0f0', paddingTop: 6 }}>
+                {filtered.length === 0 ? (
+                    <Empty description="No options" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ margin: '8px 0' }} />
+                ) : (
+                    filtered.map((option) => {
+                        const label = typeof option === 'string' ? option : option[labelKey];
+                        const value = typeof option === 'string' ? option : option[valueKey];
+                        return (
+                            <div
+                                key={value}
+                                style={{ padding: '4px 0', cursor: 'pointer' }}
+                                onClick={() => handleToggle(value)}
+                            >
+                                <Checkbox checked={tempSelected.includes(value)}>
+                                    <Text style={{ fontSize: 13 }}>{label}</Text>
+                                </Checkbox>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+            <Divider style={{ margin: '8px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <Button size="small" onClick={() => { setTempSelected(selected || []); setOpen(false); }}>
+                    Cancel
+                </Button>
+                <Button type="primary" size="small" onClick={handleApply}>
+                    Apply
+                </Button>
+            </div>
+        </div>
+    );
+
+    return (
+        <Popover
+            content={content}
+            trigger="click"
+            open={open}
+            onOpenChange={(v) => {
+                setOpen(v);
+                if (v) {
+                    setTempSelected(selected || []);
+                    setSearch('');
+                }
+            }}
+            placement="bottomLeft"
+        >
+            {isActive ? (
+                <FilterFilled style={{ color: '#1890ff', cursor: 'pointer', marginLeft: 4 }} />
+            ) : (
+                <FilterOutlined style={{ color: '#bfbfbf', cursor: 'pointer', marginLeft: 4 }} />
+            )}
+        </Popover>
+    );
+};
 
 const Seniors = () => {
     const navigate = useNavigate();
@@ -53,9 +169,9 @@ const Seniors = () => {
     });
     const [filters, setFilters] = useState({
         search: '',
-        status: 'active',
-        barangay_id: null,
-        gender_id: null,
+        status: ['all'],
+        barangay_id: [],
+        gender_id: [],
         age_categories: [], // For age filter: octogenarians, nonagenarians, centenarians
     });
     const [stats, setStats] = useState({
@@ -79,6 +195,7 @@ const Seniors = () => {
         fetchStatistics();
         loadBarangays();
         loadGenders();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const loadBarangays = async () => {
@@ -107,9 +224,9 @@ const Seniors = () => {
                 page,
                 per_page: pageSize,
                 search: currentFilters.search || undefined,
-                status: currentFilters.status || undefined,
-                barangay_id: currentFilters.barangay_id || undefined,
-                gender_id: currentFilters.gender_id || undefined,
+                status: currentFilters.status?.length ? currentFilters.status.join(',') : undefined,
+                barangay_id: currentFilters.barangay_id?.length ? currentFilters.barangay_id.join(',') : undefined,
+                gender_id: currentFilters.gender_id?.length ? currentFilters.gender_id.join(',') : undefined,
                 age_categories: currentFilters.age_categories.length > 0 ? currentFilters.age_categories.join(',') : undefined,
             };
             const response = await seniorsApi.getList(params);
@@ -148,8 +265,8 @@ const Seniors = () => {
         fetchSeniors(1, pagination.pageSize, newFilters);
     };
 
-    const handleStatusChange = (value) => {
-        const newFilters = { ...filters, status: value };
+    const handleMultiFilterChange = (key, values) => {
+        const newFilters = { ...filters, [key]: values };
         setFilters(newFilters);
         fetchSeniors(1, pagination.pageSize, newFilters);
     };
@@ -164,9 +281,9 @@ const Seniors = () => {
         try {
             const params = {
                 search: filters.search || undefined,
-                status: filters.status || undefined,
-                barangay_id: filters.barangay_id || undefined,
-                gender_id: filters.gender_id || undefined,
+                status: filters.status?.length ? filters.status.join(',') : undefined,
+                barangay_id: filters.barangay_id?.length ? filters.barangay_id.join(',') : undefined,
+                gender_id: filters.gender_id?.length ? filters.gender_id.join(',') : undefined,
                 age_categories: filters.age_categories.length > 0 ? filters.age_categories.join(',') : undefined,
             };
             const response = await seniorsApi.export(params);
@@ -178,7 +295,7 @@ const Seniors = () => {
             link.click();
             link.remove();
             message.success('Export downloaded successfully');
-        } catch (error) {
+        } catch {
             message.error('Export failed');
         }
     };
@@ -227,6 +344,31 @@ const Seniors = () => {
         return null;
     };
 
+    const renderFilterTitle = (label, options, selected, onApply) => (
+        <Space size={4}>
+            {label}
+            <ColumnFilterPopover
+                title={label}
+                options={options}
+                selected={selected}
+                onChange={onApply}
+            />
+        </Space>
+    );
+
+    const getGenderLabel = (genderId) => {
+        if (!genderId) return '—';
+        return genders.find((g) => g.id === genderId)?.name || '—';
+    };
+
+    const ageCategoryOptions = [
+        { label: 'Sexagenarians (60-69)', value: 'sexagenarians' },
+        { label: 'Septuagenarians (70-79)', value: 'septuagenarians' },
+        { label: 'Octogenarians (80-89)', value: 'octogenarians' },
+        { label: 'Nonagenarians (90-99)', value: 'nonagenarians' },
+        { label: 'Centenarians (100+)', value: 'centenarians' },
+    ];
+
     const columns = [
         {
             title: 'Senior Citizen',
@@ -250,7 +392,7 @@ const Seniors = () => {
             ),
         },
         {
-            title: 'Age',
+            title: renderFilterTitle('Age', ageCategoryOptions, filters.age_categories, handleAgeCategoryChange),
             dataIndex: 'age',
             key: 'age',
             width: 120,
@@ -262,9 +404,26 @@ const Seniors = () => {
             ),
         },
         {
-            title: 'Barangay',
+            title: renderFilterTitle(
+                'Barangay',
+                barangays.map((b) => ({ label: b.name, value: b.id })),
+                filters.barangay_id,
+                (values) => handleMultiFilterChange('barangay_id', values)
+            ),
             key: 'barangay',
             render: (_, record) => record.barangay?.name || '-',
+        },
+        {
+            title: renderFilterTitle(
+                'Gender',
+                genders.map((g) => ({ label: g.name, value: g.id })),
+                filters.gender_id,
+                (values) => handleMultiFilterChange('gender_id', values)
+            ),
+            key: 'gender',
+            dataIndex: 'gender_id',
+            width: 120,
+            render: (genderId) => getGenderLabel(genderId),
         },
         {
             title: 'Registration',
@@ -310,14 +469,6 @@ const Seniors = () => {
                 </Space>
             ),
         },
-    ];
-
-    const ageCategoryOptions = [
-        { label: 'Sexagenarians (60-69)', value: 'sexagenarians' },
-        { label: 'Septuagenarians (70-79)', value: 'septuagenarians' },
-        { label: 'Octogenarians (80-89)', value: 'octogenarians' },
-        { label: 'Nonagenarians (90-99)', value: 'nonagenarians' },
-        { label: 'Centenarians (100+)', value: 'centenarians' },
     ];
 
     return (
@@ -395,7 +546,7 @@ const Seniors = () => {
             {/* Filters & Actions */}
             <Card style={{ marginBottom: 16, borderRadius: 8 }}>
                 <Row gutter={[16, 16]} align="middle">
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={12} md={12}>
                         <Input
                             placeholder="Search by name or OSCA ID..."
                             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
@@ -403,56 +554,7 @@ const Seniors = () => {
                             onChange={(e) => handleSearch(e.target.value)}
                         />
                     </Col>
-                    <Col xs={12} sm={4}>
-                        <Select
-                            placeholder="Status"
-                            style={{ width: '100%' }}
-                            defaultValue="active"
-                            onChange={handleStatusChange}
-                        >
-                            <Option value="">All Status</Option>
-                            <Option value="active">Active</Option>
-                            <Option value="inactive">Inactive</Option>
-                            <Option value="deceased">Deceased</Option>
-                        </Select>
-                    </Col>
-                    <Col xs={12} sm={4}>
-                        <Select
-                            placeholder="All Barangays"
-                            style={{ width: '100%' }}
-                            allowClear
-                            showSearch
-                            optionFilterProp="children"
-                            onChange={(value) => {
-                                const newFilters = { ...filters, barangay_id: value };
-                                setFilters(newFilters);
-                                setPagination(prev => ({ ...prev, current: 1 }));
-                                fetchSeniors(1, pagination.pageSize, newFilters);
-                            }}
-                        >
-                            {barangays.map(b => (
-                                <Option key={b.id} value={b.id}>{b.name}</Option>
-                            ))}
-                        </Select>
-                    </Col>
-                    <Col xs={12} sm={4}>
-                        <Select
-                            placeholder="All Genders"
-                            style={{ width: '100%' }}
-                            allowClear
-                            onChange={(value) => {
-                                const newFilters = { ...filters, gender_id: value };
-                                setFilters(newFilters);
-                                setPagination(prev => ({ ...prev, current: 1 }));
-                                fetchSeniors(1, pagination.pageSize, newFilters);
-                            }}
-                        >
-                            {genders.map(g => (
-                                <Option key={g.id} value={g.id}>{g.name}</Option>
-                            ))}
-                        </Select>
-                    </Col>
-                    <Col xs={24} sm={12} style={{ textAlign: 'right' }}>
+                    <Col xs={24} sm={12} md={12} style={{ textAlign: 'right' }}>
                         <Space wrap>
                             <Button
                                 icon={<DownloadOutlined />}

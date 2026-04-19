@@ -35,25 +35,46 @@ class SeniorController extends Controller
             });
         }
 
-        // Barangay filter
-        if ($barangayId = $request->get('barangay_id')) {
-            $query->where('barangay_id', $barangayId);
-        }
-
-        // Status filter
-        if ($status = $request->get('status')) {
-            if ($status === 'active') {
-                $query->where('is_active', true)->where('is_deceased', false);
-            } elseif ($status === 'inactive') {
-                $query->where('is_active', false);
-            } elseif ($status === 'deceased') {
-                $query->where('is_deceased', true);
+        // Barangay filter (single or multi)
+        if ($barangayParam = $request->get('barangay_id')) {
+            $barangayIds = is_array($barangayParam) ? $barangayParam : explode(',', $barangayParam);
+            $barangayIds = array_values(array_filter(array_map('trim', $barangayIds)));
+            if (!empty($barangayIds)) {
+                $query->whereIn('barangay_id', $barangayIds);
             }
         }
 
-        // Gender filter
-        if ($genderId = $request->get('gender_id')) {
-            $query->where('gender_id', $genderId);
+        // Status filter (single or multi)
+        if ($statusParam = $request->get('status')) {
+            $statuses = is_array($statusParam) ? $statusParam : explode(',', $statusParam);
+            $statuses = array_values(array_filter(array_map('trim', $statuses)));
+
+            if (!empty($statuses) && !in_array('all', $statuses, true)) {
+                $query->where(function ($statusQuery) use ($statuses) {
+                    if (in_array('active', $statuses, true)) {
+                        $statusQuery->orWhere(function ($q) {
+                            $q->where('is_active', true)->where('is_deceased', false);
+                        });
+                    }
+                    if (in_array('inactive', $statuses, true)) {
+                        $statusQuery->orWhere(function ($q) {
+                            $q->where('is_active', false)->where('is_deceased', false);
+                        });
+                    }
+                    if (in_array('deceased', $statuses, true)) {
+                        $statusQuery->orWhere('is_deceased', true);
+                    }
+                });
+            }
+        }
+
+        // Gender filter (single or multi)
+        if ($genderParam = $request->get('gender_id')) {
+            $genderIds = is_array($genderParam) ? $genderParam : explode(',', $genderParam);
+            $genderIds = array_values(array_filter(array_map('trim', $genderIds)));
+            if (!empty($genderIds)) {
+                $query->whereIn('gender_id', $genderIds);
+            }
         }
 
         // Age categories filter
@@ -214,17 +235,41 @@ class SeniorController extends Controller
             });
         }
 
-        if ($barangayId = $request->get('barangay_id')) {
-            $query->where('barangay_id', $barangayId);
+        if ($barangayParam = $request->get('barangay_id')) {
+            $barangayIds = is_array($barangayParam) ? $barangayParam : explode(',', $barangayParam);
+            $barangayIds = array_values(array_filter(array_map('trim', $barangayIds)));
+            if (!empty($barangayIds)) {
+                $query->whereIn('barangay_id', $barangayIds);
+            }
         }
 
-        if ($status = $request->get('status')) {
-            if ($status === 'active') {
-                $query->where('is_active', true)->where('is_deceased', false);
-            } elseif ($status === 'inactive') {
-                $query->where('is_active', false);
-            } elseif ($status === 'deceased') {
-                $query->where('is_deceased', true);
+        if ($statusParam = $request->get('status')) {
+            $statuses = is_array($statusParam) ? $statusParam : explode(',', $statusParam);
+            $statuses = array_values(array_filter(array_map('trim', $statuses)));
+            if (!empty($statuses) && !in_array('all', $statuses, true)) {
+                $query->where(function ($statusQuery) use ($statuses) {
+                    if (in_array('active', $statuses, true)) {
+                        $statusQuery->orWhere(function ($q) {
+                            $q->where('is_active', true)->where('is_deceased', false);
+                        });
+                    }
+                    if (in_array('inactive', $statuses, true)) {
+                        $statusQuery->orWhere(function ($q) {
+                            $q->where('is_active', false)->where('is_deceased', false);
+                        });
+                    }
+                    if (in_array('deceased', $statuses, true)) {
+                        $statusQuery->orWhere('is_deceased', true);
+                    }
+                });
+            }
+        }
+
+        if ($genderParam = $request->get('gender_id')) {
+            $genderIds = is_array($genderParam) ? $genderParam : explode(',', $genderParam);
+            $genderIds = array_values(array_filter(array_map('trim', $genderIds)));
+            if (!empty($genderIds)) {
+                $query->whereIn('gender_id', $genderIds);
             }
         }
 
