@@ -62,7 +62,7 @@ export const seniorsApi = {
 
   getById: (id) => api.get(`/seniors/${id}`),
 
-  getStatistics: () => api.get('/seniors/statistics'),
+  getStatistics: (params) => api.get('/seniors/statistics', { params }),
 
   export: (params) => api.get('/seniors/export', { params, responseType: 'blob' }),
 

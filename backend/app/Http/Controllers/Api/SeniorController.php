@@ -193,11 +193,101 @@ class SeniorController extends Controller
     public function statistics(Request $request)
     {
         $user = $request->user();
-        $barangayIds = $user->getAccessibleBarangayIds();
+        $baseQuery = SeniorCitizen::query()->accessibleBy($user);
 
-        $baseQuery = SeniorCitizen::query();
-        if (!$user->isMainAdmin()) {
-            $baseQuery->whereIn('barangay_id', $barangayIds);
+        // Apply same filters used in list/export so cards are filter-responsive.
+        if ($search = $request->get('search')) {
+            $baseQuery->where(function ($q) use ($search) {
+                $q->where('osca_id', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('middle_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($barangayParam = $request->get('barangay_id')) {
+            $barangayIds = is_array($barangayParam) ? $barangayParam : explode(',', $barangayParam);
+            $barangayIds = array_values(array_filter(array_map('trim', $barangayIds)));
+            if (!empty($barangayIds)) {
+                $baseQuery->whereIn('barangay_id', $barangayIds);
+            }
+        }
+
+        if ($districtParam = $request->get('district')) {
+            $districts = is_array($districtParam) ? $districtParam : explode(',', $districtParam);
+            $districts = array_values(array_filter(array_map('trim', $districts)));
+            if (!empty($districts)) {
+                $baseQuery->whereHas('barangay', function ($q) use ($districts) {
+                    $q->whereIn('district', $districts);
+                });
+            }
+        }
+
+        if ($statusParam = $request->get('status')) {
+            $statuses = is_array($statusParam) ? $statusParam : explode(',', $statusParam);
+            $statuses = array_values(array_filter(array_map('trim', $statuses)));
+
+            if (!empty($statuses) && !in_array('all', $statuses, true)) {
+                $baseQuery->where(function ($statusQuery) use ($statuses) {
+                    if (in_array('active', $statuses, true)) {
+                        $statusQuery->orWhere(function ($q) {
+                            $q->where('is_active', true)->where('is_deceased', false);
+                        });
+                    }
+                    if (in_array('inactive', $statuses, true)) {
+                        $statusQuery->orWhere(function ($q) {
+                            $q->where('is_active', false)->where('is_deceased', false);
+                        });
+                    }
+                    if (in_array('deceased', $statuses, true)) {
+                        $statusQuery->orWhere('is_deceased', true);
+                    }
+                });
+            }
+        }
+
+        if ($genderParam = $request->get('gender_id')) {
+            $genderIds = is_array($genderParam) ? $genderParam : explode(',', $genderParam);
+            $genderIds = array_values(array_filter(array_map('trim', $genderIds)));
+            if (!empty($genderIds)) {
+                $baseQuery->whereIn('gender_id', $genderIds);
+            }
+        }
+
+        if ($ageCategories = $request->get('age_categories')) {
+            $categories = is_array($ageCategories) ? $ageCategories : explode(',', $ageCategories);
+
+            $baseQuery->where(function ($q) use ($categories) {
+                foreach ($categories as $category) {
+                    $category = trim($category);
+                    switch ($category) {
+                        case 'sexagenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 60 AND 69');
+                            break;
+                        case 'septuagenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 70 AND 79');
+                            break;
+                        case 'octogenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 80 AND 89');
+                            break;
+                        case 'nonagenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) BETWEEN 90 AND 99');
+                            break;
+                        case 'centenarians':
+                            $q->orWhereRaw('TIMESTAMPDIFF(YEAR, birthdate, CURDATE()) >= 100');
+                            break;
+                    }
+                }
+            });
+        }
+
+        if ($minAge = $request->get('min_age')) {
+            $maxDate = now()->subYears($minAge)->format('Y-m-d');
+            $baseQuery->where('birthdate', '<=', $maxDate);
+        }
+        if ($maxAge = $request->get('max_age')) {
+            $minDate = now()->subYears($maxAge + 1)->format('Y-m-d');
+            $baseQuery->where('birthdate', '>', $minDate);
         }
 
         $stats = [

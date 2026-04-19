@@ -45,7 +45,6 @@ import SeniorProfileModal from '../components/SeniorProfileModal';
 const { Title, Text } = Typography;
 
 const STATUS_OPTIONS = [
-    { value: 'all', label: 'All' },
     { value: 'active', label: 'Active' },
     { value: 'deceased', label: 'Deceased' },
 ];
@@ -175,7 +174,7 @@ const Seniors = () => {
     });
     const [filters, setFilters] = useState({
         search: '',
-        status: ['all'],
+        status: [],
         district: [],
         barangay_id: [],
         gender_id: [],
@@ -254,9 +253,18 @@ const Seniors = () => {
         }
     };
 
-    const fetchStatistics = async () => {
+    const fetchStatistics = async (customFilters = null) => {
         try {
-            const response = await seniorsApi.getStatistics();
+            const currentFilters = customFilters || filters;
+            const params = {
+                search: currentFilters.search || undefined,
+                status: currentFilters.status?.length ? currentFilters.status.join(',') : undefined,
+                district: currentFilters.district?.length ? currentFilters.district.join(',') : undefined,
+                barangay_id: currentFilters.barangay_id?.length ? currentFilters.barangay_id.join(',') : undefined,
+                gender_id: currentFilters.gender_id?.length ? currentFilters.gender_id.join(',') : undefined,
+                age_categories: currentFilters.age_categories.length > 0 ? currentFilters.age_categories.join(',') : undefined,
+            };
+            const response = await seniorsApi.getStatistics(params);
             setStats(response.data.data);
         } catch (error) {
             console.error('Error fetching statistics:', error);
@@ -271,18 +279,21 @@ const Seniors = () => {
         const newFilters = { ...filters, search: value };
         setFilters(newFilters);
         fetchSeniors(1, pagination.pageSize, newFilters);
+        fetchStatistics(newFilters);
     };
 
     const handleMultiFilterChange = (key, values) => {
         const newFilters = { ...filters, [key]: values };
         setFilters(newFilters);
         fetchSeniors(1, pagination.pageSize, newFilters);
+        fetchStatistics(newFilters);
     };
 
     const handleAgeCategoryChange = (checkedValues) => {
         const newFilters = { ...filters, age_categories: checkedValues };
         setFilters(newFilters);
         fetchSeniors(1, pagination.pageSize, newFilters);
+        fetchStatistics(newFilters);
     };
 
     const handleExport = async () => {
