@@ -27,15 +27,17 @@ use App\Http\Controllers\Api\SmsController;
 */
 
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // Public Online Application
 Route::prefix('public')->group(function () {
     Route::get('/barangays', [PublicController::class, 'barangays']);
     Route::get('/stats', [PublicController::class, 'stats']);
     Route::get('/announcements', [PublicController::class, 'announcements']);
-    Route::post('/apply', [PublicController::class, 'apply']);
-    Route::get('/status/{referenceNumber}', [PublicController::class, 'checkStatus']);
+    // Rate-limited: 3 submissions per 10 minutes per IP
+    Route::post('/apply', [PublicController::class, 'apply'])->middleware('throttle:3,10');
+    // Rate-limited: 10 lookups per minute per IP
+    Route::get('/status/{referenceNumber}', [PublicController::class, 'checkStatus'])->middleware('throttle:10,1');
 });
 
 
@@ -47,13 +49,14 @@ Route::prefix('senior')->group(function () {
         Route::post('/request-otp', [SeniorAuthController::class, 'requestOtp']);
         Route::post('/verify-otp', [SeniorAuthController::class, 'verifyOtp']);
     });
-    Route::post('/login', [SeniorAuthController::class, 'loginWithPin']);
+    // Rate-limited: 5 login attempts per minute per IP
+    Route::post('/login', [SeniorAuthController::class, 'loginWithPin'])->middleware('throttle:5,1');
     Route::get('/profile', [SeniorAuthController::class, 'profile']);
     Route::get('/benefits', [SeniorAuthController::class, 'benefits']);
     Route::get('/dashboard-stats', [SeniorAuthController::class, 'dashboardStats']);
 
-    // Senior Complaints
-    Route::post('/complaints', [BenefitComplaintController::class, 'seniorStore']);
+    // Senior Complaints — Rate-limited: 3 per 10 minutes per IP
+    Route::post('/complaints', [BenefitComplaintController::class, 'seniorStore'])->middleware('throttle:3,10');
     Route::get('/complaints', [BenefitComplaintController::class, 'seniorIndex']);
 });
 
