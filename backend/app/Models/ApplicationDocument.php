@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class ApplicationDocument extends Model
 {
@@ -23,6 +24,17 @@ class ApplicationDocument extends Model
     protected $casts = [
         'uploaded_at' => 'datetime',
     ];
+
+    protected $appends = ['url'];
+    
+    /**
+     * Get the public URL for this document.
+     */
+    public function getUrlAttribute()
+    {
+        if (!$this->file_path) return null;
+        return Storage::disk(config('filesystems.upload_disk'))->url($this->file_path);
+    }
     
     public function application()
     {

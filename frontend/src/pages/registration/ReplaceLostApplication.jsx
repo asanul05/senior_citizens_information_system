@@ -508,7 +508,7 @@ const ReplaceLostApplication = () => {
                                                         type="text"
                                                         size="small"
                                                         icon={<EyeOutlined />}
-                                                        onClick={() => handlePreviewDocument(existingDoc.file_path)}
+                                                        onClick={() => handlePreviewDocument(existingDoc.url || existingDoc.file_path)}
                                                     />
                                                     <Button
                                                         type="text"

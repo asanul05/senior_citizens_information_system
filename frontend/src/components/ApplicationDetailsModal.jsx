@@ -73,8 +73,8 @@ const DocumentStatus = ({ document, onPreview }) => {
             <Tag color="success" icon={<CheckCircleOutlined />}>
                 Uploaded
             </Tag>
-            {document.file_path && (
-                <a onClick={() => onPreview(document.file_path)}>
+            {(document.url || document.file_path) && (
+                <a onClick={() => onPreview(document.url || document.file_path)}>
                     <FileImageOutlined /> View
                 </a>
             )}
