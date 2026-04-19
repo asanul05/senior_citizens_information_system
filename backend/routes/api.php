@@ -52,6 +52,7 @@ Route::prefix('senior')->group(function () {
     // Rate-limited: 5 login attempts per minute per IP
     Route::post('/login', [SeniorAuthController::class, 'loginWithPin'])->middleware('throttle:5,1');
     Route::get('/profile', [SeniorAuthController::class, 'profile']);
+    Route::post('/profile/photo', [SeniorAuthController::class, 'updateProfilePhoto']);
     Route::get('/benefits', [SeniorAuthController::class, 'benefits']);
     Route::get('/dashboard-stats', [SeniorAuthController::class, 'dashboardStats']);
 

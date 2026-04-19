@@ -628,9 +628,75 @@ class BenefitController extends Controller
     public function typeDistribution(Request $request)
     {
         $user = $request->user();
-        $year = (int) ($request->get('year', now()->year));
+        $yearInput = $request->get('year');
+        $year = $yearInput !== null ? (int) $yearInput : null;
 
-        $baseQuery = BenefitClaim::accessibleBy($user)->forYear($year);
+        $dateFrom = null;
+        $dateTo = null;
+
+        if ($request->filled('date_from')) {
+            try {
+                $dateFrom = Carbon::parse($request->get('date_from'))->startOfDay();
+            } catch (\Exception $e) {
+                $dateFrom = null;
+            }
+        }
+
+        if ($request->filled('date_to')) {
+            try {
+                $dateTo = Carbon::parse($request->get('date_to'))->endOfDay();
+            } catch (\Exception $e) {
+                $dateTo = null;
+            }
+        }
+
+        $baseQuery = BenefitClaim::accessibleBy($user);
+
+        $period = [
+            'mode' => 'all_time',
+            'label' => 'All-time',
+            'date_from' => null,
+            'date_to' => null,
+            'year' => null,
+        ];
+
+        if ($dateFrom && $dateTo) {
+            $baseQuery->whereBetween('benefit_claims.created_at', [$dateFrom, $dateTo]);
+            $period = [
+                'mode' => 'date_range',
+                'label' => $dateFrom->toDateString() . ' to ' . $dateTo->toDateString(),
+                'date_from' => $dateFrom->toDateString(),
+                'date_to' => $dateTo->toDateString(),
+                'year' => null,
+            ];
+        } elseif ($dateFrom) {
+            $baseQuery->where('benefit_claims.created_at', '>=', $dateFrom);
+            $period = [
+                'mode' => 'date_from',
+                'label' => 'From ' . $dateFrom->toDateString(),
+                'date_from' => $dateFrom->toDateString(),
+                'date_to' => null,
+                'year' => null,
+            ];
+        } elseif ($dateTo) {
+            $baseQuery->where('benefit_claims.created_at', '<=', $dateTo);
+            $period = [
+                'mode' => 'date_to',
+                'label' => 'Until ' . $dateTo->toDateString(),
+                'date_from' => null,
+                'date_to' => $dateTo->toDateString(),
+                'year' => null,
+            ];
+        } elseif ($year !== null) {
+            $baseQuery->forYear($year);
+            $period = [
+                'mode' => 'year',
+                'label' => (string) $year,
+                'date_from' => null,
+                'date_to' => null,
+                'year' => $year,
+            ];
+        }
 
         $distribution = $baseQuery
             ->join('benefit_types', 'benefit_claims.benefit_type_id', '=', 'benefit_types.id')
@@ -649,6 +715,7 @@ class BenefitController extends Controller
             'success' => true,
             'data' => [
                 'year' => $year,
+                'period' => $period,
                 'distribution' => $distribution,
             ],
         ]);

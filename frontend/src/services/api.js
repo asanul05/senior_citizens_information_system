@@ -45,13 +45,13 @@ export const authApi = {
 
 // Dashboard API
 export const dashboardApi = {
-  getStats: () => api.get('/dashboard/stats'),
+  getStats: (params) => api.get('/dashboard/stats', { params }),
 
-  getUpcomingEvents: () => api.get('/dashboard/upcoming-events'),
+  getUpcomingEvents: (params) => api.get('/dashboard/upcoming-events', { params }),
 
-  getAgeDistribution: () => api.get('/dashboard/age-distribution'),
+  getAgeDistribution: (params) => api.get('/dashboard/age-distribution', { params }),
 
-  getGenderDistribution: () => api.get('/dashboard/gender-distribution'),
+  getGenderDistribution: (params) => api.get('/dashboard/gender-distribution', { params }),
 
   getHeatmapData: (params) => api.get('/dashboard/heatmap', { params }),
 };
@@ -239,6 +239,20 @@ export const publicApi = {
     api.get(`/public/status/${referenceNumber}`),
 
   getStats: () => api.get('/public/stats'),
+};
+
+// Senior Portal API (No admin auth required)
+export const seniorPortalApi = {
+  getProfile: (seniorId) => api.get('/senior/profile', { params: { senior_id: seniorId } }),
+
+  getDashboardStats: (seniorId) => api.get('/senior/dashboard-stats', { params: { senior_id: seniorId } }),
+
+  updateProfilePhoto: (seniorId, formData) => {
+    formData.append('senior_id', seniorId);
+    return api.post('/senior/profile/photo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Pre-Registration Admin API

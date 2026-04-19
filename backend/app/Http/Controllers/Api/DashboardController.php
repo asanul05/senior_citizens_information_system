@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SeniorCitizen;
 use App\Models\Application;
 use App\Models\Announcement;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,12 +19,14 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $barangayIds = $user->getAccessibleBarangayIds();
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
 
         // Base query for seniors based on user access
         $seniorsQuery = SeniorCitizen::query();
         if (!$user->isMainAdmin()) {
             $seniorsQuery->whereIn('barangay_id', $barangayIds);
         }
+        $this->applyDateRange($seniorsQuery, 'created_at', $dateFrom, $dateTo);
 
         // Total Registered Senior Citizens
         $totalSeniors = (clone $seniorsQuery)->count();
@@ -48,6 +51,12 @@ class DashboardController extends Controller
                     $sq->whereIn('barangay_id', $barangayIds);
                 });
             })
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('created_at', '<=', $dateTo);
+            })
             ->count();
 
         // Pre-registrations that are pending (online applications awaiting processing)
@@ -55,6 +64,12 @@ class DashboardController extends Controller
             ->whereNotIn('status', ['approved', 'rejected'])
             ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
                 $q->whereIn('barangay_id', $barangayIds);
+            })
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('created_at', '<=', $dateTo);
             })
             ->count();
 
@@ -64,6 +79,12 @@ class DashboardController extends Controller
         // ID Claimable (printed but not released)
         $idClaimable = DB::table('id_printing_queue')
             ->where('status', 'printed')
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('printed_date', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('printed_date', '<=', $dateTo);
+            })
             ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
                 $q->whereIn('senior_id', function ($sq) use ($barangayIds) {
                     $sq->select('id')
@@ -73,11 +94,15 @@ class DashboardController extends Controller
             })
             ->count();
 
-        // Released IDs (this month)
+        // Released IDs (claimed from ID printing queue)
         $releasedIds = DB::table('id_printing_queue')
             ->where('status', 'claimed')
-            ->whereMonth('claimed_date', now()->month)
-            ->whereYear('claimed_date', now()->year)
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('claimed_date', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('claimed_date', '<=', $dateTo);
+            })
             ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
                 $q->whereIn('senior_id', function ($sq) use ($barangayIds) {
                     $sq->select('id')
@@ -108,10 +133,16 @@ class DashboardController extends Controller
     public function upcomingEvents(Request $request)
     {
         $user = $request->user();
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
 
         $events = Announcement::with(['type'])
             ->where('is_published', true)
-            ->where('event_date', '>=', now())
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->whereDate('event_date', '>=', $dateFrom->toDateString());
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->whereDate('event_date', '<=', $dateTo->toDateString());
+            })
             ->when(!$user->isMainAdmin(), function ($q) use ($user) {
                 // Show announcements for user's accessible barangays or general announcements
                 $q->where(function ($sq) use ($user) {
@@ -119,7 +150,7 @@ class DashboardController extends Controller
                         ->orWhereIn('barangay_id', $user->getAccessibleBarangayIds());
                 });
             })
-            ->orderBy('event_date')
+            ->orderByDesc('event_date')
             ->limit(5)
             ->get()
             ->map(function ($event) {
@@ -148,6 +179,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $barangayIds = $user->getAccessibleBarangayIds();
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
 
         $distribution = DB::table('senior_citizens')
             ->select(DB::raw('
@@ -163,6 +195,12 @@ class DashboardController extends Controller
             '))
             ->where('is_active', true)
             ->where('is_deceased', false)
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('created_at', '<=', $dateTo);
+            })
             ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
                 $q->whereIn('barangay_id', $barangayIds);
             })
@@ -185,12 +223,19 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $barangayIds = $user->getAccessibleBarangayIds();
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
 
         $distribution = DB::table('senior_citizens')
             ->join('genders', 'senior_citizens.gender_id', '=', 'genders.id')
             ->select('genders.name as gender', DB::raw('COUNT(*) as count'))
             ->where('senior_citizens.is_active', true)
             ->where('senior_citizens.is_deceased', false)
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('senior_citizens.created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('senior_citizens.created_at', '<=', $dateTo);
+            })
             ->when(!$user->isMainAdmin(), function ($q) use ($barangayIds) {
                 $q->whereIn('senior_citizens.barangay_id', $barangayIds);
             })
@@ -212,6 +257,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $barangayIds = $user->getAccessibleBarangayIds();
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
 
         // Get all barangay info
         $barangays = DB::table('barangays')
@@ -250,7 +296,7 @@ class DashboardController extends Controller
         $selectedBarangayIds = array_values(array_filter(array_map('trim', $selectedBarangayIds)));
 
         // Base conditions: status + access scope + location filters
-        $applyBase = function ($q) use ($user, $barangayIds, $statuses, $districts, $selectedBarangayIds) {
+        $applyBase = function ($q) use ($user, $barangayIds, $statuses, $districts, $selectedBarangayIds, $dateFrom, $dateTo) {
             // Status supports multi-select (active, deceased, all)
             if (!in_array('all', $statuses, true)) {
                 $q->where(function ($statusQuery) use ($statuses) {
@@ -279,6 +325,14 @@ class DashboardController extends Controller
 
             if (!empty($selectedBarangayIds)) {
                 $q->whereIn('barangay_id', $selectedBarangayIds);
+            }
+
+            if ($dateFrom) {
+                $q->where('created_at', '>=', $dateFrom);
+            }
+
+            if ($dateTo) {
+                $q->where('created_at', '<=', $dateTo);
             }
         };
 
@@ -409,5 +463,40 @@ class DashboardController extends Controller
                 'genders' => $gendersMeta,
             ],
         ]);
+    }
+
+    private function getDateRange(Request $request): array
+    {
+        $dateFrom = null;
+        $dateTo = null;
+
+        if ($request->filled('date_from')) {
+            try {
+                $dateFrom = Carbon::parse($request->get('date_from'))->startOfDay();
+            } catch (\Exception $e) {
+                $dateFrom = null;
+            }
+        }
+
+        if ($request->filled('date_to')) {
+            try {
+                $dateTo = Carbon::parse($request->get('date_to'))->endOfDay();
+            } catch (\Exception $e) {
+                $dateTo = null;
+            }
+        }
+
+        return [$dateFrom, $dateTo];
+    }
+
+    private function applyDateRange($query, string $column, ?Carbon $dateFrom, ?Carbon $dateTo): void
+    {
+        if ($dateFrom) {
+            $query->where($column, '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->where($column, '<=', $dateTo);
+        }
     }
 }

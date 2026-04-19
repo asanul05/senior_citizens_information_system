@@ -13,8 +13,7 @@ import {
     PhoneOutlined,
     CalendarOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
-import axios from 'axios';
+import { seniorPortalApi } from '../../services/api';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -39,15 +38,32 @@ const SeniorDashboard = () => {
 
     const fetchDashboardStats = async (seniorId) => {
         try {
-            const response = await axios.get(`${API_URL}/senior/dashboard-stats`, {
-                params: { senior_id: seniorId },
+            const response = await seniorPortalApi.getDashboardStats(seniorId);
+            const statsData = response.data.data;
+            setStats(statsData);
+
+            setSenior((prev) => {
+                if (!prev) return prev;
+                const updated = {
+                    ...prev,
+                    photo: statsData.photo || prev.photo || null,
+                    photo_url: statsData.photo_url || prev.photo_url || null,
+                };
+                localStorage.setItem('senior', JSON.stringify(updated));
+                return updated;
             });
-            setStats(response.data.data);
         } catch (error) {
             console.error('Failed to fetch dashboard stats:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const getAvatarSrc = () => {
+        if (!senior) return undefined;
+        if (senior.photo_url) return senior.photo_url;
+        if (senior.photo) return `${API_URL.replace('/api', '')}/storage/${senior.photo}`;
+        return undefined;
     };
 
     const handleLogout = () => {
@@ -93,7 +109,12 @@ const SeniorDashboard = () => {
                 <Card style={{ marginBottom: 24, borderRadius: 16 }}>
                     <Row gutter={24} align="middle">
                         <Col>
-                            <Avatar size={80} icon={<UserOutlined />} style={{ background: '#4338ca' }} />
+                            <Avatar
+                                size={80}
+                                icon={<UserOutlined />}
+                                style={{ background: '#4338ca' }}
+                                src={getAvatarSrc()}
+                            />
                         </Col>
                         <Col flex={1}>
                             <Title level={3} style={{ marginBottom: 4 }}>{senior.name}</Title>

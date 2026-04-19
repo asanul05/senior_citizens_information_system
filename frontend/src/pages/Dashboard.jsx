@@ -1,24 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Table, Typography, Spin, Space, Tag } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Row, Col, Card, Statistic, Typography, Spin, Space, DatePicker, Button } from 'antd';
 import {
     UserOutlined,
     FileTextOutlined,
     IdcardOutlined,
     CheckCircleOutlined,
-    CalendarOutlined,
-    EnvironmentOutlined,
 } from '@ant-design/icons';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { dashboardApi, benefitsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 const COLORS = ['#ff00bfff', '#006fd6ff', '#001427', '#708d81', '#f4d58d', '#bf0603', '#8d0801'];
 // const COLORS = ['#1890ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1'];
 
 const Dashboard = () => {
     const { user } = useAuth();
+    const BARANGAY_PAGE_SIZE = 10;
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         total_seniors: 0,
@@ -28,38 +28,41 @@ const Dashboard = () => {
         id_claimable: 0,
         released_ids: 0,
     });
-    const [events, setEvents] = useState([]);
     const [ageData, setAgeData] = useState([]);
     const [genderData, setGenderData] = useState([]);
     const [barangayData, setBarangayData] = useState([]);
     const [assistanceData, setAssistanceData] = useState([]);
+    const [assistancePeriodLabel, setAssistancePeriodLabel] = useState('All-time');
+    const [dateRange, setDateRange] = useState(null);
+    const [barangayPage, setBarangayPage] = useState(1);
 
-    const currentYear = new Date().getFullYear();
+    const fetchDashboardData = useCallback(async () => {
+        const dashboardParams = {};
+        if (dateRange && dateRange[0] && dateRange[1]) {
+            dashboardParams.date_from = dateRange[0].format('YYYY-MM-DD');
+            dashboardParams.date_to = dateRange[1].format('YYYY-MM-DD');
+        }
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
+        const assistanceParams = {
+            ...dashboardParams,
+        };
 
-    const fetchDashboardData = async () => {
         try {
             setLoading(true);
             const results = await Promise.allSettled([
-                dashboardApi.getStats(),
-                dashboardApi.getUpcomingEvents(),
-                dashboardApi.getAgeDistribution(),
-                dashboardApi.getGenderDistribution(),
-                dashboardApi.getHeatmapData(),
-                benefitsApi.getDistribution({ year: currentYear }),
+                dashboardApi.getStats(dashboardParams),
+                dashboardApi.getUpcomingEvents(dashboardParams),
+                dashboardApi.getAgeDistribution(dashboardParams),
+                dashboardApi.getGenderDistribution(dashboardParams),
+                dashboardApi.getHeatmapData(dashboardParams),
+                benefitsApi.getDistribution(assistanceParams),
             ]);
 
-            const [statsRes, eventsRes, ageRes, genderRes, heatmapRes, assistanceRes] = results;
+            const [statsRes, , ageRes, genderRes, heatmapRes, assistanceRes] = results;
 
             if (statsRes.status === 'fulfilled') {
                 const apiStats = statsRes.value.data.data.stats || {};
                 setStats(prev => ({ ...prev, ...apiStats }));
-            }
-            if (eventsRes.status === 'fulfilled') {
-                setEvents(eventsRes.value.data.data.events);
             }
             if (ageRes.status === 'fulfilled') {
                 setAgeData(ageRes.value.data.data.distribution);
@@ -69,16 +72,34 @@ const Dashboard = () => {
             }
             if (heatmapRes.status === 'fulfilled') {
                 setBarangayData(heatmapRes.value.data.data.distribution || []);
+                setBarangayPage(1);
             }
             if (assistanceRes.status === 'fulfilled') {
-                setAssistanceData(assistanceRes.value.data.data.distribution || []);
+                const assistancePayload = assistanceRes.value.data.data || {};
+                setAssistanceData(assistancePayload.distribution || []);
+
+                if (assistancePayload.period?.label) {
+                    setAssistancePeriodLabel(assistancePayload.period.label);
+                } else if (dashboardParams.date_from && dashboardParams.date_to) {
+                    setAssistancePeriodLabel(`${dashboardParams.date_from} to ${dashboardParams.date_to}`);
+                } else {
+                    setAssistancePeriodLabel('All-time');
+                }
+            } else if (dashboardParams.date_from && dashboardParams.date_to) {
+                setAssistancePeriodLabel(`${dashboardParams.date_from} to ${dashboardParams.date_to}`);
+            } else {
+                setAssistancePeriodLabel('All-time');
             }
         } catch (error) {
             console.error('Dashboard data fetch error:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [dateRange]);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
 
     const statCards = [
         {
@@ -126,48 +147,30 @@ const Dashboard = () => {
     const topBarangays = barangayData
         .slice()
         .sort((a, b) => b.total - a.total)
-        .slice(0, 10)
-        .map(b => ({
+        .map((b, index) => ({
             name: b.name,
             total: b.total,
+            rank: index + 1,
         }));
 
-    const eventColumns = [
-        {
-            title: 'Event',
-            dataIndex: 'title',
-            key: 'title',
-            render: (text) => <Text strong>{text}</Text>,
-        },
-        {
-            title: 'Type',
-            dataIndex: 'type',
-            key: 'type',
-            render: (type) => <Tag color="blue">{type}</Tag>,
-        },
-        {
-            title: 'Date',
-            dataIndex: 'event_date',
-            key: 'event_date',
-            render: (date) => (
-                <Space>
-                    <CalendarOutlined />
-                    {date || 'TBD'}
-                </Space>
-            ),
-        },
-        {
-            title: 'Location',
-            dataIndex: 'location',
-            key: 'location',
-            render: (loc) => loc ? (
-                <Space>
-                    <EnvironmentOutlined />
-                    {loc}
-                </Space>
-            ) : '-',
-        },
-    ];
+    const totalBarangayPages = Math.max(1, Math.ceil(topBarangays.length / BARANGAY_PAGE_SIZE));
+    const currentBarangayPage = Math.min(barangayPage, totalBarangayPages);
+    const barangayStartIndex = (currentBarangayPage - 1) * BARANGAY_PAGE_SIZE;
+    const pagedBarangays = topBarangays.slice(barangayStartIndex, barangayStartIndex + BARANGAY_PAGE_SIZE);
+    const pageStartLabel = topBarangays.length === 0 ? 0 : barangayStartIndex + 1;
+    const pageEndLabel = Math.min(barangayStartIndex + BARANGAY_PAGE_SIZE, topBarangays.length);
+
+    const renderBarangayTick = ({ x, y, payload, index }) => {
+        const rank = pagedBarangays[index]?.rank;
+        return (
+            <g transform={`translate(${x},${y})`}>
+                <text x={0} y={0} dy={10} textAnchor="middle" fill="#666" fontSize={11}>
+                    <tspan x={0}>{payload.value}</tspan>
+                    <tspan x={0} dy={12}>{rank ? `#${rank}` : ''}</tspan>
+                </text>
+            </g>
+        );
+    };
 
     if (loading) {
         return (
@@ -188,6 +191,24 @@ const Dashboard = () => {
                     Here's what's happening with OSCA today.
                 </Text>
             </div>
+
+            <Card style={{ marginBottom: 24, borderRadius: 12 }}>
+                <Row gutter={[12, 12]} align="middle">
+                    <Col xs={24} md={16}>
+                        <Text type="secondary">Dashboard Date Range</Text>
+                    </Col>
+                    <Col xs={24} md={8}>
+                        <Space style={{ width: '100%', justifyContent: 'flex-end' }} wrap>
+                            <RangePicker
+                                value={dateRange}
+                                onChange={(dates) => setDateRange(dates && dates.length === 2 ? dates : null)}
+                                format="YYYY-MM-DD"
+                            />
+                            <Button onClick={() => setDateRange(null)}>Clear</Button>
+                        </Space>
+                    </Col>
+                </Row>
+            </Card>
 
             {/* Stat Cards */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -313,13 +334,13 @@ const Dashboard = () => {
                                         nameKey="gender"
                                         label={({ gender, percent }) => `${gender} ${(percent * 100).toFixed(0)}%`}
                                     >
-                                        {genderData.map((entry, index) => (
+                                        {genderData.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip />
                                     <Legend
-                                        formatter={(value, entry) => {
+                                        formatter={(value) => {
                                             const item = genderData.find(d => d.gender === value);
                                             const count = item ? item.count : 0;
                                             return `${value} (${count.toLocaleString()})`;
@@ -358,7 +379,7 @@ const Dashboard = () => {
                                         nameKey="name"
                                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                                     >
-                                        {statusData.map((entry, index) => (
+                                        {statusData.map((_, index) => (
                                             <Cell
                                                 key={`status-cell-${index}`}
                                                 fill={index === 0 ? '#52c41a' : '#bf0603'}
@@ -386,7 +407,7 @@ const Dashboard = () => {
                 {/* Assistance Distribution */}
                 <Col xs={24} lg={12}>
                     <Card
-                        title={`Assistance Distribution by Benefit Type (${currentYear})`}
+                        title={`Assistance Distribution by Benefit Type (${assistancePeriodLabel})`}
                         style={{ borderRadius: 12 }}
                         bodyStyle={{ height: 300 }}
                     >
@@ -449,20 +470,44 @@ const Dashboard = () => {
                 <Col xs={24}>
                     <Card
                         title="Top Barangays by Registered Seniors"
+                        extra={(
+                            <Space wrap>
+                                <Text type="secondary">
+                                    {topBarangays.length > 0
+                                        ? `Showing ${pageStartLabel}-${pageEndLabel} of ${topBarangays.length}`
+                                        : 'No ranked barangays'}
+                                </Text>
+                                <Button
+                                    size="small"
+                                    onClick={() => setBarangayPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentBarangayPage <= 1 || topBarangays.length === 0}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    size="small"
+                                    type="primary"
+                                    onClick={() => setBarangayPage(prev => Math.min(totalBarangayPages, prev + 1))}
+                                    disabled={currentBarangayPage >= totalBarangayPages || topBarangays.length === 0}
+                                >
+                                    Next
+                                </Button>
+                            </Space>
+                        )}
                         style={{ borderRadius: 12 }}
-                        bodyStyle={{ height: 320 }}
+                        bodyStyle={{ height: 360 }}
                     >
-                        {topBarangays.length > 0 ? (
+                        {pagedBarangays.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={topBarangays}>
+                                <BarChart data={pagedBarangays} margin={{ top: 10, right: 20, left: 0, bottom: 38 }}>
                                     <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
+                                    <XAxis dataKey="name" tick={renderBarangayTick} interval={0} height={55} />
                                     <YAxis />
                                     <Tooltip />
                                     <Bar dataKey="total" name="Registered Seniors" radius={[4, 4, 0, 0]}>
-                                        {topBarangays.map((entry, index) => (
+                                        {pagedBarangays.map((entry, index) => (
                                             <Cell
-                                                key={`brgy-cell-${entry.name}`}
+                                                key={`brgy-cell-${entry.name}-${entry.rank}`}
                                                 fill={COLORS[index % COLORS.length]}
                                             />
                                         ))}
@@ -472,9 +517,9 @@ const Dashboard = () => {
                                         verticalAlign="top"
                                         content={() => (
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 11, marginBottom: 4 }}>
-                                                {topBarangays.map((item, index) => (
+                                                {pagedBarangays.map((item, index) => (
                                                     <span
-                                                        key={`brgy-legend-${item.name}`}
+                                                        key={`brgy-legend-${item.name}-${item.rank}`}
                                                         style={{ display: 'flex', alignItems: 'center', gap: 4 }}
                                                     >
                                                         <span
@@ -485,7 +530,7 @@ const Dashboard = () => {
                                                                 backgroundColor: COLORS[index % COLORS.length],
                                                             }}
                                                         />
-                                                        {item.name} ({item.total.toLocaleString()})
+                                                        #{item.rank} {item.name} ({item.total.toLocaleString()})
                                                     </span>
                                                 ))}
                                             </div>
@@ -503,7 +548,7 @@ const Dashboard = () => {
             </Row>
 
             {/* Upcoming Events */}
-            <Card
+            {/* <Card
                 title="Upcoming Events"
                 style={{ borderRadius: 12 }}
             >
@@ -514,7 +559,7 @@ const Dashboard = () => {
                     pagination={false}
                     locale={{ emptyText: 'No upcoming events' }}
                 />
-            </Card>
+            </Card> */}
         </div>
     );
 };

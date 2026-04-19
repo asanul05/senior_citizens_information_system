@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class SeniorAuthController extends Controller
 {
@@ -238,6 +239,10 @@ class SeniorAuthController extends Controller
                 'name' => $account->senior->first_name . ' ' . $account->senior->last_name,
                 'barangay_id' => $account->senior->barangay_id,
                 'barangay' => $account->senior->barangay?->name,
+                'photo' => $account->senior->photo_path,
+                'photo_url' => $account->senior->photo_path
+                    ? Storage::disk(config('filesystems.upload_disk'))->url($account->senior->photo_path)
+                    : null,
             ],
             'needs_pin_setup' => empty($account->pin_hash),
         ]);
@@ -297,6 +302,50 @@ class SeniorAuthController extends Controller
                 'name' => $senior->first_name . ' ' . $senior->last_name,
                 'barangay_id' => $senior->barangay_id,
                 'barangay' => $senior->barangay?->name,
+                'photo' => $senior->photo_path,
+                'photo_url' => $senior->photo_path
+                    ? Storage::disk(config('filesystems.upload_disk'))->url($senior->photo_path)
+                    : null,
+            ],
+        ]);
+    }
+
+    //Update senior profile photo
+    public function updateProfilePhoto(Request $request): JsonResponse
+    {
+        $request->validate([
+            'senior_id' => 'required|integer',
+            'photo' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+        ]);
+
+        $senior = SeniorCitizen::find($request->input('senior_id'));
+
+        if (!$senior) {
+            return response()->json(['message' => 'Senior not found'], 404);
+        }
+
+        $disk = config('filesystems.upload_disk');
+
+        if ($senior->photo_path && Storage::disk($disk)->exists($senior->photo_path)) {
+            Storage::disk($disk)->delete($senior->photo_path);
+        }
+
+        $photoFile = $request->file('photo');
+        $extension = strtolower($photoFile->getClientOriginalExtension());
+        $fileName = 'profile_' . now()->format('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        $filePath = "uploads/seniors/{$senior->id}/{$fileName}";
+
+        Storage::disk($disk)->putFileAs("uploads/seniors/{$senior->id}", $photoFile, $fileName);
+
+        $senior->update([
+            'photo_path' => $filePath,
+        ]);
+
+        return response()->json([
+            'message' => 'Profile photo updated successfully.',
+            'data' => [
+                'photo' => $senior->photo_path,
+                'photo_url' => Storage::disk($disk)->url($senior->photo_path),
             ],
         ]);
     }
@@ -346,6 +395,9 @@ class SeniorAuthController extends Controller
                 'telephone_number' => $contact?->telephone_number,
                 'email' => $contact?->email,
                 'photo' => $senior->photo_path,
+                'photo_url' => $senior->photo_path
+                    ? Storage::disk(config('filesystems.upload_disk'))->url($senior->photo_path)
+                    : null,
                 'family_members' => $senior->familyMembers,
                 'health_profile' => $senior->healthProfile,
                 'target_sectors' => $senior->target_sectors ?? [],
@@ -466,6 +518,10 @@ class SeniorAuthController extends Controller
                 'total_benefits' => $totalBenefits,
                 'announcements' => $announcements,
                 'complaints' => $complaints,
+                'photo' => $senior->photo_path,
+                'photo_url' => $senior->photo_path
+                    ? Storage::disk(config('filesystems.upload_disk'))->url($senior->photo_path)
+                    : null,
             ],
         ]);
     }

@@ -287,7 +287,7 @@ const PreRegistrations = () => {
                             <Option value="for_verification">For Verification</Option>
                             <Option value="for_approval">For Approval</Option>
                             <Option value="approved">Approved</Option>
-                            <Option value="rejected">Rejected</Option>
+                            {/* <Option value="rejected">Rejected</Option> */}
                         </Select>
                     </Col>
                     <Col xs={12} sm={4}>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Card, Row, Col, Typography, Button, Tag, Space, Spin, Descriptions, Avatar, Table, Empty, Alert } from 'antd';
+import { Card, Row, Col, Typography, Button, Tag, Space, Spin, Descriptions, Avatar, Table, Empty, Alert, Upload, message } from 'antd';
 import {
     UserOutlined,
     SafetyOutlined,
@@ -17,7 +17,7 @@ import {
     TagOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import axios from 'axios';
+import { seniorPortalApi } from '../../services/api';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -27,6 +27,7 @@ const SeniorProfile = () => {
     const [senior, setSenior] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -42,15 +43,88 @@ const SeniorProfile = () => {
 
     const fetchProfile = async (seniorId) => {
         try {
-            const response = await axios.get(`${API_URL}/senior/profile`, {
-                params: { senior_id: seniorId },
-            });
-            setProfile(response.data.data);
+            const response = await seniorPortalApi.getProfile(seniorId);
+            const profileData = response.data.data;
+            setProfile(profileData);
+
+            const storedSenior = localStorage.getItem('senior');
+            if (storedSenior) {
+                const parsedSenior = JSON.parse(storedSenior);
+                localStorage.setItem('senior', JSON.stringify({
+                    ...parsedSenior,
+                    photo: profileData.photo || null,
+                    photo_url: profileData.photo_url || null,
+                }));
+            }
         } catch (error) {
             console.error('Failed to fetch profile:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const getPhotoSrc = () => {
+        if (!profile) return undefined;
+        if (profile.photo_url) return profile.photo_url;
+        if (profile.photo) return `${API_URL.replace('/api', '')}/storage/${profile.photo}`;
+        return undefined;
+    };
+
+    const handlePhotoUpload = async ({ file, onSuccess, onError }) => {
+        if (!senior?.id) {
+            message.error('Unable to identify senior account. Please re-login.');
+            onError?.(new Error('Missing senior id'));
+            return;
+        }
+
+        try {
+            setUploadingPhoto(true);
+            const formData = new FormData();
+            formData.append('photo', file);
+
+            const response = await seniorPortalApi.updateProfilePhoto(senior.id, formData);
+            const photoData = response.data?.data || {};
+
+            setProfile((prev) => ({
+                ...prev,
+                photo: photoData.photo || prev?.photo || null,
+                photo_url: photoData.photo_url || prev?.photo_url || null,
+            }));
+
+            const storedSenior = localStorage.getItem('senior');
+            if (storedSenior) {
+                const parsedSenior = JSON.parse(storedSenior);
+                localStorage.setItem('senior', JSON.stringify({
+                    ...parsedSenior,
+                    photo: photoData.photo || null,
+                    photo_url: photoData.photo_url || null,
+                }));
+            }
+
+            message.success(response.data?.message || 'Profile photo updated.');
+            onSuccess?.('ok');
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Failed to upload profile photo.');
+            onError?.(error);
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
+
+    const beforeUpload = (file) => {
+        const isValidType = ['image/jpeg', 'image/jpg', 'image/png'].includes(file.type);
+        if (!isValidType) {
+            message.error('Only JPG or PNG images are allowed.');
+            return Upload.LIST_IGNORE;
+        }
+
+        const isValidSize = file.size / 1024 / 1024 <= 5;
+        if (!isValidSize) {
+            message.error('Image must be 5MB or smaller.');
+            return Upload.LIST_IGNORE;
+        }
+
+        return true;
     };
 
     const handleLogout = () => {
@@ -335,7 +409,7 @@ const SeniorProfile = () => {
                                         fontSize: 48,
                                         boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
                                     }}
-                                    src={profile.photo ? `${API_URL.replace('/api', '')}/storage/${profile.photo}` : undefined}
+                                    src={getPhotoSrc()}
                                 />
                                 <div>
                                     <Title level={2} style={{ margin: 0 }}>
@@ -352,6 +426,16 @@ const SeniorProfile = () => {
                                             {profile.age} years old
                                         </Tag>
                                     </Space>
+                                    <div style={{ marginTop: 12 }}>
+                                        <Upload
+                                            showUploadList={false}
+                                            accept=".jpg,.jpeg,.png"
+                                            beforeUpload={beforeUpload}
+                                            customRequest={handlePhotoUpload}
+                                        >
+                                            <Button loading={uploadingPhoto}>Change Profile Picture</Button>
+                                        </Upload>
+                                    </div>
                                 </div>
                             </div>
                         </Card>
