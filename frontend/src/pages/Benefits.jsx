@@ -3,6 +3,7 @@ import {
     Card,
     Table,
     Tabs,
+    InputNumber,
     Tag,
     Button,
     Space,
@@ -10,7 +11,6 @@ import {
     Row,
     Col,
     Statistic,
-    Select,
     Input,
     Modal,
     message,
@@ -206,7 +206,12 @@ const Benefits = () => {
 
     // Eligible tab filters
     const [eligibleSearch, setEligibleSearch] = useState('');
-    const [eligibleTypeFilter, setEligibleTypeFilter] = useState('');
+    const [eligibleBarangayFilter, setEligibleBarangayFilter] = useState([]);
+    const [eligibleTypeFilter, setEligibleTypeFilter] = useState([]);
+    const [eligibleMinAge, setEligibleMinAge] = useState(null);
+    const [eligibleMaxAge, setEligibleMaxAge] = useState(null);
+    const [eligibleMinAmount, setEligibleMinAmount] = useState(null);
+    const [eligibleMaxAmount, setEligibleMaxAmount] = useState(null);
 
     // Debounce timer for search
     const searchTimer = useRef(null);
@@ -239,7 +244,7 @@ const Benefits = () => {
         } else {
             fetchEligible();
         }
-    }, [activeTab, statusFilter, typeFilter, barangayFilter, districtFilter, dateRange, searchText, pagination.current, pagination.pageSize, eligiblePagination.current, eligibleSearch, eligibleTypeFilter]);
+    }, [activeTab, statusFilter, typeFilter, barangayFilter, districtFilter, dateRange, searchText, pagination.current, pagination.pageSize, eligiblePagination.current, eligibleSearch, eligibleTypeFilter, eligibleBarangayFilter, eligibleMinAge, eligibleMaxAge, eligibleMinAmount, eligibleMaxAmount]);
 
     // Fetch statistics whenever filters change
     useEffect(() => {
@@ -305,7 +310,12 @@ const Benefits = () => {
                 per_page: eligiblePagination.pageSize,
             };
             if (eligibleSearch) params.search = eligibleSearch;
-            if (eligibleTypeFilter) params.benefit_type_id = eligibleTypeFilter;
+            if (eligibleTypeFilter.length > 0) params.benefit_type_id = eligibleTypeFilter.join(',');
+            if (eligibleBarangayFilter.length > 0) params.barangay_ids = eligibleBarangayFilter.join(',');
+            if (eligibleMinAge) params.min_age = eligibleMinAge;
+            if (eligibleMaxAge) params.max_age = eligibleMaxAge;
+            if (eligibleMinAmount) params.min_amount = eligibleMinAmount;
+            if (eligibleMaxAmount) params.max_amount = eligibleMaxAmount;
 
             const response = await benefitsApi.getEligible(params);
             setEligible(response.data.data || []);
@@ -351,7 +361,12 @@ const Benefits = () => {
             message.loading({ content: 'Exporting eligible seniors...', key: 'exportEligible' });
             const params = {};
             if (eligibleSearch) params.search = eligibleSearch;
-            if (eligibleTypeFilter) params.benefit_type_id = eligibleTypeFilter;
+            if (eligibleTypeFilter.length > 0) params.benefit_type_id = eligibleTypeFilter.join(',');
+            if (eligibleBarangayFilter.length > 0) params.barangay_ids = eligibleBarangayFilter.join(',');
+            if (eligibleMinAge) params.min_age = eligibleMinAge;
+            if (eligibleMaxAge) params.max_age = eligibleMaxAge;
+            if (eligibleMinAmount) params.min_amount = eligibleMinAmount;
+            if (eligibleMaxAmount) params.max_amount = eligibleMaxAmount;
 
             const response = await benefitsApi.exportEligible(params);
 
@@ -681,6 +696,21 @@ const Benefits = () => {
         },
     ];
 
+    // Eligible tab filter option lists
+    const eligibleBarangayOptions = (() => {
+        const seen = new Set();
+        return (filterOptions.barangays || []).map(b => {
+            if (seen.has(b.id)) return null;
+            seen.add(b.id);
+            return { label: b.name, value: b.id };
+        }).filter(Boolean);
+    })();
+
+    const eligibleBenefitOptions = benefitTypes.filter(t => t.amount > 0).map(t => ({
+        label: t.name,
+        value: t.id,
+    }));
+
     // Eligible seniors table columns
     const eligibleColumns = [
         {
@@ -703,12 +733,18 @@ const Benefits = () => {
             render: (age) => age,
         },
         {
-            title: 'Barangay',
+            title: renderFilterTitle('Barangay', eligibleBarangayOptions, eligibleBarangayFilter, (values) => {
+                setEligibleBarangayFilter(values);
+                setEligiblePagination(prev => ({ ...prev, current: 1 }));
+            }),
             dataIndex: 'barangay',
             key: 'barangay',
         },
         {
-            title: 'Eligible Benefit',
+            title: renderFilterTitle('Eligible Benefit', eligibleBenefitOptions, eligibleTypeFilter, (values) => {
+                setEligibleTypeFilter(values);
+                setEligiblePagination(prev => ({ ...prev, current: 1 }));
+            }),
             dataIndex: 'benefit_name',
             key: 'benefit_name',
             render: (text) => text || '—',
@@ -969,8 +1005,8 @@ const Benefits = () => {
                         }
                         key="eligible"
                     >
-                        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                            <Col xs={24} sm={12} md={8}>
+                        <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
+                            <Col xs={24} sm={12} md={6}>
                                 <Input
                                     placeholder="Search by name or OSCA ID"
                                     prefix={<SearchOutlined />}
@@ -983,35 +1019,117 @@ const Benefits = () => {
                                 />
                             </Col>
                             <Col xs={24} sm={12} md={6}>
-                                <Select
-                                    placeholder="All Categories"
-                                    value={eligibleTypeFilter}
-                                    onChange={(val) => {
-                                        setEligibleTypeFilter(val);
-                                        setEligiblePagination(prev => ({ ...prev, current: 1 }));
-                                    }}
-                                    allowClear
-                                    style={{ width: '100%' }}
-                                >
-                                    <Select.Option value="">All Categories</Select.Option>
-                                    {benefitTypes.filter(t => t.amount > 0).map((type) => (
-                                        <Select.Option key={type.id} value={type.id}>
-                                            {type.name} ({type.min_age}+)
-                                        </Select.Option>
-                                    ))}
-                                </Select>
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <InputNumber
+                                        placeholder="Min Age"
+                                        min={60}
+                                        max={150}
+                                        value={eligibleMinAge}
+                                        onChange={(val) => {
+                                            setEligibleMinAge(val);
+                                            setEligiblePagination(prev => ({ ...prev, current: 1 }));
+                                        }}
+                                        style={{ width: '50%' }}
+                                    />
+                                    <InputNumber
+                                        placeholder="Max Age"
+                                        min={60}
+                                        max={150}
+                                        value={eligibleMaxAge}
+                                        onChange={(val) => {
+                                            setEligibleMaxAge(val);
+                                            setEligiblePagination(prev => ({ ...prev, current: 1 }));
+                                        }}
+                                        style={{ width: '50%' }}
+                                    />
+                                </Space.Compact>
                             </Col>
-                            <Col xs={24} sm={12} md={4}>
+                            <Col xs={24} sm={12} md={6}>
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <InputNumber
+                                        placeholder="Min ₱"
+                                        min={0}
+                                        value={eligibleMinAmount}
+                                        onChange={(val) => {
+                                            setEligibleMinAmount(val);
+                                            setEligiblePagination(prev => ({ ...prev, current: 1 }));
+                                        }}
+                                        style={{ width: '50%' }}
+                                        formatter={(value) => value ? `₱ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                                        parser={(value) => value.replace(/₱\s?|(,*)/g, '')}
+                                    />
+                                    <InputNumber
+                                        placeholder="Max ₱"
+                                        min={0}
+                                        value={eligibleMaxAmount}
+                                        onChange={(val) => {
+                                            setEligibleMaxAmount(val);
+                                            setEligiblePagination(prev => ({ ...prev, current: 1 }));
+                                        }}
+                                        style={{ width: '50%' }}
+                                        formatter={(value) => value ? `₱ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+                                        parser={(value) => value.replace(/₱\s?|(,*)/g, '')}
+                                    />
+                                </Space.Compact>
+                            </Col>
+                            <Col xs={24} sm={12} md={3}>
                                 <Button
                                     icon={<DownloadOutlined />}
                                     onClick={handleExportEligible}
                                     style={{ width: '100%' }}
                                 >
-                                    Export CSV
+                                    Export
                                 </Button>
                             </Col>
                         </Row>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+
+                        {/* Active eligible filter tags */}
+                        {(eligibleBarangayFilter.length > 0 || eligibleTypeFilter.length > 0 || eligibleMinAge || eligibleMaxAge || eligibleMinAmount || eligibleMaxAmount) && (
+                            <div style={{ marginBottom: 12 }}>
+                                <Space size={[4, 4]} wrap>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Active filters:</Text>
+                                    {eligibleBarangayFilter.map(id => {
+                                        const b = (filterOptions.barangays || []).find(br => br.id === id);
+                                        return (
+                                            <Tag key={`e-brgy-${id}`} closable onClose={() => setEligibleBarangayFilter(prev => prev.filter(v => v !== id))} color="green" style={{ marginBottom: 4 }}>
+                                                Barangay: {b?.name || id}
+                                            </Tag>
+                                        );
+                                    })}
+                                    {eligibleTypeFilter.map(id => {
+                                        const t = benefitTypes.find(bt => bt.id === id);
+                                        return (
+                                            <Tag key={`e-type-${id}`} closable onClose={() => setEligibleTypeFilter(prev => prev.filter(v => v !== id))} color="purple" style={{ marginBottom: 4 }}>
+                                                Benefit: {t?.name || id}
+                                            </Tag>
+                                        );
+                                    })}
+                                    {eligibleMinAge && <Tag closable onClose={() => setEligibleMinAge(null)} color="cyan" style={{ marginBottom: 4 }}>Min Age: {eligibleMinAge}</Tag>}
+                                    {eligibleMaxAge && <Tag closable onClose={() => setEligibleMaxAge(null)} color="cyan" style={{ marginBottom: 4 }}>Max Age: {eligibleMaxAge}</Tag>}
+                                    {eligibleMinAmount && <Tag closable onClose={() => setEligibleMinAmount(null)} color="gold" style={{ marginBottom: 4 }}>Min ₱{eligibleMinAmount.toLocaleString()}</Tag>}
+                                    {eligibleMaxAmount && <Tag closable onClose={() => setEligibleMaxAmount(null)} color="gold" style={{ marginBottom: 4 }}>Max ₱{eligibleMaxAmount.toLocaleString()}</Tag>}
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        danger
+                                        icon={<CloseOutlined />}
+                                        onClick={() => {
+                                            setEligibleBarangayFilter([]);
+                                            setEligibleTypeFilter([]);
+                                            setEligibleMinAge(null);
+                                            setEligibleMaxAge(null);
+                                            setEligibleMinAmount(null);
+                                            setEligibleMaxAmount(null);
+                                        }}
+                                        style={{ fontSize: 12, padding: '0 4px' }}
+                                    >
+                                        Clear All
+                                    </Button>
+                                </Space>
+                            </div>
+                        )}
+
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
                             These seniors are eligible for benefits they haven't claimed yet.
                         </Text>
 

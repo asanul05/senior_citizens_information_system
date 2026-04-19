@@ -199,16 +199,38 @@ class BenefitController extends Controller
         // Get benefit types (optionally filtered)
         $benefitTypesQuery = BenefitType::active()->where('amount', '>', 0)->orderBy('min_age');
         
-        // Filter by specific benefit type if provided
-        $filterTypeId = $request->get('benefit_type_id');
-        if ($filterTypeId) {
-            $benefitTypesQuery->where('id', $filterTypeId);
+        // Filter by specific benefit type(s)
+        if ($filterTypeId = $request->get('benefit_type_id')) {
+            $typeIds = is_array($filterTypeId) ? $filterTypeId : explode(',', $filterTypeId);
+            $typeIds = array_filter(array_map('trim', $typeIds));
+            if (!empty($typeIds)) {
+                $benefitTypesQuery->whereIn('id', $typeIds);
+            }
+        }
+
+        // Filter by benefit amount range
+        if ($minAmount = $request->get('min_amount')) {
+            $benefitTypesQuery->where('amount', '>=', $minAmount);
+        }
+        if ($maxAmount = $request->get('max_amount')) {
+            $benefitTypesQuery->where('amount', '<=', $maxAmount);
         }
         
         $benefitTypes = $benefitTypesQuery->get();
 
         // Search term
         $search = $request->get('search');
+
+        // Age range params
+        $filterMinAge = $request->get('min_age');
+        $filterMaxAge = $request->get('max_age');
+
+        // Barangay filter
+        $barangayIds = $request->get('barangay_ids');
+        if ($barangayIds) {
+            $barangayIds = is_array($barangayIds) ? $barangayIds : explode(',', $barangayIds);
+            $barangayIds = array_filter(array_map('trim', $barangayIds));
+        }
 
         // Build query for seniors who are eligible but haven't claimed
         $eligibleSeniors = [];
@@ -229,9 +251,26 @@ class BenefitController extends Controller
                 });
             }
 
+            // Apply barangay filter
+            if (!empty($barangayIds)) {
+                $query->whereIn('barangay_id', $barangayIds);
+            }
+
             // Cumulative eligibility: age >= min_age (birthdate <= maxBirthdate for that min_age)
             $maxBirthdate = now()->subYears($benefitType->min_age)->endOfYear();
             $query->where('birthdate', '<=', $maxBirthdate);
+
+            // Apply age range filter (narrows further)
+            if ($filterMinAge) {
+                // min_age means birthdate <= (now - min_age years)
+                $ageBirthdate = now()->subYears($filterMinAge)->endOfYear();
+                $query->where('birthdate', '<=', $ageBirthdate);
+            }
+            if ($filterMaxAge) {
+                // max_age means birthdate >= (now - max_age years)
+                $ageBirthdate = now()->subYears($filterMaxAge + 1)->startOfYear();
+                $query->where('birthdate', '>=', $ageBirthdate);
+            }
 
             // Exclude seniors who already claimed this benefit (one-time benefits)
             if ($benefitType->is_one_time) {
@@ -270,6 +309,7 @@ class BenefitController extends Controller
                     'full_name' => $senior->full_name ?? "{$senior->first_name} {$senior->last_name}",
                     'age' => $senior->age,
                     'barangay' => $senior->barangay?->name,
+                    'barangay_id' => $senior->barangay_id,
                     'benefit_type_id' => $benefitType->id,
                     'benefit_name' => $benefitType->name,
                     'benefit_amount' => $benefitType->amount,
@@ -304,13 +344,36 @@ class BenefitController extends Controller
 
         $benefitTypesQuery = BenefitType::active()->where('amount', '>', 0)->orderBy('min_age');
         
-        $filterTypeId = $request->get('benefit_type_id');
-        if ($filterTypeId) {
-            $benefitTypesQuery->where('id', $filterTypeId);
+        // Filter by specific benefit type(s)
+        if ($filterTypeId = $request->get('benefit_type_id')) {
+            $typeIds = is_array($filterTypeId) ? $filterTypeId : explode(',', $filterTypeId);
+            $typeIds = array_filter(array_map('trim', $typeIds));
+            if (!empty($typeIds)) {
+                $benefitTypesQuery->whereIn('id', $typeIds);
+            }
+        }
+
+        // Filter by benefit amount range
+        if ($minAmount = $request->get('min_amount')) {
+            $benefitTypesQuery->where('amount', '>=', $minAmount);
+        }
+        if ($maxAmount = $request->get('max_amount')) {
+            $benefitTypesQuery->where('amount', '<=', $maxAmount);
         }
         
         $benefitTypes = $benefitTypesQuery->get();
         $search = $request->get('search');
+
+        // Age range params
+        $filterMinAge = $request->get('min_age');
+        $filterMaxAge = $request->get('max_age');
+
+        // Barangay filter
+        $barangayIds = $request->get('barangay_ids');
+        if ($barangayIds) {
+            $barangayIds = is_array($barangayIds) ? $barangayIds : explode(',', $barangayIds);
+            $barangayIds = array_filter(array_map('trim', $barangayIds));
+        }
 
         $eligibleSeniors = [];
 
@@ -328,8 +391,23 @@ class BenefitController extends Controller
                 });
             }
 
+            // Apply barangay filter
+            if (!empty($barangayIds)) {
+                $query->whereIn('barangay_id', $barangayIds);
+            }
+
             $maxBirthdate = now()->subYears($benefitType->min_age)->endOfYear();
             $query->where('birthdate', '<=', $maxBirthdate);
+
+            // Apply age range filter
+            if ($filterMinAge) {
+                $ageBirthdate = now()->subYears($filterMinAge)->endOfYear();
+                $query->where('birthdate', '<=', $ageBirthdate);
+            }
+            if ($filterMaxAge) {
+                $ageBirthdate = now()->subYears($filterMaxAge + 1)->startOfYear();
+                $query->where('birthdate', '>=', $ageBirthdate);
+            }
 
             if ($benefitType->is_one_time) {
                 $query->whereDoesntHave('benefitClaims', function ($q) use ($benefitType) {
