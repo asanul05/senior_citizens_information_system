@@ -243,6 +243,9 @@ export const publicApi = {
   checkStatus: (referenceNumber) =>
     api.get(`/public/status/${referenceNumber}`),
 
+  verifySenior: (oscaId) =>
+    api.get(`/public/verify-senior/${encodeURIComponent(oscaId)}`),
+
   getStats: () => api.get('/public/stats'),
 };
 

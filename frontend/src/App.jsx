@@ -41,6 +41,7 @@ import Services from "./pages/public/Services";
 import News from "./pages/public/News";
 import Contact from "./pages/public/Contact";
 import Apply from "./pages/public/Apply";
+import VerifySenior from "./pages/public/VerifySenior";
 
 // Senior Portal Pages
 import SeniorLogin from "./pages/senior/SeniorLogin";
@@ -92,6 +93,7 @@ function App() {
                 <Route path="news" element={<News />} />
                 <Route path="contact" element={<Contact />} />
                 <Route path="apply" element={<Apply />} />
+                <Route path="verify/senior/:oscaId" element={<VerifySenior />} />
               </Route>
 
               {/* ============ AUTH ROUTES ============ */}

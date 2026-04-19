@@ -13,6 +13,29 @@ use Illuminate\Support\Facades\Storage;
 class IdPrintingController extends Controller
 {
     /**
+     * Resolve frontend base URL for QR links.
+     */
+    private function resolveFrontendUrl(Request $request): string
+    {
+        $configuredUrl = rtrim((string) config('app.frontend_url', ''), '/');
+        $origin = rtrim((string) $request->headers->get('origin', ''), '/');
+
+        $isConfiguredLocal = $configuredUrl !== ''
+            && (str_contains($configuredUrl, 'localhost') || str_contains($configuredUrl, '127.0.0.1'));
+
+        // In deployed environments, prefer browser origin when config still points to localhost.
+        if ($isConfiguredLocal && filter_var($origin, FILTER_VALIDATE_URL)) {
+            return $origin;
+        }
+
+        if ($configuredUrl !== '') {
+            return $configuredUrl;
+        }
+
+        return rtrim((string) config('app.url', 'http://localhost:8000'), '/');
+    }
+
+    /**
      * Get paginated list of ID printing queue.
      */
     public function index(Request $request)
@@ -211,12 +234,8 @@ class IdPrintingController extends Controller
 
         $photoUrl = $photoDoc ? Storage::disk(config('filesystems.upload_disk'))->url($photoDoc->file_path) : null;
 
-        // QR Code data (will be generated on frontend using this data)
-        $qrData = [
-            'osca_id' => $senior->osca_id,
-            'name' => trim("{$senior->first_name} {$senior->last_name}"),
-            'birthdate' => $senior->birthdate?->format('Y-m-d'),
-        ];
+        $frontendUrl = $this->resolveFrontendUrl($request);
+        $qrData = "{$frontendUrl}/verify/senior/" . urlencode($senior->osca_id);
 
         return response()->json([
             'success' => true,
@@ -237,7 +256,7 @@ class IdPrintingController extends Controller
                     'barangay' => $senior->barangay->name ?? null,
                     'photo_url' => $photoUrl,
                     'issue_date' => $issueDate->format('F d, Y'),
-                    'qr_data' => json_encode($qrData),
+                    'qr_data' => $qrData,
                 ],
             ],
         ]);
@@ -292,6 +311,8 @@ class IdPrintingController extends Controller
                 ->where('document_type_id', 4)
                 ->first();
 
+            $frontendUrl = $this->resolveFrontendUrl($request);
+
             $cards[] = [
                 'queue_id' => $id,
                 'queue_number' => $queueItem->queue_number,
@@ -307,11 +328,7 @@ class IdPrintingController extends Controller
                 'address' => implode(', ', $addressParts),
                 'photo_url' => $photoDoc ? Storage::disk(config('filesystems.upload_disk'))->url($photoDoc->file_path) : null,
                 'issue_date' => now()->format('F d, Y'),
-                'qr_data' => json_encode([
-                    'osca_id' => $senior->osca_id,
-                    'name' => trim("{$senior->first_name} {$senior->last_name}"),
-                    'birthdate' => $senior->birthdate?->format('Y-m-d'),
-                ]),
+                'qr_data' => "{$frontendUrl}/verify/senior/" . urlencode($senior->osca_id),
             ];
         }
 

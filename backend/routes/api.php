@@ -34,6 +34,7 @@ Route::prefix('public')->group(function () {
     Route::get('/barangays', [PublicController::class, 'barangays']);
     Route::get('/stats', [PublicController::class, 'stats']);
     Route::get('/announcements', [PublicController::class, 'announcements']);
+    Route::get('/verify-senior/{oscaId}', [PublicController::class, 'verifySeniorByOscaId'])->middleware('throttle:20,1');
     // Rate-limited: 3 submissions per 10 minutes per IP
     Route::post('/apply', [PublicController::class, 'apply'])->middleware('throttle:3,10');
     // Rate-limited: 10 lookups per minute per IP

@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Services\SmsService;
 
@@ -341,6 +342,68 @@ class PublicController extends Controller
                 'rejection_reason' => $preRegistration->rejection_reason,
                 'notes' => $preRegistration->notes,
             ]
+        ]);
+    }
+
+    /**
+     * Public verification endpoint for senior QR scans.
+     */
+    public function verifySeniorByOscaId(string $oscaId): JsonResponse
+    {
+        $normalizedOscaId = strtoupper(trim($oscaId));
+
+        $senior = SeniorCitizen::with(['barangay.district', 'gender'])
+            ->whereRaw('UPPER(osca_id) = ?', [$normalizedOscaId])
+            ->first();
+
+        if (!$senior) {
+            return response()->json([
+                'data' => [
+                    'osca_id' => $normalizedOscaId,
+                    'verified' => false,
+                    'status_label' => 'Not Verified',
+                    'reasons' => ['Senior record not found.'],
+                    'senior' => null,
+                    'verified_at' => now()->toIso8601String(),
+                ],
+            ], 404);
+        }
+
+        $reasons = [];
+        if (!$senior->is_active) {
+            $reasons[] = 'Senior record is inactive.';
+        }
+        if ($senior->is_deceased) {
+            $reasons[] = 'Senior is reported as deceased.';
+        }
+
+        $photoUrl = $senior->photo_path
+            ? Storage::disk(config('filesystems.upload_disk'))->url($senior->photo_path)
+            : null;
+
+        return response()->json([
+            'data' => [
+                'osca_id' => $senior->osca_id,
+                'verified' => empty($reasons),
+                'status_label' => empty($reasons) ? 'Verified Senior Citizen' : 'Not Verified',
+                'reasons' => $reasons,
+                'senior' => [
+                    'full_name' => $senior->full_name,
+                    'first_name' => $senior->first_name,
+                    'last_name' => $senior->last_name,
+                    'birthdate' => $senior->birthdate?->format('F d, Y'),
+                    'birthdate_raw' => $senior->birthdate?->format('Y-m-d'),
+                    'age' => $senior->age,
+                    'gender' => $senior->gender?->name,
+                    'barangay' => $senior->barangay?->name,
+                    'district' => $senior->barangay?->district?->name,
+                    'photo_url' => $photoUrl,
+                    'is_active' => (bool) $senior->is_active,
+                    'is_deceased' => (bool) $senior->is_deceased,
+                    'deceased_date' => $senior->deceased_date?->format('F d, Y'),
+                ],
+                'verified_at' => now()->toIso8601String(),
+            ],
         ]);
     }
 
