@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Archive;
+use App\Models\BarangayTransferHistory;
 use App\Models\DeceasedReport;
 use App\Models\SeniorCitizen;
 use App\Traits\LogsAudit;
@@ -474,6 +475,8 @@ class SeniorController extends Controller
             'is_active' => 'sometimes|boolean',
             'is_deceased' => 'sometimes|boolean',
             'notes' => 'nullable|string',
+            'transfer_reason' => 'nullable|string|max:1000',
+            'transfer_supporting_document_path' => 'nullable|string|max:500',
             // Contact fields
             'mobile_number' => 'nullable|string|max:50',
             'telephone_number' => 'nullable|string|max:50',
@@ -485,14 +488,26 @@ class SeniorController extends Controller
             'sub_categories.*' => 'string',
         ]);
 
+        $isBarangayTransfer = isset($validated['barangay_id'])
+            && (int) $validated['barangay_id'] !== (int) $senior->barangay_id;
+
         // If changing barangay, verify user has access to new barangay
-        if (isset($validated['barangay_id']) && $validated['barangay_id'] !== $senior->barangay_id) {
+        if ($isBarangayTransfer) {
             $accessibleBarangays = $user->getAccessibleBarangayIds();
             if (!$user->isMainAdmin() && !in_array($validated['barangay_id'], $accessibleBarangays)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'You do not have access to the selected barangay.',
                 ], 403);
+            }
+
+            if (empty(trim((string) ($validated['transfer_reason'] ?? '')))) {
+                return response()->json([
+                    'message' => 'The transfer reason field is required when changing barangay.',
+                    'errors' => [
+                        'transfer_reason' => ['The transfer reason field is required when changing barangay.'],
+                    ],
+                ], 422);
             }
         }
 
@@ -511,6 +526,8 @@ class SeniorController extends Controller
         try {
             DB::beginTransaction();
 
+            $oldBarangayId = $senior->barangay_id;
+
             // Track changes for audit log
             $changes = [];
             $oldValues = [];
@@ -518,7 +535,13 @@ class SeniorController extends Controller
 
             foreach ($validated as $field => $value) {
                 // Skip contact fields - handled separately
-                if (in_array($field, ['mobile_number', 'telephone_number', 'email'])) {
+                if (in_array($field, [
+                    'mobile_number',
+                    'telephone_number',
+                    'email',
+                    'transfer_reason',
+                    'transfer_supporting_document_path',
+                ])) {
                     continue;
                 }
                 
@@ -531,8 +554,26 @@ class SeniorController extends Controller
             }
 
             // Update senior record
-            $senior->fill(array_diff_key($validated, array_flip(['mobile_number', 'telephone_number', 'email'])));
+            $senior->fill(array_diff_key($validated, array_flip([
+                'mobile_number',
+                'telephone_number',
+                'email',
+                'transfer_reason',
+                'transfer_supporting_document_path',
+            ])));
             $senior->save();
+
+            if ($isBarangayTransfer) {
+                BarangayTransferHistory::create([
+                    'senior_id' => $senior->id,
+                    'from_barangay_id' => $oldBarangayId,
+                    'to_barangay_id' => $validated['barangay_id'],
+                    'transfer_reason' => trim((string) $validated['transfer_reason']),
+                    'supporting_document_path' => $validated['transfer_supporting_document_path'] ?? null,
+                    'transferred_by' => $user->id,
+                    'transferred_at' => now(),
+                ]);
+            }
 
             // Archive once when the senior is newly marked as deceased.
             if (!$wasDeceasedBefore && (bool) $senior->is_deceased) {
@@ -645,6 +686,91 @@ class SeniorController extends Controller
                 'message' => 'Failed to update senior citizen: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Upload supporting document for barangay transfer.
+     */
+    public function uploadTransferDocument(Request $request, $id)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+
+        $request->validate([
+            'document' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        $disk = config('filesystems.upload_disk');
+        $document = $request->file('document');
+        $extension = strtolower($document->getClientOriginalExtension());
+        $fileName = 'transfer_' . now()->format('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        $directory = "uploads/seniors/{$senior->id}/transfers";
+        $filePath = "{$directory}/{$fileName}";
+
+        Storage::disk($disk)->putFileAs($directory, $document, $fileName);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Transfer document uploaded successfully.',
+            'data' => [
+                'supporting_document_path' => $filePath,
+                'supporting_document_url' => Storage::disk($disk)->url($filePath),
+                'original_filename' => $document->getClientOriginalName(),
+            ],
+        ]);
+    }
+
+    /**
+     * Get barangay transfer history for a senior.
+     */
+    public function transferHistory(Request $request, $id)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+        $perPage = (int) $request->get('per_page', 20);
+
+        $history = BarangayTransferHistory::query()
+            ->with([
+                'fromBarangay:id,name',
+                'toBarangay:id,name',
+                'transferredBy:id,first_name,last_name,username',
+            ])
+            ->where('senior_id', $senior->id)
+            ->orderByDesc('transferred_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        $disk = config('filesystems.upload_disk');
+
+        $history->getCollection()->transform(function (BarangayTransferHistory $entry) use ($disk) {
+            $actor = $entry->transferredBy;
+
+            return [
+                'id' => $entry->id,
+                'senior_id' => $entry->senior_id,
+                'from_barangay_id' => $entry->from_barangay_id,
+                'from_barangay_name' => $entry->fromBarangay?->name,
+                'to_barangay_id' => $entry->to_barangay_id,
+                'to_barangay_name' => $entry->toBarangay?->name,
+                'transfer_reason' => $entry->transfer_reason,
+                'supporting_document_path' => $entry->supporting_document_path,
+                'supporting_document_url' => $entry->supporting_document_path
+                    ? Storage::disk($disk)->url($entry->supporting_document_path)
+                    : null,
+                'transferred_at' => $entry->transferred_at?->toIso8601String(),
+                'transferred_by' => $actor ? [
+                    'id' => $actor->id,
+                    'name' => trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? '')),
+                    'username' => $actor->username,
+                ] : null,
+                'created_at' => $entry->created_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $history,
+        ]);
     }
 
     /**

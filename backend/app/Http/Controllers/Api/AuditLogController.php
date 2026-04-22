@@ -35,6 +35,10 @@ class AuditLogController extends Controller
             $query->forTarget($targetType);
         }
 
+        if ($targetId = $request->get('target_id')) {
+            $query->where('target_id', (int) $targetId);
+        }
+
         if ($from = $request->get('from_date')) {
             $query->where('created_at', '>=', $from);
         }

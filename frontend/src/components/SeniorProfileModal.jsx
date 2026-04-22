@@ -20,6 +20,7 @@ import {
     Button,
     Upload,
     message,
+    Timeline,
 } from 'antd';
 import {
     UserOutlined,
@@ -38,6 +39,7 @@ import {
     TagOutlined,
     HeartOutlined,
     CameraOutlined,
+    SwapOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { seniorsApi, benefitsApi } from '../services/api';
@@ -54,11 +56,14 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
     const [claims, setClaims] = useState([]);
     const [deceasedModalVisible, setDeceasedModalVisible] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [transferLoading, setTransferLoading] = useState(false);
+    const [transferHistory, setTransferHistory] = useState([]);
 
     useEffect(() => {
         if (visible && seniorId) {
             fetchSenior();
             fetchClaims();
+            fetchTransferHistory();
         }
     }, [visible, seniorId]);
 
@@ -83,6 +88,20 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
             console.error('Failed to fetch claims:', error);
         } finally {
             setClaimsLoading(false);
+        }
+    };
+
+    const fetchTransferHistory = async () => {
+        setTransferLoading(true);
+        try {
+            const response = await seniorsApi.getTransferHistory(seniorId, { per_page: 50 });
+            const records = response.data?.data?.data || [];
+            setTransferHistory(records);
+        } catch (error) {
+            console.error('Failed to fetch transfer history:', error);
+            setTransferHistory([]);
+        } finally {
+            setTransferLoading(false);
         }
     };
 
@@ -719,6 +738,52 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         </Card>
     );
 
+    const renderTransferHistory = () => (
+        <Card size="small" title="Barangay Transfer Timeline" style={{ marginTop: 16 }}>
+            {transferLoading ? (
+                <Spin />
+            ) : transferHistory.length > 0 ? (
+                <Timeline
+                    items={transferHistory.map((entry) => ({
+                        color: 'blue',
+                        children: (
+                            <div>
+                                <Space wrap style={{ marginBottom: 4 }}>
+                                    <Tag color="default">{entry.from_barangay_name || `Barangay ${entry.from_barangay_id}`}</Tag>
+                                    <SwapOutlined style={{ color: '#1890ff' }} />
+                                    <Tag color="blue">{entry.to_barangay_name || `Barangay ${entry.to_barangay_id}`}</Tag>
+                                </Space>
+                                <div>
+                                    <Text strong>Reason:</Text> <Text>{entry.transfer_reason || '-'}</Text>
+                                </div>
+                                {entry.supporting_document_path && (
+                                    <div>
+                                        <Text strong>Supporting Document:</Text>{' '}
+                                        {entry.supporting_document_url ? (
+                                            <a href={entry.supporting_document_url} target="_blank" rel="noopener noreferrer">
+                                                View Document
+                                            </a>
+                                        ) : (
+                                            <Text copyable={{ text: entry.supporting_document_path }}>{entry.supporting_document_path}</Text>
+                                        )}
+                                    </div>
+                                )}
+                                <div>
+                                    <Text type="secondary">
+                                        {dayjs(entry.transferred_at || entry.created_at).format('MMM D, YYYY h:mm A')}
+                                        {entry.transferred_by?.name ? ` • ${entry.transferred_by.name}` : ''}
+                                    </Text>
+                                </div>
+                            </div>
+                        ),
+                    }))}
+                />
+            ) : (
+                <Empty description="No barangay transfers recorded" />
+            )}
+        </Card>
+    );
+
     return (
         <>
         <Modal
@@ -909,6 +974,16 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                             >
                                 {renderIDs()}
                             </TabPane>
+                            <TabPane
+                                tab={
+                                    <Badge count={transferHistory.length || 0} size="small" offset={[10, 0]}>
+                                        <span><SwapOutlined /> Transfer History</span>
+                                    </Badge>
+                                }
+                                key="transfer-history"
+                            >
+                                {renderTransferHistory()}
+                            </TabPane>
                         </Tabs>
                     </>
                 )}
@@ -922,6 +997,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
             onSuccess={() => {
                 fetchSenior();
                 fetchClaims();
+                fetchTransferHistory();
             }}
         />
         </>

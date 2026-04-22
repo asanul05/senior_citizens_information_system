@@ -68,6 +68,14 @@ export const seniorsApi = {
 
   update: (id, data) => api.put(`/seniors/${id}`, data),
 
+  uploadTransferDocument: (id, formData) =>
+    api.post(`/seniors/${id}/transfer-document`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  getTransferHistory: (id, params) =>
+    api.get(`/seniors/${id}/transfer-history`, { params }),
+
   updatePhoto: (id, formData) =>
     api.post(`/seniors/${id}/photo`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

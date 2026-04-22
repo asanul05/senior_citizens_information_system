@@ -12,6 +12,8 @@ import {
   Spin,
   Switch,
   Space,
+  Upload,
+  Button,
 } from "antd";
 import dayjs from "dayjs";
 import { seniorsApi, registrationApi } from "../services/api";
@@ -26,6 +28,13 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
   const [senior, setSenior] = useState(null);
   const [barangays, setBarangays] = useState([]);
   const [lookupOptions, setLookupOptions] = useState(null);
+  const [transferDocFileList, setTransferDocFileList] = useState([]);
+  const [uploadingTransferDoc, setUploadingTransferDoc] = useState(false);
+  const selectedBarangayId = Form.useWatch("barangay_id", form);
+  const isBarangayTransfer =
+    senior?.barangay_id !== undefined &&
+    selectedBarangayId !== undefined &&
+    Number(selectedBarangayId) !== Number(senior.barangay_id);
 
   useEffect(() => {
     if (visible && seniorId) {
@@ -34,6 +43,13 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
       fetchBarangays();
     }
   }, [visible, seniorId]);
+
+  useEffect(() => {
+    if (!isBarangayTransfer) {
+      form.setFieldValue("transfer_supporting_document_path", null);
+      setTransferDocFileList([]);
+    }
+  }, [isBarangayTransfer, form]);
 
   const fetchSenior = async () => {
     setLoading(true);
@@ -63,6 +79,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
         email: seniorData.contact?.email,
         notes: seniorData.notes,
       });
+      setTransferDocFileList([]);
     } catch (error) {
       console.error("Failed to fetch senior:", error);
       message.error("Failed to load senior information");
@@ -102,6 +119,11 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
           : null,
       };
 
+      if (!isBarangayTransfer) {
+        delete payload.transfer_reason;
+        delete payload.transfer_supporting_document_path;
+      }
+
       await seniorsApi.update(seniorId, payload);
       message.success("Senior citizen information updated successfully");
       onSuccess?.();
@@ -123,7 +145,49 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
   const handleCancel = () => {
     form.resetFields();
     setSenior(null);
+    setTransferDocFileList([]);
     onClose();
+  };
+
+  const beforeUploadTransferDocument = (file) => {
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      message.error("Only JPG, PNG, or PDF files are allowed.");
+      return Upload.LIST_IGNORE;
+    }
+
+    const isValidSize = file.size / 1024 / 1024 <= 5;
+    if (!isValidSize) {
+      message.error("File must be 5MB or smaller.");
+      return Upload.LIST_IGNORE;
+    }
+
+    return true;
+  };
+
+  const handleTransferDocumentUpload = async ({ file, onSuccess, onError }) => {
+    if (!seniorId) {
+      onError?.(new Error("Senior ID is not available."));
+      return;
+    }
+
+    try {
+      setUploadingTransferDoc(true);
+      const formData = new FormData();
+      formData.append("document", file);
+
+      const response = await seniorsApi.uploadTransferDocument(seniorId, formData);
+      const uploadedPath = response.data?.data?.supporting_document_path || null;
+
+      form.setFieldValue("transfer_supporting_document_path", uploadedPath);
+      message.success("Transfer supporting document uploaded.");
+      onSuccess?.("ok");
+    } catch (error) {
+      message.error(error.response?.data?.message || "Failed to upload transfer document.");
+      onError?.(error);
+    } finally {
+      setUploadingTransferDoc(false);
+    }
   };
 
   return (
@@ -263,6 +327,45 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
               </Form.Item>
             </Col>
           </Row>
+
+          {isBarangayTransfer && (
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="transfer_reason"
+                  label="Transfer Reason"
+                  rules={[{ required: true, message: "Transfer reason is required" }]}
+                >
+                  <TextArea
+                    rows={3}
+                    placeholder="Explain why this senior is being transferred to a new barangay"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="transfer_supporting_document_path" noStyle>
+                  <Input type="hidden" />
+                </Form.Item>
+                <Form.Item label="Supporting Document (Optional)">
+                <Upload
+                  beforeUpload={beforeUploadTransferDocument}
+                  customRequest={handleTransferDocumentUpload}
+                  fileList={transferDocFileList}
+                  onChange={({ fileList }) => setTransferDocFileList(fileList.slice(-1))}
+                  onRemove={() => {
+                    form.setFieldValue("transfer_supporting_document_path", null);
+                    setTransferDocFileList([]);
+                    return true;
+                  }}
+                  maxCount={1}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                >
+                  <Button loading={uploadingTransferDoc}>Upload Transfer Document</Button>
+                </Upload>
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
 
           {/* Contact Information */}
           <Divider orientation="left">Contact Information</Divider>

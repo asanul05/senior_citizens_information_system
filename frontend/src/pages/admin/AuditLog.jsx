@@ -33,7 +33,7 @@ const AuditLog = () => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 });
-    const [filters, setFilters] = useState({ search: '', action: undefined, user_id: undefined });
+    const [filters, setFilters] = useState({ search: '', action: undefined, user_id: undefined, target_id: '' });
     const [dateRange, setDateRange] = useState(null);
     const [stats, setStats] = useState({});
     const [statsLoading, setStatsLoading] = useState(false);
@@ -108,7 +108,7 @@ const AuditLog = () => {
     const handleSearch = () => fetchLogs(1);
 
     const handleReset = () => {
-        setFilters({ search: '', action: undefined, user_id: undefined });
+        setFilters({ search: '', action: undefined, user_id: undefined, target_id: '' });
         setDateRange(null);
         fetchLogs(1);
     };
@@ -299,6 +299,15 @@ const AuditLog = () => {
                                 <Option key={a.id} value={a.id}>{a.name}</Option>
                             ))}
                         </Select>
+                    </Col>
+                    <Col xs={12} sm={4}>
+                        <Input
+                            placeholder="Target ID"
+                            allowClear
+                            value={filters.target_id}
+                            onChange={(e) => setFilters(prev => ({ ...prev, target_id: e.target.value }))}
+                            onPressEnter={handleSearch}
+                        />
                     </Col>
                     <Col xs={24} sm={6}>
                         <RangePicker

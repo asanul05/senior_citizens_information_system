@@ -181,6 +181,11 @@ class SeniorCitizen extends Model
         return $this->hasOne(DeceasedReport::class, 'senior_id');
     }
 
+    public function barangayTransferHistories()
+    {
+        return $this->hasMany(BarangayTransferHistory::class, 'senior_id');
+    }
+
     // Scopes
     public function scopeActive($query)
     {
