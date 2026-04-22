@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Card, Typography, Button, Tag, Space, Spin, Empty, List, Divider } from 'antd';
+import { Card, Typography, Button, Tag, Space, Spin, Empty, Grid } from 'antd';
 import {
     SafetyOutlined,
-    LogoutOutlined,
     NotificationOutlined,
     CalendarOutlined,
     ArrowLeftOutlined,
@@ -26,6 +25,8 @@ const SeniorAnnouncements = () => {
     const [loading, setLoading] = useState(true);
     const [expandedId, setExpandedId] = useState(null);
     const navigate = useNavigate();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     useEffect(() => {
         const storedSenior = localStorage.getItem('senior');
@@ -46,12 +47,6 @@ const SeniorAnnouncements = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('senior_token');
-        localStorage.removeItem('senior');
-        navigate('/senior/login');
     };
 
     if (!senior) return null;
@@ -78,31 +73,48 @@ const SeniorAnnouncements = () => {
             <div style={{
                 background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)',
                 color: 'white',
-                padding: '24px',
+                padding: isMobile ? '16px' : '24px',
             }}>
-                <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{
+                    maxWidth: 1000,
+                    margin: '0 auto',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    flexWrap: 'wrap',
+                    rowGap: 12,
+                    columnGap: 16,
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 16,
+                        minWidth: 0,
+                        flex: isMobile ? '1 1 100%' : '1 1 auto',
+                    }}>
                         <SafetyOutlined style={{ fontSize: 28 }} />
-                        <div>
-                            <Title level={4} style={{ color: 'white', margin: 0 }}>Senior Portal</Title>
+                        <div style={{ minWidth: 0 }}>
+                            <Title level={4} style={{ color: 'white', margin: 0, whiteSpace: 'nowrap' }}>Senior Portal</Title>
                             <Text style={{ color: 'rgba(255,255,255,0.8)' }}>Announcements</Text>
                         </div>
                     </div>
-                    <Space>
-                        <Button ghost onClick={() => navigate('/senior/dashboard')} icon={<ArrowLeftOutlined />}>
-                            Dashboard
-                        </Button>
-                        <Button ghost onClick={handleLogout} icon={<LogoutOutlined />}>
-                            Logout
-                        </Button>
-                    </Space>
                 </div>
             </div>
 
             {/* Content */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: 1000, margin: '0 auto', padding: isMobile ? '16px' : '24px' }}>
+                {/* Back Button */}
+                <Button
+                    type="link"
+                    icon={<ArrowLeftOutlined />}
+                    onClick={() => navigate('/senior/dashboard')}
+                    style={{ padding: 0, marginBottom: 16 }}
+                >
+                    Back to Dashboard
+                </Button>
+
                 {/* Section Title */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
                     <div style={{
                         width: 44, height: 44, borderRadius: 12,
                         background: '#f59e0b15', display: 'flex',
@@ -125,7 +137,7 @@ const SeniorAnnouncements = () => {
                         <Empty description="No announcements at the moment" />
                     </Card>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 12 : 16 }}>
                         {announcements.map((item) => {
                             const isExpanded = expandedId === item.id;
                             return (

@@ -12,11 +12,11 @@ import {
     Empty,
     Alert,
     Spin,
+    Grid,
 } from 'antd';
 import {
     GiftOutlined,
     SafetyOutlined,
-    LogoutOutlined,
     ArrowLeftOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
@@ -35,6 +35,8 @@ const SeniorBenefits = () => {
     const [benefitsData, setBenefitsData] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     useEffect(() => {
         const storedSenior = localStorage.getItem('senior');
@@ -59,12 +61,6 @@ const SeniorBenefits = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('senior_token');
-        localStorage.removeItem('senior');
-        navigate('/senior/login');
     };
 
     const getStatusTag = (status) => {
@@ -121,24 +117,30 @@ const SeniorBenefits = () => {
             <div style={{
                 background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
                 color: 'white',
-                padding: '24px',
+                padding: isMobile ? '16px' : '24px',
             }}>
-                <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{
+                    maxWidth: 1000,
+                    margin: '0 auto',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    flexWrap: 'wrap',
+                    rowGap: 12,
+                    columnGap: 16,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: isMobile ? '1 1 100%' : '1 1 auto' }}>
                         <GiftOutlined style={{ fontSize: 28 }} />
-                        <div>
-                            <Title level={4} style={{ color: 'white', margin: 0 }}>My Benefits</Title>
+                        <div style={{ minWidth: 0 }}>
+                            <Title level={4} style={{ color: 'white', margin: 0, whiteSpace: 'nowrap' }}>My Benefits</Title>
                             <Text style={{ color: 'rgba(255,255,255,0.8)' }}>{senior.name}</Text>
                         </div>
                     </div>
-                    <Button ghost onClick={handleLogout} icon={<LogoutOutlined />}>
-                        Logout
-                    </Button>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: 1000, margin: '0 auto', padding: isMobile ? '16px' : '24px' }}>
                 {/* Back Button */}
                 <Button
                     type="link"
@@ -217,6 +219,7 @@ const SeniorBenefits = () => {
                                 dataSource={benefitsData.claims}
                                 rowKey="id"
                                 pagination={false}
+                                scroll={{ x: 720 }}
                                 style={{ marginBottom: 24 }}
                             />
                         ) : (
@@ -239,8 +242,8 @@ const SeniorBenefits = () => {
                             onClick={() => navigate('/senior/complaints')}
                             hoverable
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 320px', minWidth: 0 }}>
                                     <MessageOutlined style={{ fontSize: 24, color: '#e74c3c' }} />
                                     <div>
                                         <Text strong>Have a concern about your benefits?</Text>
@@ -248,7 +251,7 @@ const SeniorBenefits = () => {
                                         <Text type="secondary">File a complaint or check the status of your existing complaints</Text>
                                     </div>
                                 </div>
-                                <Button type="link" style={{ color: '#e74c3c' }}>
+                                <Button type="link" style={{ color: '#e74c3c', paddingLeft: 0 }}>
                                     Go to Complaints →
                                 </Button>
                             </div>

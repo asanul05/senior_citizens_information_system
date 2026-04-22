@@ -15,11 +15,11 @@ import {
     Empty,
     Spin,
     Divider,
+    Grid,
 } from 'antd';
 import {
     ExclamationCircleOutlined,
     MessageOutlined,
-    LogoutOutlined,
     ArrowLeftOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
@@ -55,6 +55,8 @@ const SeniorComplaints = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [cooldownRemaining, setCooldownRemaining] = useState(0);
     const navigate = useNavigate();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     useEffect(() => {
         const storedSenior = localStorage.getItem('senior');
@@ -100,12 +102,6 @@ const SeniorComplaints = () => {
         } catch (error) {
             console.error('Failed to fetch benefit claims:', error);
         }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('senior_token');
-        localStorage.removeItem('senior');
-        navigate('/senior/login');
     };
 
     const getStatusTag = (status) => {
@@ -168,24 +164,30 @@ const SeniorComplaints = () => {
             <div style={{
                 background: 'linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)',
                 color: 'white',
-                padding: '24px',
+                padding: isMobile ? '16px' : '24px',
             }}>
-                <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{
+                    maxWidth: 1000,
+                    margin: '0 auto',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    flexWrap: 'wrap',
+                    rowGap: 12,
+                    columnGap: 16,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: isMobile ? '1 1 100%' : '1 1 auto' }}>
                         <MessageOutlined style={{ fontSize: 28 }} />
-                        <div>
-                            <Title level={4} style={{ color: 'white', margin: 0 }}>My Complaints</Title>
+                        <div style={{ minWidth: 0 }}>
+                            <Title level={4} style={{ color: 'white', margin: 0, whiteSpace: 'nowrap' }}>My Complaints</Title>
                             <Text style={{ color: 'rgba(255,255,255,0.8)' }}>{senior.name}</Text>
                         </div>
                     </div>
-                    <Button ghost onClick={handleLogout} icon={<LogoutOutlined />}>
-                        Logout
-                    </Button>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '24px' }}>
+            <div style={{ maxWidth: 1000, margin: '0 auto', padding: isMobile ? '16px' : '24px' }}>
                 {/* Back Button */}
                 <Button
                     type="link"
@@ -221,7 +223,7 @@ const SeniorComplaints = () => {
                 </Card>
 
                 {/* Complaints List */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
                     <Title level={4} style={{ margin: 0 }}>
                         My Complaints
                         {openCount > 0 && (
@@ -244,13 +246,11 @@ const SeniorComplaints = () => {
                                 size="small"
                                 style={{
                                     borderRadius: 12,
-                                    borderLeft: `4px solid ${complaint.status === 'open' ? '#ff4d4f' :
-                                        complaint.status === 'in_review' ? '#faad14' :
-                                            complaint.status === 'resolved' ? '#52c41a' : '#d9d9d9'
-                                        }`,
+                                    border: '1px solid #e9edf3',
+                                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                                             <Text strong>{complaint.subject}</Text>
@@ -261,7 +261,7 @@ const SeniorComplaints = () => {
                                             {complaint.benefit_name ? `${complaint.benefit_name} • ` : ''}{complaint.created_at}
                                         </Text>
                                         <Paragraph
-                                            style={{ marginTop: 8, marginBottom: 0 }}
+                                            style={{ marginTop: 8, marginBottom: 0, color: '#334155' }}
                                             ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}
                                         >
                                             {complaint.message}
@@ -273,13 +273,13 @@ const SeniorComplaints = () => {
                                 {complaint.admin_response && (
                                     <div style={{
                                         marginTop: 12,
-                                        padding: 12,
-                                        background: '#f6ffed',
+                                        padding: '10px 12px',
+                                        background: '#f8fafc',
                                         borderRadius: 8,
-                                        border: '1px solid #b7eb8f',
+                                        border: '1px solid #e2e8f0',
                                     }}>
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 4 }} />
+                                            <CheckCircleOutlined style={{ color: '#16a34a', marginRight: 4 }} />
                                             OSCA Response — {complaint.responded_at}
                                         </Text>
                                         <Paragraph style={{ marginTop: 4, marginBottom: 0 }}>

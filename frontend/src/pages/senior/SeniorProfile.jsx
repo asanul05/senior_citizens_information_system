@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Card, Row, Col, Typography, Button, Tag, Space, Spin, Descriptions, Avatar, Table, Empty, Alert, Upload, message } from 'antd';
+import { Card, Row, Col, Typography, Button, Tag, Space, Spin, Descriptions, Avatar, Table, Empty, Alert, Upload, message, Grid } from 'antd';
 import {
     UserOutlined,
     SafetyOutlined,
@@ -29,6 +29,8 @@ const SeniorProfile = () => {
     const [loading, setLoading] = useState(true);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const navigate = useNavigate();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     useEffect(() => {
         const storedSenior = localStorage.getItem('senior');
@@ -366,15 +368,38 @@ const SeniorProfile = () => {
                 color: 'white',
                 padding: '24px',
             }}>
-                <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{
+                    maxWidth: 1000,
+                    margin: '0 auto',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    flexWrap: 'wrap',
+                    rowGap: 12,
+                    columnGap: 16,
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 16,
+                        minWidth: 0,
+                        flex: isMobile ? '1 1 100%' : '1 1 auto',
+                    }}>
                         <SafetyOutlined style={{ fontSize: 28 }} />
-                        <div>
-                            <Title level={4} style={{ color: 'white', margin: 0 }}>Senior Portal</Title>
+                        <div style={{ minWidth: 0 }}>
+                            <Title level={4} style={{ color: 'white', margin: 0, whiteSpace: 'nowrap' }}>Senior Portal</Title>
                             <Text style={{ color: 'rgba(255,255,255,0.8)' }}>My Profile</Text>
                         </div>
                     </div>
-                    <Space>
+                    <Space
+                        wrap
+                        size="middle"
+                        style={{
+                            marginLeft: isMobile ? 0 : 'auto',
+                            width: isMobile ? '100%' : 'auto',
+                            justifyContent: isMobile ? 'flex-start' : 'flex-end',
+                        }}
+                    >
                         <Button ghost onClick={() => navigate('/senior/dashboard')} icon={<ArrowLeftOutlined />}>
                             Dashboard
                         </Button>

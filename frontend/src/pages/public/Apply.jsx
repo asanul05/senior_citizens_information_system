@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin, InputNumber, Tag, Checkbox } from 'antd';
+import { Row, Col, Card, Typography, Form, Input, Select, DatePicker, Button, Steps, Result, message, Divider, Spin, InputNumber, Tag, Checkbox, Grid } from 'antd';
 import {
     UserOutlined,
     UsergroupAddOutlined,
@@ -21,6 +21,7 @@ import { publicApi } from '../../services/api';
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
+const { useBreakpoint } = Grid;
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 const TurnstileWidget = ({ onVerify, onExpire, resetKey }) => {
@@ -78,6 +79,8 @@ const Apply = () => {
     const [checkRef, setCheckRef] = useState('');
     const [checkLoading, setCheckLoading] = useState(false);
     const [statusData, setStatusData] = useState(null);
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     // Lookup options (simplified for public form)
     const genders = [
@@ -370,28 +373,46 @@ const Apply = () => {
                 <section style={{
                     background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)',
                     color: 'white',
-                    padding: '60px 24px 80px',
+                    padding: isMobile ? '40px 20px 56px' : '60px 24px 80px',
                     textAlign: 'center',
                 }}>
                     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-                        <Title level={1} style={{ color: 'white', marginBottom: 16 }}>Check Application Status</Title>
-                        <Paragraph style={{ color: 'rgba(255,255,255,0.9)', fontSize: 18 }}>
+                        <Title
+                            level={isMobile ? 2 : 1}
+                            style={{
+                                color: 'white',
+                                marginBottom: 12,
+                                fontSize: isMobile ? 48 : undefined,
+                                lineHeight: isMobile ? 1.15 : undefined,
+                            }}
+                        >
+                            Check Application Status
+                        </Title>
+                        <Paragraph style={{ color: 'rgba(255,255,255,0.9)', fontSize: isMobile ? 18 : 18, marginBottom: 0 }}>
                             Enter your reference number to check the status of your application.
                         </Paragraph>
                     </div>
                 </section>
 
-                <section style={{ padding: '60px 24px', background: '#f9fafb' }}>
+                <section style={{ padding: isMobile ? '36px 16px' : '60px 24px', background: '#f9fafb' }}>
                     <div style={{ maxWidth: 600, margin: '0 auto' }}>
                         <Card style={{ borderRadius: 16 }}>
-                            <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    gap: 12,
+                                    marginBottom: 24,
+                                    flexDirection: isMobile ? 'column' : 'row',
+                                    alignItems: 'stretch',
+                                }}
+                            >
                                 <Input
                                     size="large"
                                     placeholder="Enter reference number (e.g., PRE-20260130-1234)"
                                     value={checkRef}
                                     onChange={(e) => setCheckRef(e.target.value)}
                                     onPressEnter={handleCheckStatus}
-                                    style={{ borderRadius: 8 }}
+                                    style={{ borderRadius: 8, flex: 1 }}
                                 />
                                 <Button
                                     type="primary"
@@ -399,7 +420,11 @@ const Apply = () => {
                                     icon={<SearchOutlined />}
                                     onClick={handleCheckStatus}
                                     loading={checkLoading}
-                                    style={{ background: '#4338ca', borderRadius: 8 }}
+                                    style={{
+                                        background: '#4338ca',
+                                        borderRadius: 8,
+                                        minWidth: isMobile ? '100%' : 112,
+                                    }}
                                 >
                                     Check
                                 </Button>
@@ -444,7 +469,7 @@ const Apply = () => {
                             )}
 
                             <div style={{ marginTop: 24, textAlign: 'center' }}>
-                                <Button onClick={() => setCheckMode(false)} style={{ borderRadius: 8 }}>
+                                <Button onClick={() => setCheckMode(false)} style={{ borderRadius: 8, width: isMobile ? '100%' : 'auto' }}>
                                     ← Back to Application Form
                                 </Button>
                             </div>
@@ -539,9 +564,10 @@ const Apply = () => {
                         <Steps
                             current={currentStep}
                             items={steps.map(s => ({ title: s.title, icon: s.icon }))}
-                            style={{ marginBottom: 40 }}
+                            style={{ marginBottom: isMobile ? 24 : 40 }}
                             size="small"
                             responsive={false}
+                            direction={isMobile ? 'vertical' : 'horizontal'}
                         />
 
                         <Form
@@ -560,7 +586,7 @@ const Apply = () => {
                                         Please select who is completing this pre-registration form.
                                     </Paragraph>
 
-                                    <Row gutter={16} style={{ marginBottom: 24 }}>
+                                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                                         <Col xs={24} sm={12}>
                                             <Card
                                                 hoverable
@@ -570,15 +596,21 @@ const Apply = () => {
                                                     border: registrationType === 'self' ? '2px solid #4338ca' : '2px solid #e5e7eb',
                                                     background: registrationType === 'self' ? '#eef2ff' : '#fff',
                                                     textAlign: 'center',
-                                                    padding: '16px 12px',
+                                                    padding: isMobile ? '24px 18px' : '28px 20px',
+                                                    minHeight: isMobile ? 168 : 188,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
                                                     cursor: 'pointer',
                                                 }}
                                             >
-                                                <UserOutlined style={{ fontSize: 36, color: registrationType === 'self' ? '#4338ca' : '#9ca3af', marginBottom: 12 }} />
-                                                <Title level={5} style={{ margin: 0, color: registrationType === 'self' ? '#4338ca' : undefined }}>
-                                                    I am the Senior Citizen
-                                                </Title>
-                                                <Text type="secondary" style={{ fontSize: 13 }}>I am registering myself</Text>
+                                                <div>
+                                                    <UserOutlined style={{ fontSize: 36, color: registrationType === 'self' ? '#4338ca' : '#9ca3af', marginBottom: 12 }} />
+                                                    <Title level={5} style={{ margin: 0, color: registrationType === 'self' ? '#4338ca' : undefined }}>
+                                                        I am the Senior Citizen
+                                                    </Title>
+                                                    <Text type="secondary" style={{ fontSize: 13 }}>I am registering myself</Text>
+                                                </div>
                                             </Card>
                                         </Col>
                                         <Col xs={24} sm={12}>
@@ -590,15 +622,21 @@ const Apply = () => {
                                                     border: registrationType === 'assisted' ? '2px solid #4338ca' : '2px solid #e5e7eb',
                                                     background: registrationType === 'assisted' ? '#eef2ff' : '#fff',
                                                     textAlign: 'center',
-                                                    padding: '16px 12px',
+                                                    padding: isMobile ? '24px 18px' : '28px 20px',
+                                                    minHeight: isMobile ? 168 : 188,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
                                                     cursor: 'pointer',
                                                 }}
                                             >
-                                                <TeamOutlined style={{ fontSize: 36, color: registrationType === 'assisted' ? '#4338ca' : '#9ca3af', marginBottom: 12 }} />
-                                                <Title level={5} style={{ margin: 0, color: registrationType === 'assisted' ? '#4338ca' : undefined }}>
-                                                    I am assisting a Senior
-                                                </Title>
-                                                <Text type="secondary" style={{ fontSize: 13 }}>Family member, caregiver, etc.</Text>
+                                                <div>
+                                                    <TeamOutlined style={{ fontSize: 36, color: registrationType === 'assisted' ? '#4338ca' : '#9ca3af', marginBottom: 12 }} />
+                                                    <Title level={5} style={{ margin: 0, color: registrationType === 'assisted' ? '#4338ca' : undefined }}>
+                                                        I am assisting a Senior
+                                                    </Title>
+                                                    <Text type="secondary" style={{ fontSize: 13 }}>Family member, caregiver, etc.</Text>
+                                                </div>
                                             </Card>
                                         </Col>
                                     </Row>
