@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Archive;
 use App\Models\BarangayTransferHistory;
 use App\Models\DeceasedReport;
+use App\Models\SeniorNameChangeHistory;
 use App\Models\SeniorCitizen;
 use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
@@ -477,6 +478,9 @@ class SeniorController extends Controller
             'notes' => 'nullable|string',
             'transfer_reason' => 'nullable|string|max:1000',
             'transfer_supporting_document_path' => 'nullable|string|max:500',
+            'name_change_reason_type' => 'nullable|in:marriage,psa_correction,court_order,widow_revert,other',
+            'name_change_reason_details' => 'nullable|string|max:1000',
+            'name_change_supporting_document_path' => 'nullable|string|max:500',
             // Contact fields
             'mobile_number' => 'nullable|string|max:50',
             'telephone_number' => 'nullable|string|max:50',
@@ -490,6 +494,23 @@ class SeniorController extends Controller
 
         $isBarangayTransfer = isset($validated['barangay_id'])
             && (int) $validated['barangay_id'] !== (int) $senior->barangay_id;
+
+        $nameFields = ['first_name', 'middle_name', 'last_name', 'extension'];
+        $isNameChange = false;
+
+        foreach ($nameFields as $field) {
+            if (!array_key_exists($field, $validated)) {
+                continue;
+            }
+
+            $incomingValue = $validated[$field] === null ? null : trim((string) $validated[$field]);
+            $currentValue = $senior->$field === null ? null : trim((string) $senior->$field);
+
+            if ((string) $incomingValue !== (string) $currentValue) {
+                $isNameChange = true;
+                break;
+            }
+        }
 
         // If changing barangay, verify user has access to new barangay
         if ($isBarangayTransfer) {
@@ -511,6 +532,26 @@ class SeniorController extends Controller
             }
         }
 
+        if ($isNameChange) {
+            if (empty(trim((string) ($validated['name_change_reason_type'] ?? '')))) {
+                return response()->json([
+                    'message' => 'The name change reason type field is required when changing name.',
+                    'errors' => [
+                        'name_change_reason_type' => ['The name change reason type field is required when changing name.'],
+                    ],
+                ], 422);
+            }
+
+            if (empty(trim((string) ($validated['name_change_supporting_document_path'] ?? '')))) {
+                return response()->json([
+                    'message' => 'At least one supporting document is required when changing name.',
+                    'errors' => [
+                        'name_change_supporting_document_path' => ['At least one supporting document is required when changing name.'],
+                    ],
+                ], 422);
+            }
+        }
+
         // Keep status flags consistent: deceased seniors cannot be active.
         if (array_key_exists('is_deceased', $validated)) {
             if ($validated['is_deceased']) {
@@ -527,6 +568,12 @@ class SeniorController extends Controller
             DB::beginTransaction();
 
             $oldBarangayId = $senior->barangay_id;
+            $oldName = [
+                'first_name' => $senior->first_name,
+                'middle_name' => $senior->middle_name,
+                'last_name' => $senior->last_name,
+                'extension' => $senior->extension,
+            ];
 
             // Track changes for audit log
             $changes = [];
@@ -541,6 +588,9 @@ class SeniorController extends Controller
                     'email',
                     'transfer_reason',
                     'transfer_supporting_document_path',
+                    'name_change_reason_type',
+                    'name_change_reason_details',
+                    'name_change_supporting_document_path',
                 ])) {
                     continue;
                 }
@@ -560,6 +610,9 @@ class SeniorController extends Controller
                 'email',
                 'transfer_reason',
                 'transfer_supporting_document_path',
+                'name_change_reason_type',
+                'name_change_reason_details',
+                'name_change_supporting_document_path',
             ])));
             $senior->save();
 
@@ -572,6 +625,28 @@ class SeniorController extends Controller
                     'supporting_document_path' => $validated['transfer_supporting_document_path'] ?? null,
                     'transferred_by' => $user->id,
                     'transferred_at' => now(),
+                ]);
+            }
+
+            if ($isNameChange) {
+                SeniorNameChangeHistory::create([
+                    'senior_id' => $senior->id,
+                    'old_first_name' => $oldName['first_name'],
+                    'old_middle_name' => $oldName['middle_name'],
+                    'old_last_name' => $oldName['last_name'],
+                    'old_extension' => $oldName['extension'],
+                    'new_first_name' => $senior->first_name,
+                    'new_middle_name' => $senior->middle_name,
+                    'new_last_name' => $senior->last_name,
+                    'new_extension' => $senior->extension,
+                    'reason_type' => trim((string) $validated['name_change_reason_type']),
+                    'reason_details' => isset($validated['name_change_reason_details'])
+                        ? trim((string) $validated['name_change_reason_details'])
+                        : null,
+                    'supporting_document_path' => $validated['name_change_supporting_document_path'],
+                    'status' => 'pending',
+                    'changed_by' => $user->id,
+                    'changed_at' => now(),
                 ]);
             }
 
@@ -721,6 +796,38 @@ class SeniorController extends Controller
     }
 
     /**
+     * Upload supporting document for name change.
+     */
+    public function uploadNameChangeDocument(Request $request, $id)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+
+        $request->validate([
+            'document' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        $disk = config('filesystems.upload_disk');
+        $document = $request->file('document');
+        $extension = strtolower($document->getClientOriginalExtension());
+        $fileName = 'name_change_' . now()->format('YmdHis') . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        $directory = "uploads/seniors/{$senior->id}/name-changes";
+        $filePath = "{$directory}/{$fileName}";
+
+        Storage::disk($disk)->putFileAs($directory, $document, $fileName);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Name change document uploaded successfully.',
+            'data' => [
+                'supporting_document_path' => $filePath,
+                'supporting_document_url' => Storage::disk($disk)->url($filePath),
+                'original_filename' => $document->getClientOriginalName(),
+            ],
+        ]);
+    }
+
+    /**
      * Get barangay transfer history for a senior.
      */
     public function transferHistory(Request $request, $id)
@@ -770,6 +877,129 @@ class SeniorController extends Controller
         return response()->json([
             'success' => true,
             'data' => $history,
+        ]);
+    }
+
+    /**
+     * Get name change history for a senior.
+     */
+    public function nameChangeHistory(Request $request, $id)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+        $perPage = (int) $request->get('per_page', 20);
+
+        $history = SeniorNameChangeHistory::query()
+            ->with([
+                'changedBy:id,first_name,last_name,username',
+                'approvedBy:id,first_name,last_name,username',
+            ])
+            ->where('senior_id', $senior->id)
+            ->orderByDesc('changed_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        $disk = config('filesystems.upload_disk');
+
+        $history->getCollection()->transform(function (SeniorNameChangeHistory $entry) use ($disk) {
+            $changedBy = $entry->changedBy;
+            $approvedBy = $entry->approvedBy;
+
+            return [
+                'id' => $entry->id,
+                'senior_id' => $entry->senior_id,
+                'old_first_name' => $entry->old_first_name,
+                'old_middle_name' => $entry->old_middle_name,
+                'old_last_name' => $entry->old_last_name,
+                'old_extension' => $entry->old_extension,
+                'new_first_name' => $entry->new_first_name,
+                'new_middle_name' => $entry->new_middle_name,
+                'new_last_name' => $entry->new_last_name,
+                'new_extension' => $entry->new_extension,
+                'reason_type' => $entry->reason_type,
+                'reason_details' => $entry->reason_details,
+                'supporting_document_path' => $entry->supporting_document_path,
+                'supporting_document_url' => $entry->supporting_document_path
+                    ? Storage::disk($disk)->url($entry->supporting_document_path)
+                    : null,
+                'status' => $entry->status,
+                'changed_at' => $entry->changed_at?->toIso8601String(),
+                'changed_by' => $changedBy ? [
+                    'id' => $changedBy->id,
+                    'name' => trim(($changedBy->first_name ?? '') . ' ' . ($changedBy->last_name ?? '')),
+                    'username' => $changedBy->username,
+                ] : null,
+                'approved_at' => $entry->approved_at?->toIso8601String(),
+                'approved_by' => $approvedBy ? [
+                    'id' => $approvedBy->id,
+                    'name' => trim(($approvedBy->first_name ?? '') . ' ' . ($approvedBy->last_name ?? '')),
+                    'username' => $approvedBy->username,
+                ] : null,
+                'decision_notes' => $entry->decision_notes,
+                'created_at' => $entry->created_at?->toIso8601String(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $history,
+        ]);
+    }
+
+    /**
+     * Update status of a name change history record.
+     */
+    public function updateNameChangeStatus(Request $request, $id, $historyId)
+    {
+        $user = $request->user();
+        $senior = SeniorCitizen::accessibleBy($user)->findOrFail($id);
+        $entry = SeniorNameChangeHistory::query()
+            ->where('senior_id', $senior->id)
+            ->findOrFail($historyId);
+
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected',
+            'decision_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $entry->status = $validated['status'];
+        $entry->approved_by = $user->id;
+        $entry->approved_at = now();
+        $entry->decision_notes = $validated['decision_notes'] ?? null;
+        $entry->save();
+
+        $fullOldName = trim(implode(' ', array_filter([
+            $entry->old_first_name,
+            $entry->old_middle_name,
+            $entry->old_last_name,
+            $entry->old_extension,
+        ])));
+
+        $fullNewName = trim(implode(' ', array_filter([
+            $entry->new_first_name,
+            $entry->new_middle_name,
+            $entry->new_last_name,
+            $entry->new_extension,
+        ])));
+
+        $action = $validated['status'] === 'approved'
+            ? 'senior_name_change_approved'
+            : 'senior_name_change_rejected';
+
+        $this->logAudit(
+            $action,
+            'senior_citizens',
+            $senior->id,
+            ucfirst($validated['status']) . " name change: {$fullOldName} -> {$fullNewName}",
+            ['status' => 'pending'],
+            ['status' => $validated['status']],
+            $senior->full_name
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Name change status updated successfully.',
+            'data' => $entry,
         ]);
     }
 

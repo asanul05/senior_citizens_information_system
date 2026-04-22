@@ -58,12 +58,15 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [transferLoading, setTransferLoading] = useState(false);
     const [transferHistory, setTransferHistory] = useState([]);
+    const [nameChangeLoading, setNameChangeLoading] = useState(false);
+    const [nameChangeHistory, setNameChangeHistory] = useState([]);
 
     useEffect(() => {
         if (visible && seniorId) {
             fetchSenior();
             fetchClaims();
             fetchTransferHistory();
+            fetchNameChangeHistory();
         }
     }, [visible, seniorId]);
 
@@ -103,6 +106,37 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         } finally {
             setTransferLoading(false);
         }
+    };
+
+    const fetchNameChangeHistory = async () => {
+        setNameChangeLoading(true);
+        try {
+            const response = await seniorsApi.getNameChangeHistory(seniorId, { per_page: 50 });
+            const records = response.data?.data?.data || [];
+            setNameChangeHistory(records);
+        } catch (error) {
+            console.error('Failed to fetch name change history:', error);
+            setNameChangeHistory([]);
+        } finally {
+            setNameChangeLoading(false);
+        }
+    };
+
+    const buildFullName = (entry, prefix) => {
+        return [
+            entry?.[`${prefix}_first_name`],
+            entry?.[`${prefix}_middle_name`],
+            entry?.[`${prefix}_last_name`],
+            entry?.[`${prefix}_extension`],
+        ]
+            .filter(Boolean)
+            .join(' ');
+    };
+
+    const getNameChangeStatusTag = (status) => {
+        if (status === 'approved') return <Tag color="success">Approved</Tag>;
+        if (status === 'rejected') return <Tag color="error">Rejected</Tag>;
+        return <Tag color="processing">Pending</Tag>;
     };
 
     const getAge = (birthdate) => {
@@ -738,51 +772,118 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         </Card>
     );
 
-    const renderTransferHistory = () => (
+    const renderTransferHistory = () => {
+        const combinedEntries = [
+            ...transferHistory.map((entry) => ({
+                entry_type: 'transfer',
+                occurred_at: entry.transferred_at || entry.created_at,
+                payload: entry,
+            })),
+            ...nameChangeHistory.map((entry) => ({
+                entry_type: 'name_change',
+                occurred_at: entry.changed_at || entry.created_at,
+                payload: entry,
+            })),
+        ].sort((a, b) => dayjs(b.occurred_at).valueOf() - dayjs(a.occurred_at).valueOf());
+
+        return (
         <Card size="small" title="Barangay Transfer Timeline" style={{ marginTop: 16 }}>
-            {transferLoading ? (
+            {transferLoading || nameChangeLoading ? (
                 <Spin />
-            ) : transferHistory.length > 0 ? (
+            ) : combinedEntries.length > 0 ? (
                 <Timeline
-                    items={transferHistory.map((entry) => ({
-                        color: 'blue',
-                        children: (
-                            <div>
-                                <Space wrap style={{ marginBottom: 4 }}>
-                                    <Tag color="default">{entry.from_barangay_name || `Barangay ${entry.from_barangay_id}`}</Tag>
-                                    <SwapOutlined style={{ color: '#1890ff' }} />
-                                    <Tag color="blue">{entry.to_barangay_name || `Barangay ${entry.to_barangay_id}`}</Tag>
-                                </Space>
-                                <div>
-                                    <Text strong>Reason:</Text> <Text>{entry.transfer_reason || '-'}</Text>
-                                </div>
-                                {entry.supporting_document_path && (
+                    items={combinedEntries.map((entry) => {
+                        if (entry.entry_type === 'name_change') {
+                            const record = entry.payload;
+                            const oldName = buildFullName(record, 'old');
+                            const newName = buildFullName(record, 'new');
+
+                            return {
+                                color: record.status === 'approved' ? 'green' : record.status === 'rejected' ? 'red' : 'orange',
+                                children: (
                                     <div>
-                                        <Text strong>Supporting Document:</Text>{' '}
-                                        {entry.supporting_document_url ? (
-                                            <a href={entry.supporting_document_url} target="_blank" rel="noopener noreferrer">
-                                                View Document
-                                            </a>
-                                        ) : (
-                                            <Text copyable={{ text: entry.supporting_document_path }}>{entry.supporting_document_path}</Text>
+                                        <Space wrap style={{ marginBottom: 4 }}>
+                                            <Tag color="purple">Name Change</Tag>
+                                            <Tag color="default">{oldName || '-'}</Tag>
+                                            <SwapOutlined style={{ color: '#722ed1' }} />
+                                            <Tag color="geekblue">{newName || '-'}</Tag>
+                                            {getNameChangeStatusTag(record.status)}
+                                        </Space>
+                                        <div>
+                                            <Text strong>Type:</Text> <Text>{record.reason_type || '-'}</Text>
+                                        </div>
+                                        {record.reason_details && (
+                                            <div>
+                                                <Text strong>Details:</Text> <Text>{record.reason_details}</Text>
+                                            </div>
                                         )}
+                                        {record.supporting_document_path && (
+                                            <div>
+                                                <Text strong>Supporting Document:</Text>{' '}
+                                                {record.supporting_document_url ? (
+                                                    <a href={record.supporting_document_url} target="_blank" rel="noopener noreferrer">
+                                                        View Document
+                                                    </a>
+                                                ) : (
+                                                    <Text copyable={{ text: record.supporting_document_path }}>{record.supporting_document_path}</Text>
+                                                )}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <Text type="secondary">
+                                                {dayjs(record.changed_at || record.created_at).format('MMM D, YYYY h:mm A')}
+                                                {record.changed_by?.name ? ` • ${record.changed_by.name}` : ''}
+                                            </Text>
+                                        </div>
                                     </div>
-                                )}
+                                ),
+                            };
+                        }
+
+                        const record = entry.payload;
+
+                        return {
+                            color: 'blue',
+                            children: (
                                 <div>
-                                    <Text type="secondary">
-                                        {dayjs(entry.transferred_at || entry.created_at).format('MMM D, YYYY h:mm A')}
-                                        {entry.transferred_by?.name ? ` • ${entry.transferred_by.name}` : ''}
-                                    </Text>
+                                    <Space wrap style={{ marginBottom: 4 }}>
+                                        <Tag color="cyan">Transfer</Tag>
+                                        <Tag color="default">{record.from_barangay_name || `Barangay ${record.from_barangay_id}`}</Tag>
+                                        <SwapOutlined style={{ color: '#1890ff' }} />
+                                        <Tag color="blue">{record.to_barangay_name || `Barangay ${record.to_barangay_id}`}</Tag>
+                                    </Space>
+                                    <div>
+                                        <Text strong>Reason:</Text> <Text>{record.transfer_reason || '-'}</Text>
+                                    </div>
+                                    {record.supporting_document_path && (
+                                        <div>
+                                            <Text strong>Supporting Document:</Text>{' '}
+                                            {record.supporting_document_url ? (
+                                                <a href={record.supporting_document_url} target="_blank" rel="noopener noreferrer">
+                                                    View Document
+                                                </a>
+                                            ) : (
+                                                <Text copyable={{ text: record.supporting_document_path }}>{record.supporting_document_path}</Text>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <Text type="secondary">
+                                            {dayjs(record.transferred_at || record.created_at).format('MMM D, YYYY h:mm A')}
+                                            {record.transferred_by?.name ? ` • ${record.transferred_by.name}` : ''}
+                                        </Text>
+                                    </div>
                                 </div>
-                            </div>
-                        ),
-                    }))}
+                            ),
+                        };
+                    })}
                 />
             ) : (
-                <Empty description="No barangay transfers recorded" />
+                <Empty description="No transfer or name-change history recorded" />
             )}
         </Card>
     );
+    };
 
     return (
         <>
@@ -976,7 +1077,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                             </TabPane>
                             <TabPane
                                 tab={
-                                    <Badge count={transferHistory.length || 0} size="small" offset={[10, 0]}>
+                                    <Badge count={(transferHistory.length || 0) + (nameChangeHistory.length || 0)} size="small" offset={[10, 0]}>
                                         <span><SwapOutlined /> Transfer History</span>
                                     </Badge>
                                 }
@@ -998,6 +1099,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                 fetchSenior();
                 fetchClaims();
                 fetchTransferHistory();
+                fetchNameChangeHistory();
             }}
         />
         </>

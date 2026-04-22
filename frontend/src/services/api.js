@@ -73,8 +73,19 @@ export const seniorsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
+  uploadNameChangeDocument: (id, formData) =>
+    api.post(`/seniors/${id}/name-change-document`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
   getTransferHistory: (id, params) =>
     api.get(`/seniors/${id}/transfer-history`, { params }),
+
+  getNameChangeHistory: (id, params) =>
+    api.get(`/seniors/${id}/name-change-history`, { params }),
+
+  updateNameChangeStatus: (id, historyId, data) =>
+    api.patch(`/seniors/${id}/name-change-history/${historyId}/status`, data),
 
   updatePhoto: (id, formData) =>
     api.post(`/seniors/${id}/photo`, formData, {

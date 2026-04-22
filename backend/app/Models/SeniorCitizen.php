@@ -186,6 +186,11 @@ class SeniorCitizen extends Model
         return $this->hasMany(BarangayTransferHistory::class, 'senior_id');
     }
 
+    public function nameChangeHistories()
+    {
+        return $this->hasMany(SeniorNameChangeHistory::class, 'senior_id');
+    }
+
     // Scopes
     public function scopeActive($query)
     {

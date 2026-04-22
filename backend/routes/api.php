@@ -80,9 +80,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/seniors/statistics', [SeniorController::class, 'statistics']);
     Route::get('/seniors/export', [SeniorController::class, 'export']);
     Route::get('/seniors/{id}/transfer-history', [SeniorController::class, 'transferHistory']);
+    Route::get('/seniors/{id}/name-change-history', [SeniorController::class, 'nameChangeHistory']);
     Route::get('/seniors/{id}', [SeniorController::class, 'show']);
     Route::put('/seniors/{id}', [SeniorController::class, 'update']);
     Route::post('/seniors/{id}/transfer-document', [SeniorController::class, 'uploadTransferDocument']);
+    Route::post('/seniors/{id}/name-change-document', [SeniorController::class, 'uploadNameChangeDocument']);
     Route::post('/seniors/{id}/photo', [SeniorController::class, 'updatePhoto']);
     Route::post('/seniors/{id}/report-deceased', [SeniorController::class, 'reportDeceased']);
 
@@ -286,5 +288,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/archives', [ArchiveController::class, 'index']);
         Route::get('/archives/{id}', [ArchiveController::class, 'show']);
         Route::get('/archives/{id}/timeline', [ArchiveController::class, 'timeline']);
+
+        // Senior name change decisions
+        Route::patch('/seniors/{id}/name-change-history/{historyId}/status', [SeniorController::class, 'updateNameChangeStatus']);
     });
 });

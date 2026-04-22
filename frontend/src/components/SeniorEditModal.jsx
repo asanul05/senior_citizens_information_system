@@ -30,11 +30,24 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
   const [lookupOptions, setLookupOptions] = useState(null);
   const [transferDocFileList, setTransferDocFileList] = useState([]);
   const [uploadingTransferDoc, setUploadingTransferDoc] = useState(false);
+  const [nameChangeDocFileList, setNameChangeDocFileList] = useState([]);
+  const [uploadingNameChangeDoc, setUploadingNameChangeDoc] = useState(false);
   const selectedBarangayId = Form.useWatch("barangay_id", form);
+  const selectedFirstName = Form.useWatch("first_name", form);
+  const selectedMiddleName = Form.useWatch("middle_name", form);
+  const selectedLastName = Form.useWatch("last_name", form);
+  const selectedExtension = Form.useWatch("extension", form);
   const isBarangayTransfer =
     senior?.barangay_id !== undefined &&
     selectedBarangayId !== undefined &&
     Number(selectedBarangayId) !== Number(senior.barangay_id);
+
+  const isNameChange =
+    !!senior &&
+    ((selectedFirstName ?? "") !== (senior.first_name ?? "") ||
+      (selectedMiddleName ?? "") !== (senior.middle_name ?? "") ||
+      (selectedLastName ?? "") !== (senior.last_name ?? "") ||
+      (selectedExtension ?? "") !== (senior.extension ?? ""));
 
   useEffect(() => {
     if (visible && seniorId) {
@@ -50,6 +63,15 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
       setTransferDocFileList([]);
     }
   }, [isBarangayTransfer, form]);
+
+  useEffect(() => {
+    if (!isNameChange) {
+      form.setFieldValue("name_change_reason_type", null);
+      form.setFieldValue("name_change_reason_details", null);
+      form.setFieldValue("name_change_supporting_document_path", null);
+      setNameChangeDocFileList([]);
+    }
+  }, [isNameChange, form]);
 
   const fetchSenior = async () => {
     setLoading(true);
@@ -124,6 +146,12 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
         delete payload.transfer_supporting_document_path;
       }
 
+      if (!isNameChange) {
+        delete payload.name_change_reason_type;
+        delete payload.name_change_reason_details;
+        delete payload.name_change_supporting_document_path;
+      }
+
       await seniorsApi.update(seniorId, payload);
       message.success("Senior citizen information updated successfully");
       onSuccess?.();
@@ -146,6 +174,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
     form.resetFields();
     setSenior(null);
     setTransferDocFileList([]);
+    setNameChangeDocFileList([]);
     onClose();
   };
 
@@ -187,6 +216,31 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
       onError?.(error);
     } finally {
       setUploadingTransferDoc(false);
+    }
+  };
+
+  const handleNameChangeDocumentUpload = async ({ file, onSuccess, onError }) => {
+    if (!seniorId) {
+      onError?.(new Error("Senior ID is not available."));
+      return;
+    }
+
+    try {
+      setUploadingNameChangeDoc(true);
+      const formData = new FormData();
+      formData.append("document", file);
+
+      const response = await seniorsApi.uploadNameChangeDocument(seniorId, formData);
+      const uploadedPath = response.data?.data?.supporting_document_path || null;
+
+      form.setFieldValue("name_change_supporting_document_path", uploadedPath);
+      message.success("Name change supporting document uploaded.");
+      onSuccess?.("ok");
+    } catch (error) {
+      message.error(error.response?.data?.message || "Failed to upload name change document.");
+      onError?.(error);
+    } finally {
+      setUploadingNameChangeDoc(false);
     }
   };
 
@@ -234,6 +288,60 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
               </Form.Item>
             </Col>
           </Row>
+
+          {isNameChange && (
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="name_change_reason_type"
+                  label="Name Change Type"
+                  rules={[{ required: true, message: "Name change type is required" }]}
+                >
+                  <Select placeholder="Select reason type">
+                    <Option value="marriage">Marriage</Option>
+                    <Option value="psa_correction">PSA Correction</Option>
+                    <Option value="court_order">Court Order</Option>
+                    <Option value="widow_revert">Widow Reverting to Maiden Name</Option>
+                    <Option value="other">Other</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="name_change_reason_details" label="Reason Details">
+                  <Input placeholder="Optional explanation" />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item
+                  name="name_change_supporting_document_path"
+                  rules={[{ required: true, message: "At least one supporting document is required" }]}
+                  noStyle
+                >
+                  <Input type="hidden" />
+                </Form.Item>
+                <Form.Item
+                  label="Supporting Document (Required)"
+                  extra="Upload at least one document (JPG, PNG, PDF). Max 5MB."
+                >
+                  <Upload
+                    beforeUpload={beforeUploadTransferDocument}
+                    customRequest={handleNameChangeDocumentUpload}
+                    fileList={nameChangeDocFileList}
+                    onChange={({ fileList }) => setNameChangeDocFileList(fileList.slice(-1))}
+                    onRemove={() => {
+                      form.setFieldValue("name_change_supporting_document_path", null);
+                      setNameChangeDocFileList([]);
+                      return true;
+                    }}
+                    maxCount={1}
+                    accept=".jpg,.jpeg,.png,.pdf"
+                  >
+                    <Button loading={uploadingNameChangeDoc}>Upload Name Change Document</Button>
+                  </Upload>
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
 
           <Row gutter={16}>
             <Col span={8}>
