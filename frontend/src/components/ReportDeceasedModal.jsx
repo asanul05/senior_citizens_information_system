@@ -43,11 +43,78 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
     const [deathCertFile, setDeathCertFile] = useState([]);
     const [supportingDocFile, setSupportingDocFile] = useState([]);
     const [confirmed, setConfirmed] = useState(false);
+    const [reporterSource, setReporterSource] = useState('family'); // 'family' or 'manual'
+    const [selectedFamilyMemberId, setSelectedFamilyMemberId] = useState(null);
 
     // Watch for conditional fields
     const deathLocationType = Form.useWatch('death_location_type', form);
     const relationship = Form.useWatch('relationship_to_deceased', form);
     const supportingDocType = Form.useWatch('supporting_doc_type', form);
+
+    // Get family members from senior record
+    const familyMembers = senior?.family_members || [];
+
+    // Build full name from family member record
+    const buildFamilyMemberName = (member) => {
+        return [member.first_name, member.middle_name, member.last_name, member.extension]
+            .filter(Boolean)
+            .join(' ');
+    };
+
+    // Map family member relationship to the relationship_to_deceased select options
+    const mapRelationship = (rel) => {
+        if (!rel) return null;
+        const lower = rel.toLowerCase().trim();
+        if (lower === 'child' || lower === 'son' || lower === 'daughter') return 'child';
+        if (lower === 'spouse' || lower === 'husband' || lower === 'wife') return 'spouse';
+        if (['relative', 'sibling', 'brother', 'sister', 'parent', 'mother', 'father',
+             'nephew', 'niece', 'uncle', 'aunt', 'cousin', 'grandchild', 'grandson', 'granddaughter',
+             'in-law', 'son-in-law', 'daughter-in-law'].includes(lower)) return 'relative';
+        return 'other';
+    };
+
+    // Handle family member selection
+    const handleFamilyMemberSelect = (memberId) => {
+        setSelectedFamilyMemberId(memberId);
+        if (memberId === null || memberId === undefined) {
+            // Cleared selection
+            form.setFieldsValue({
+                reporter_full_name: undefined,
+                relationship_to_deceased: undefined,
+                relationship_other: undefined,
+                reporter_contact_number: undefined,
+                reporter_address: undefined,
+            });
+            return;
+        }
+        const member = familyMembers.find((m) => m.id === memberId);
+        if (!member) return;
+
+        const fullName = buildFamilyMemberName(member);
+        const mappedRel = mapRelationship(member.relationship);
+
+        form.setFieldsValue({
+            reporter_full_name: fullName,
+            relationship_to_deceased: mappedRel,
+            relationship_other: mappedRel === 'other' ? member.relationship : undefined,
+            reporter_contact_number: member.mobile_number || member.telephone_number || '',
+            reporter_address: '',
+        });
+    };
+
+    // Handle reporter source toggle
+    const handleReporterSourceChange = (e) => {
+        const value = e.target.value;
+        setReporterSource(value);
+        setSelectedFamilyMemberId(null);
+        form.setFieldsValue({
+            reporter_full_name: undefined,
+            relationship_to_deceased: undefined,
+            relationship_other: undefined,
+            reporter_contact_number: undefined,
+            reporter_address: undefined,
+        });
+    };
 
     const steps = [
         { title: 'Death Details', icon: <MedicineBoxOutlined /> },
@@ -136,6 +203,8 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
         setDeathCertFile([]);
         setSupportingDocFile([]);
         setConfirmed(false);
+        setReporterSource('family');
+        setSelectedFamilyMemberId(null);
         onClose();
     };
 
@@ -308,84 +377,129 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
     );
 
     // ─── Step 2: Informant & Burial ───
-    const renderStep2 = () => (
-        <div>
-            <Divider orientation="left" plain>Informant / Reporter Information</Divider>
-            <Row gutter={16}>
-                <Col span={12}>
-                    <Form.Item
-                        name="reporter_full_name"
-                        label="Full Name of Reporter"
-                        rules={[{ required: true, message: 'Reporter name is required' }]}
-                    >
-                        <Input placeholder="Full name" />
-                    </Form.Item>
-                </Col>
-                <Col span={12}>
-                    <Form.Item
-                        name="relationship_to_deceased"
-                        label="Relationship to Deceased"
-                        rules={[{ required: true, message: 'Relationship is required' }]}
-                    >
-                        <Select placeholder="Select relationship">
-                            <Select.Option value="child">Child</Select.Option>
-                            <Select.Option value="spouse">Spouse</Select.Option>
-                            <Select.Option value="relative">Relative</Select.Option>
-                            <Select.Option value="barangay_official">Barangay Official</Select.Option>
-                            <Select.Option value="other">Other</Select.Option>
-                        </Select>
-                    </Form.Item>
-                </Col>
-            </Row>
-            {relationship === 'other' && (
-                <Form.Item name="relationship_other" label="Specify Relationship">
-                    <Input placeholder="Specify relationship" />
-                </Form.Item>
-            )}
-            <Row gutter={16}>
-                <Col span={12}>
-                    <Form.Item
-                        name="reporter_contact_number"
-                        label="Contact Number"
-                        rules={[{ required: true, message: 'Contact number is required' }]}
-                    >
-                        <Input placeholder="09XX XXX XXXX" />
-                    </Form.Item>
-                </Col>
-                <Col span={12}>
-                    <Form.Item name="reporter_address" label="Address">
-                        <Input placeholder="Reporter's address" />
-                    </Form.Item>
-                </Col>
-            </Row>
+    const renderStep2 = () => {
+        const hasFamilyMembers = familyMembers.length > 0;
+        const isFamilySource = reporterSource === 'family' && hasFamilyMembers;
 
-            <Divider orientation="left" plain>Burial / Funeral Information (Optional)</Divider>
-            <Row gutter={16}>
-                <Col span={12}>
-                    <Form.Item name="burial_date" label="Burial Date">
-                        <DatePicker style={{ width: '100%' }} format="MMMM D, YYYY" />
+        return (
+            <div>
+                <Divider orientation="left" plain>Informant / Reporter Information</Divider>
+
+                {hasFamilyMembers && (
+                    <Form.Item label="Reporter is a">
+                        <Radio.Group value={reporterSource} onChange={handleReporterSourceChange}>
+                            <Radio.Button value="family">Family Member on Record</Radio.Button>
+                            <Radio.Button value="manual">Other Person</Radio.Button>
+                        </Radio.Group>
                     </Form.Item>
-                </Col>
-                <Col span={12}>
-                    <Form.Item name="burial_location" label="Burial Location">
-                        <Input placeholder="e.g., City, Province" />
+                )}
+
+                {isFamilySource && (
+                    <Form.Item
+                        label="Select Family Member"
+                        required
+                        help={!selectedFamilyMemberId ? 'Select a family member to auto-fill reporter details' : undefined}
+                    >
+                        <Select
+                            placeholder="Select a family member"
+                            value={selectedFamilyMemberId}
+                            onChange={handleFamilyMemberSelect}
+                            allowClear
+                            showSearch
+                            optionFilterProp="label"
+                            options={familyMembers.map((m) => ({
+                                value: m.id,
+                                label: `${buildFamilyMemberName(m)}${m.relationship ? ` (${m.relationship})` : ''}`,
+                            }))}
+                        />
                     </Form.Item>
-                </Col>
-            </Row>
-            <Row gutter={16}>
-                <Col span={12}>
-                    <Form.Item name="cemetery_name" label="Cemetery Name">
-                        <Input placeholder="e.g., Holy Gardens" />
+                )}
+
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <Form.Item
+                            name="reporter_full_name"
+                            label="Full Name of Reporter"
+                            rules={[{ required: true, message: 'Reporter name is required' }]}
+                        >
+                            <Input
+                                placeholder="Full name"
+                                disabled={isFamilySource && !!selectedFamilyMemberId}
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                        <Form.Item
+                            name="relationship_to_deceased"
+                            label="Relationship to Deceased"
+                            rules={[{ required: true, message: 'Relationship is required' }]}
+                        >
+                            <Select
+                                placeholder="Select relationship"
+                                disabled={isFamilySource && !!selectedFamilyMemberId}
+                            >
+                                <Select.Option value="child">Child</Select.Option>
+                                <Select.Option value="spouse">Spouse</Select.Option>
+                                <Select.Option value="relative">Relative</Select.Option>
+                                <Select.Option value="barangay_official">Barangay Official</Select.Option>
+                                <Select.Option value="other">Other</Select.Option>
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                </Row>
+                {relationship === 'other' && (
+                    <Form.Item name="relationship_other" label="Specify Relationship">
+                        <Input
+                            placeholder="Specify relationship"
+                            disabled={isFamilySource && !!selectedFamilyMemberId}
+                        />
                     </Form.Item>
-                </Col>
-                <Col span={12}>
-                    <Form.Item name="funeral_service_provider" label="Funeral Service Provider">
-                        <Input placeholder="e.g., St. Peter" />
-                    </Form.Item>
-                </Col>
-            </Row>
-        </div>
-    );
+                )}
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <Form.Item
+                            name="reporter_contact_number"
+                            label="Contact Number"
+                            rules={[{ required: true, message: 'Contact number is required' }]}
+                        >
+                            <Input placeholder="09XX XXX XXXX" />
+                        </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                        <Form.Item name="reporter_address" label="Address">
+                            <Input placeholder="Reporter's address" />
+                        </Form.Item>
+                    </Col>
+                </Row>
+
+                <Divider orientation="left" plain>Burial / Funeral Information (Optional)</Divider>
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <Form.Item name="burial_date" label="Burial Date">
+                            <DatePicker style={{ width: '100%' }} format="MMMM D, YYYY" />
+                        </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                        <Form.Item name="burial_location" label="Burial Location">
+                            <Input placeholder="e.g., City, Province" />
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <Form.Item name="cemetery_name" label="Cemetery Name">
+                            <Input placeholder="e.g., Holy Gardens" />
+                        </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                        <Form.Item name="funeral_service_provider" label="Funeral Service Provider">
+                            <Input placeholder="e.g., St. Peter" />
+                        </Form.Item>
+                    </Col>
+                </Row>
+            </div>
+        );
+    };
 
     // ─── Step 3: Review & Confirm ───
     const renderStep3 = () => {
