@@ -21,6 +21,15 @@ import { seniorsApi, registrationApi } from "../services/api";
 const { Option } = Select;
 const { TextArea } = Input;
 
+function RequiredLabel({ children }) {
+  return (
+    <span>
+      <span style={{ color: "#ff4d4f", marginRight: 4 }}>*</span>
+      {children}
+    </span>
+  );
+}
+
 function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -294,7 +303,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
               <Col span={12}>
                 <Form.Item
                   name="name_change_reason_type"
-                  label="Name Change Type"
+                  label={<RequiredLabel>Name Change Type</RequiredLabel>}
                   rules={[{ required: true, message: "Name change type is required" }]}
                 >
                   <Select placeholder="Select reason type">
@@ -307,8 +316,12 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="name_change_reason_details" label="Reason Details">
-                  <Input placeholder="Optional explanation" />
+                <Form.Item
+                  name="name_change_reason_details"
+                  label={<RequiredLabel>Reason Details</RequiredLabel>}
+                  rules={[{ required: true, message: "Reason details are required" }]}
+                >
+                  <Input placeholder="Explain the reason for this name change" />
                 </Form.Item>
               </Col>
               <Col span={24}>
@@ -320,8 +333,9 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
                   <Input type="hidden" />
                 </Form.Item>
                 <Form.Item
-                  label="Supporting Document (Required)"
+                  label={<RequiredLabel>Supporting Document</RequiredLabel>}
                   extra="Upload at least one document (JPG, PNG, PDF). Max 5MB."
+                  required
                 >
                   <Upload
                     beforeUpload={beforeUploadTransferDocument}
@@ -441,7 +455,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
               <Col span={24}>
                 <Form.Item
                   name="transfer_reason"
-                  label="Transfer Reason"
+                  label={<RequiredLabel>Transfer Reason</RequiredLabel>}
                   rules={[{ required: true, message: "Transfer reason is required" }]}
                 >
                   <TextArea
@@ -454,7 +468,7 @@ function SeniorEditModal({ visible, seniorId, onClose, onSuccess }) {
                 <Form.Item name="transfer_supporting_document_path" noStyle>
                   <Input type="hidden" />
                 </Form.Item>
-                <Form.Item label="Supporting Document (Optional)">
+                <Form.Item label="Supporting Document">
                 <Upload
                   beforeUpload={beforeUploadTransferDocument}
                   customRequest={handleTransferDocumentUpload}

@@ -134,6 +134,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
     };
 
     const getNameChangeStatusTag = (status) => {
+        if (status === 'pending') return null;
         if (status === 'approved') return <Tag color="success">Approved</Tag>;
         if (status === 'rejected') return <Tag color="error">Rejected</Tag>;
         return <Tag color="processing">Pending</Tag>;
@@ -802,7 +803,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
         ].sort((a, b) => dayjs(b.occurred_at).valueOf() - dayjs(a.occurred_at).valueOf());
 
         return (
-        <Card size="small" title="Barangay Transfer Timeline" style={{ marginTop: 16 }}>
+        <Card size="small" title="Record Update Timeline" style={{ marginTop: 16 }}>
             {transferLoading || nameChangeLoading ? (
                 <Spin />
             ) : combinedEntries.length > 0 ? (
@@ -816,25 +817,31 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                             return {
                                 color: record.status === 'approved' ? 'green' : record.status === 'rejected' ? 'red' : 'orange',
                                 children: (
-                                    <div>
-                                        <Space wrap style={{ marginBottom: 4 }}>
-                                            <Tag color="purple">Name Change</Tag>
-                                            <Tag color="default">{oldName || '-'}</Tag>
-                                            <SwapOutlined style={{ color: '#722ed1' }} />
-                                            <Tag color="geekblue">{newName || '-'}</Tag>
-                                            {getNameChangeStatusTag(record.status)}
-                                        </Space>
-                                        <div>
-                                            <Text strong>Type:</Text> <Text>{record.reason_type || '-'}</Text>
+                                    <div style={{ paddingBottom: 8 }}>
+                                        <div style={{ marginBottom: 4 }}>
+                                            <Text strong>Name Change</Text>
+                                            {record.status !== 'pending' && (
+                                                <span style={{ marginLeft: 8 }}>{getNameChangeStatusTag(record.status)}</span>
+                                            )}
+                                        </div>
+                                        <div style={{ marginBottom: 4 }}>
+                                            <Text>{oldName || '-'}</Text>
+                                            <SwapOutlined style={{ color: '#8c8c8c', margin: '0 8px' }} />
+                                            <Text>{newName || '-'}</Text>
+                                        </div>
+                                        <div style={{ marginBottom: 2 }}>
+                                            <Text type="secondary">Type:</Text>{' '}
+                                            <Text>{record.reason_type || '-'}</Text>
                                         </div>
                                         {record.reason_details && (
-                                            <div>
-                                                <Text strong>Details:</Text> <Text>{record.reason_details}</Text>
+                                            <div style={{ marginBottom: 2 }}>
+                                                <Text type="secondary">Details:</Text>{' '}
+                                                <Text>{record.reason_details}</Text>
                                             </div>
                                         )}
                                         {record.supporting_document_path && (
-                                            <div>
-                                                <Text strong>Supporting Document:</Text>{' '}
+                                            <div style={{ marginBottom: 2 }}>
+                                                <Text type="secondary">Document:</Text>{' '}
                                                 {record.supporting_document_url ? (
                                                     <a href={record.supporting_document_url} target="_blank" rel="noopener noreferrer">
                                                         View Document
@@ -844,12 +851,10 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                                                 )}
                                             </div>
                                         )}
-                                        <div>
-                                            <Text type="secondary">
-                                                {dayjs(record.changed_at || record.created_at).format('MMM D, YYYY h:mm A')}
-                                                {record.changed_by?.name ? ` • ${record.changed_by.name}` : ''}
-                                            </Text>
-                                        </div>
+                                        <Text type="secondary">
+                                            {dayjs(record.changed_at || record.created_at).format('MMM D, YYYY h:mm A')}
+                                            {record.changed_by?.name ? ` • ${record.changed_by.name}` : ''}
+                                        </Text>
                                     </div>
                                 ),
                             };
@@ -860,19 +865,22 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                         return {
                             color: 'blue',
                             children: (
-                                <div>
-                                    <Space wrap style={{ marginBottom: 4 }}>
-                                        <Tag color="cyan">Transfer</Tag>
-                                        <Tag color="default">{record.from_barangay_name || `Barangay ${record.from_barangay_id}`}</Tag>
-                                        <SwapOutlined style={{ color: '#1890ff' }} />
-                                        <Tag color="blue">{record.to_barangay_name || `Barangay ${record.to_barangay_id}`}</Tag>
-                                    </Space>
-                                    <div>
-                                        <Text strong>Reason:</Text> <Text>{record.transfer_reason || '-'}</Text>
+                                <div style={{ paddingBottom: 8 }}>
+                                    <div style={{ marginBottom: 4 }}>
+                                        <Text strong>Transfer</Text>
+                                    </div>
+                                    <div style={{ marginBottom: 4 }}>
+                                        <Text>{record.from_barangay_name || `Barangay ${record.from_barangay_id}`}</Text>
+                                        <SwapOutlined style={{ color: '#8c8c8c', margin: '0 8px' }} />
+                                        <Text>{record.to_barangay_name || `Barangay ${record.to_barangay_id}`}</Text>
+                                    </div>
+                                    <div style={{ marginBottom: 2 }}>
+                                        <Text type="secondary">Reason:</Text>{' '}
+                                        <Text>{record.transfer_reason || '-'}</Text>
                                     </div>
                                     {record.supporting_document_path && (
-                                        <div>
-                                            <Text strong>Supporting Document:</Text>{' '}
+                                        <div style={{ marginBottom: 2 }}>
+                                            <Text type="secondary">Document:</Text>{' '}
                                             {record.supporting_document_url ? (
                                                 <a href={record.supporting_document_url} target="_blank" rel="noopener noreferrer">
                                                     View Document
@@ -882,12 +890,10 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                                             )}
                                         </div>
                                     )}
-                                    <div>
-                                        <Text type="secondary">
-                                            {dayjs(record.transferred_at || record.created_at).format('MMM D, YYYY h:mm A')}
-                                            {record.transferred_by?.name ? ` • ${record.transferred_by.name}` : ''}
-                                        </Text>
-                                    </div>
+                                    <Text type="secondary">
+                                        {dayjs(record.transferred_at || record.created_at).format('MMM D, YYYY h:mm A')}
+                                        {record.transferred_by?.name ? ` • ${record.transferred_by.name}` : ''}
+                                    </Text>
                                 </div>
                             ),
                         };
@@ -1093,7 +1099,7 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                             <TabPane
                                 tab={
                                     <Badge count={(transferHistory.length || 0) + (nameChangeHistory.length || 0)} size="small" offset={[10, 0]}>
-                                        <span><SwapOutlined /> Transfer History</span>
+                                        <span><SwapOutlined /> Record Updates</span>
                                     </Badge>
                                 }
                                 key="transfer-history"
