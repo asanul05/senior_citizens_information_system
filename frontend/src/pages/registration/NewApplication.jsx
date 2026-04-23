@@ -1545,54 +1545,74 @@ const NewApplication = () => {
     // Step 3: Association (Target Sectors)
     const renderAssociation = () => (
         <div>
-            <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
+            <Title level={4} style={{ color: '#1890ff', marginBottom: 8 }}>
                 Target Sector (Pangunahing Sektor)
             </Title>
             <Alert
                 message="Select ALL categories that apply to this senior citizen. Multiple selections are allowed."
                 type="info"
                 showIcon
-                style={{ marginBottom: 24 }}
+                style={{ marginBottom: 16 }}
             />
 
-            <Row gutter={24}>
+            <Row gutter={16}>
                 <Col xs={24} md={12}>
-                    <Title level={5}>Target Sectors</Title>
-                    <Form.Item name="target_sectors">
+                    <Text strong style={{ display: 'block', marginBottom: 8 }}>Target Sectors</Text>
+                    <Form.Item name="target_sectors" style={{ marginBottom: 0 }}>
                         <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {targetSectors.map((sector) => (
-                                    <Card key={sector.value} size="small" hoverable style={{ cursor: 'pointer' }}>
+                            <div style={{ border: '1px solid #f0f0f0', borderRadius: 6, overflow: 'hidden' }}>
+                                {targetSectors.map((sector, idx) => (
+                                    <div
+                                        key={sector.value}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderBottom: idx < targetSectors.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s',
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
                                         <Checkbox value={sector.value}>
                                             <strong>{sector.label}</strong>
                                             {sector.description && (
-                                                <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                                                    {sector.description}
-                                                </div>
+                                                <span style={{ fontSize: 12, color: '#888', marginLeft: 6 }}>
+                                                    — {sector.description}
+                                                </span>
                                             )}
                                         </Checkbox>
-                                    </Card>
+                                    </div>
                                 ))}
                             </div>
                         </Checkbox.Group>
                     </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                    <Title level={5}>Special Sub-Categories</Title>
-                    <Form.Item name="sub_categories">
+                    <Text strong style={{ display: 'block', marginBottom: 8 }}>Special Sub-Categories</Text>
+                    <Form.Item name="sub_categories" style={{ marginBottom: 0 }}>
                         <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {subCategories.map((cat) => (
-                                    <Card key={cat.value} size="small" hoverable style={{ cursor: 'pointer' }}>
+                            <div style={{ border: '1px solid #f0f0f0', borderRadius: 6, overflow: 'hidden' }}>
+                                {subCategories.map((cat, idx) => (
+                                    <div
+                                        key={cat.value}
+                                        style={{
+                                            padding: '8px 12px',
+                                            borderBottom: idx < subCategories.length - 1 ? '1px solid #f0f0f0' : 'none',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.2s',
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
                                         <Checkbox value={cat.value}>
                                             <strong>{cat.label}</strong>
                                             {cat.description && (
-                                                <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                                                    {cat.description}
-                                                </div>
+                                                <span style={{ fontSize: 12, color: '#888', marginLeft: 6 }}>
+                                                    — {cat.description}
+                                                </span>
                                             )}
                                         </Checkbox>
-                                    </Card>
+                                    </div>
                                 ))}
                             </div>
                         </Checkbox.Group>
