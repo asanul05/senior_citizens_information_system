@@ -175,6 +175,7 @@ const Benefits = () => {
     const [loading, setLoading] = useState(false);
     const [claims, setClaims] = useState([]);
     const [eligible, setEligible] = useState([]);
+    const [eligibleSummary, setEligibleSummary] = useState({});
     const [benefitTypes, setBenefitTypes] = useState([]);
     const [statistics, setStatistics] = useState({});
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
@@ -206,6 +207,7 @@ const Benefits = () => {
     const [eligibleMaxAge, setEligibleMaxAge] = useState(null);
     const [eligibleMinAmount, setEligibleMinAmount] = useState(null);
     const [eligibleMaxAmount, setEligibleMaxAmount] = useState(null);
+    const [eligibleMode, setEligibleMode] = useState('unclaimed');
 
     // Debounce timer for search
     const searchTimer = useRef(null);
@@ -226,6 +228,29 @@ const Benefits = () => {
         return params;
     }, [statusFilter, typeFilter, barangayFilter, districtFilter, genderFilter, dateRange, searchText]);
 
+    const buildEligibleParams = useCallback(() => {
+        const params = { mode: eligibleMode };
+        if (eligibleSearch) params.search = eligibleSearch;
+        if (eligibleTypeFilter.length > 0) params.benefit_type_id = eligibleTypeFilter.join(',');
+        if (eligibleBarangayFilter.length > 0) params.barangay_ids = eligibleBarangayFilter.join(',');
+        if (eligibleGenderFilter.length > 0) params.gender_id = eligibleGenderFilter.join(',');
+        if (eligibleMinAge) params.min_age = eligibleMinAge;
+        if (eligibleMaxAge) params.max_age = eligibleMaxAge;
+        if (eligibleMinAmount) params.min_amount = eligibleMinAmount;
+        if (eligibleMaxAmount) params.max_amount = eligibleMaxAmount;
+        return params;
+    }, [
+        eligibleMode,
+        eligibleSearch,
+        eligibleTypeFilter,
+        eligibleBarangayFilter,
+        eligibleGenderFilter,
+        eligibleMinAge,
+        eligibleMaxAge,
+        eligibleMinAmount,
+        eligibleMaxAmount,
+    ]);
+
     // Initial load
     useEffect(() => {
         fetchBenefitTypes();
@@ -238,8 +263,9 @@ const Benefits = () => {
             fetchClaims();
         } else if (activeTab === 'eligible') {
             fetchEligible();
+            fetchEligibleSummary();
         }
-    }, [activeTab, statusFilter, typeFilter, barangayFilter, districtFilter, genderFilter, dateRange, searchText, pagination.current, pagination.pageSize, eligiblePagination.current, eligibleSearch, eligibleTypeFilter, eligibleBarangayFilter, eligibleGenderFilter, eligibleMinAge, eligibleMaxAge, eligibleMinAmount, eligibleMaxAmount]);
+    }, [activeTab, statusFilter, typeFilter, barangayFilter, districtFilter, genderFilter, dateRange, searchText, pagination.current, pagination.pageSize, eligiblePagination.current, eligibleSearch, eligibleTypeFilter, eligibleBarangayFilter, eligibleGenderFilter, eligibleMinAge, eligibleMaxAge, eligibleMinAmount, eligibleMaxAmount, eligibleMode]);
 
     // Fetch statistics whenever filters change
     useEffect(() => {
@@ -301,17 +327,10 @@ const Benefits = () => {
         setLoading(true);
         try {
             const params = {
+                ...buildEligibleParams(),
                 page: eligiblePagination.current,
                 per_page: eligiblePagination.pageSize,
             };
-            if (eligibleSearch) params.search = eligibleSearch;
-            if (eligibleTypeFilter.length > 0) params.benefit_type_id = eligibleTypeFilter.join(',');
-            if (eligibleBarangayFilter.length > 0) params.barangay_ids = eligibleBarangayFilter.join(',');
-            if (eligibleGenderFilter.length > 0) params.gender_id = eligibleGenderFilter.join(',');
-            if (eligibleMinAge) params.min_age = eligibleMinAge;
-            if (eligibleMaxAge) params.max_age = eligibleMaxAge;
-            if (eligibleMinAmount) params.min_amount = eligibleMinAmount;
-            if (eligibleMaxAmount) params.max_amount = eligibleMaxAmount;
 
             const response = await benefitsApi.getEligible(params);
             setEligible(response.data.data || []);
@@ -324,6 +343,15 @@ const Benefits = () => {
             message.error('Failed to load eligible seniors');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchEligibleSummary = async () => {
+        try {
+            const response = await benefitsApi.getEligibleSummary(buildEligibleParams());
+            setEligibleSummary(response.data.data || {});
+        } catch (error) {
+            console.error('Failed to fetch eligible summary:', error);
         }
     };
 
@@ -355,15 +383,7 @@ const Benefits = () => {
     const handleExportEligible = async () => {
         try {
             message.loading({ content: 'Exporting eligible seniors...', key: 'exportEligible' });
-            const params = {};
-            if (eligibleSearch) params.search = eligibleSearch;
-            if (eligibleTypeFilter.length > 0) params.benefit_type_id = eligibleTypeFilter.join(',');
-            if (eligibleBarangayFilter.length > 0) params.barangay_ids = eligibleBarangayFilter.join(',');
-            if (eligibleGenderFilter.length > 0) params.gender_id = eligibleGenderFilter.join(',');
-            if (eligibleMinAge) params.min_age = eligibleMinAge;
-            if (eligibleMaxAge) params.max_age = eligibleMaxAge;
-            if (eligibleMinAmount) params.min_amount = eligibleMinAmount;
-            if (eligibleMaxAmount) params.max_amount = eligibleMaxAmount;
+            const params = buildEligibleParams();
 
             const response = await benefitsApi.exportEligible(params);
 
@@ -822,16 +842,88 @@ const Benefits = () => {
                             View History
                         </Button>
                     </Tooltip>
-                    <Button
-                        type="primary"
-                        size="small"
-                        icon={<PlusOutlined />}
-                        onClick={() => handleCreateClaim(record.senior_id, record.benefit_type_id)}
-                    >
-                        Claim
-                    </Button>
+                    {!record.is_claimed && (
+                        <Button
+                            type="primary"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => handleCreateClaim(record.senior_id, record.benefit_type_id)}
+                        >
+                            Claim
+                        </Button>
+                    )}
                 </Space>
             ),
+        },
+    ];
+
+    if (eligibleMode === 'all') {
+        eligibleColumns.splice(6, 0,
+            {
+                title: 'Claim Status',
+                dataIndex: 'claim_status',
+                key: 'claim_status',
+                render: (status) => status ? getStatusTag(status) : <Text type="secondary">Unclaimed</Text>,
+            },
+            {
+                title: 'Released At',
+                dataIndex: 'released_at',
+                key: 'released_at',
+                render: (value) => value ? dayjs(value).format('MMM D, YYYY h:mm A') : 'â€”',
+            }
+        );
+    }
+
+    const eligibleSummaryCards = [
+        {
+            title: 'Eligible Opportunities',
+            value: eligibleSummary.eligible_opportunities || 0,
+            helper: 'Total matched senior-benefit opportunities',
+        },
+        {
+            title: 'Claimed',
+            value: eligibleSummary.claimed || 0,
+            helper: `${eligibleSummary.claimed || 0} of ${eligibleSummary.eligible_opportunities || 0} eligible`,
+        },
+        {
+            title: 'Unclaimed',
+            value: eligibleSummary.unclaimed || 0,
+            helper: `${eligibleSummary.unclaimed_rate || 0}% of eligible`,
+        },
+        {
+            title: 'Released',
+            value: eligibleSummary.released || 0,
+            helper: `${eligibleSummary.released_rate || 0}% of eligible`,
+        },
+        {
+            title: 'Claimed Rate',
+            value: `${eligibleSummary.claimed_rate || 0}%`,
+            helper: 'Claimed out of eligible',
+        },
+        {
+            title: 'Release Conversion',
+            value: `${eligibleSummary.release_conversion || 0}%`,
+            helper: `${eligibleSummary.released || 0} of ${eligibleSummary.claimed || 0} claimed`,
+        },
+        {
+            title: 'Pending',
+            value: eligibleSummary.pending || 0,
+            helper: 'Pending claims among eligible opportunities',
+        },
+        {
+            title: 'Approved',
+            value: eligibleSummary.approved || 0,
+            helper: 'Approved but not yet released',
+        },
+        {
+            title: 'Rejected',
+            value: eligibleSummary.rejected || 0,
+            helper: 'Rejected opportunities',
+        },
+        {
+            title: 'Released Amount',
+            value: `₱${Number(eligibleSummary.total_released_amount || 0).toLocaleString()}`,
+            helper: 'Released amount among eligible opportunities',
         },
     ];
 
@@ -1084,6 +1176,44 @@ const Benefits = () => {
                         key="eligible"
                     >
                         <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
+                            {eligibleSummaryCards.map((card) => (
+                                <Col xs={24} sm={12} md={8} lg={6} xl={4} key={card.title}>
+                                    <Card size="small">
+                                        <Statistic title={card.title} value={card.value} valueStyle={{ fontSize: 22 }} />
+                                        <Text type="secondary" style={{ fontSize: 12 }}>{card.helper}</Text>
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+
+                        <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
+                            <Col xs={24} sm={24} md={8}>
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <Button
+                                        type={eligibleMode === 'unclaimed' ? 'primary' : 'default'}
+                                        onClick={() => {
+                                            setEligibleMode('unclaimed');
+                                            setEligiblePagination(prev => ({ ...prev, current: 1 }));
+                                        }}
+                                        style={{ width: '50%' }}
+                                    >
+                                        Unclaimed Only
+                                    </Button>
+                                    <Button
+                                        type={eligibleMode === 'all' ? 'primary' : 'default'}
+                                        onClick={() => {
+                                            setEligibleMode('all');
+                                            setEligiblePagination(prev => ({ ...prev, current: 1 }));
+                                        }}
+                                        style={{ width: '50%' }}
+                                    >
+                                        All Opportunities
+                                    </Button>
+                                </Space.Compact>
+                            </Col>
+                        </Row>
+
+                        <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
                             <Col xs={24} sm={12} md={6}>
                                 <Input
                                     placeholder="Search by name or OSCA ID"
@@ -1217,7 +1347,9 @@ const Benefits = () => {
                         )}
 
                         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-                            These seniors are eligible for benefits they haven't claimed yet.
+                            {eligibleMode === 'all'
+                                ? 'This view shows all eligible senior-benefit opportunities, including already claimed or released records.'
+                                : 'These seniors are eligible for benefits they have not yet claimed.'}
                         </Text>
 
                         <Table
@@ -1228,7 +1360,9 @@ const Benefits = () => {
                             pagination={{
                                 ...eligiblePagination,
                                 showSizeChanger: true,
-                                showTotal: (total) => `Total ${total} eligible`,
+                                showTotal: (total) => eligibleMode === 'all'
+                                    ? `Total ${total} eligible opportunities`
+                                    : `Total ${total} eligible and unclaimed`,
                                 onChange: (page, pageSize) =>
                                     setEligiblePagination({ ...eligiblePagination, current: page, pageSize }),
                             }}
