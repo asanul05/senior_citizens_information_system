@@ -40,6 +40,7 @@ import {
     DeleteOutlined,
     EyeOutlined,
     SearchOutlined,
+    HeartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { registrationApi, preRegistrationApi } from '../../services/api';
@@ -549,6 +550,10 @@ const NewApplication = () => {
             icon: <UserOutlined />,
         },
         {
+            title: 'Health Profile',
+            icon: <HeartOutlined />,
+        },
+        {
             title: 'Family Composition',
             icon: <UsergroupAddOutlined />,
         },
@@ -587,7 +592,7 @@ const NewApplication = () => {
             }
 
             // Validate family member required fields
-            if (currentStep === 1 && familyMembers.length > 0) {
+            if (currentStep === 2 && familyMembers.length > 0) {
                 const invalidMembers = familyMembers.filter(
                     m => !m.first_name?.trim() || !m.last_name?.trim() || !m.relationship?.trim() || m.relationship === '__other__'
                 );
@@ -663,8 +668,8 @@ const NewApplication = () => {
 
                 if (missingDocs.length > 0) {
                     message.error(`Please upload required documents: ${missingDocs.join(', ')}`);
-                    if (currentStep !== 3) {
-                        setCurrentStep(3);
+                    if (currentStep !== 4) {
+                        setCurrentStep(4);
                     }
                     return;
                 }
@@ -672,8 +677,8 @@ const NewApplication = () => {
                 // Check thumbmark confirmation
                 if (!thumbmarkConfirmed) {
                     message.error('Please confirm the thumbmark verification checkbox.');
-                    if (currentStep !== 3) {
-                        setCurrentStep(3);
+                    if (currentStep !== 4) {
+                        setCurrentStep(4);
                     }
                     return;
                 }
@@ -730,7 +735,7 @@ const NewApplication = () => {
             }
 
             setSubmitResult(response.data.data);
-            setCurrentStep(4); // Show success
+            setCurrentStep(5); // Show success
 
             // If this was a pre-registration conversion, mark it as completed
             if (preRegistrationId && response.data.data?.application_id) {
@@ -1031,166 +1036,6 @@ const NewApplication = () => {
                 </Col> */}
             </Row>
 
-            <Divider />
-            <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
-                Health Profile
-            </Title>
-
-            {/* 35.a Medical Concern */}
-            <Row gutter={16}>
-                <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={['health_profile', 'blood_type']} label="Blood Type">
-                        <Select placeholder="Select Blood Type" size="large" allowClear>
-                            {['A', 'A+', 'A-', 'B', 'B+', 'B-', 'AB', 'AB+', 'AB-', 'O', 'O+', 'O-', 'Unknown'].map(bt => (
-                                <Option key={bt} value={bt}>{bt}</Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={['health_profile', 'physical_disability']} label="Physical Disability">
-                        <Input placeholder="Type of physical disability" size="large" />
-                    </Form.Item>
-                </Col>
-            </Row>
-
-            <Row gutter={24}>
-                <Col xs={24} md={12}>
-                    <Title level={5}>Health Problems / Ailments</Title>
-                    <Form.Item name={['health_profile', 'health_problems']}>
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {[
-                                    'Hypertension',
-                                    'Arthritis/Gout',
-                                    'Coronary Heart Disease',
-                                    'Diabetes',
-                                    'Chronic Kidney Disease',
-                                    "Alzheimer's Disease",
-                                    'Chronic Obstructive Pulmonary Disease',
-                                ].map(item => (
-                                    <Checkbox key={item} value={item}>{item}</Checkbox>
-                                ))}
-                            </div>
-                        </Checkbox.Group>
-                    </Form.Item>
-                    <Form.Item name={['health_profile', 'health_problems_other']} label="Others, Specify">
-                        <Input placeholder="Other health problems" size="large" />
-                    </Form.Item>
-                </Col>
-
-                <Col xs={24} md={12}>
-                    {/* 35.b Dental Concern */}
-                    <Title level={5}>Dental Concern</Title>
-                    <Form.Item name={['health_profile', 'dental_concerns']}>
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <Checkbox value="Needs Dental Care">Needs Dental Care</Checkbox>
-                            </div>
-                        </Checkbox.Group>
-                    </Form.Item>
-                    <Form.Item name={['health_profile', 'dental_concerns_other']} label="Others, Specify">
-                        <Input placeholder="Other dental concerns" size="large" />
-                    </Form.Item>
-
-                    {/* 35.c Visual Concern */}
-                    <Title level={5} style={{ marginTop: 16 }}>Visual Concern</Title>
-                    <Form.Item name={['health_profile', 'visual_concerns']}>
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <Checkbox value="Eye Impairment">Eye Impairment</Checkbox>
-                                <Checkbox value="Needs Eye Care">Needs Eye Care</Checkbox>
-                            </div>
-                        </Checkbox.Group>
-                    </Form.Item>
-                    <Form.Item name={['health_profile', 'visual_concerns_other']} label="Others, Specify">
-                        <Input placeholder="Other visual concerns" size="large" />
-                    </Form.Item>
-
-                    {/* 35.d Aural/Hearing Condition */}
-                    <Title level={5} style={{ marginTop: 16 }}>Aural/Hearing Condition</Title>
-                    <Form.Item name={['health_profile', 'hearing_concerns']}>
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <Checkbox value="Aural Impairment">Aural Impairment</Checkbox>
-                            </div>
-                        </Checkbox.Group>
-                    </Form.Item>
-                    <Form.Item name={['health_profile', 'hearing_concerns_other']} label="Others, Specify">
-                        <Input placeholder="Other hearing concerns" size="large" />
-                    </Form.Item>
-                </Col>
-            </Row>
-
-            <Row gutter={24}>
-                <Col xs={24} md={12}>
-                    {/* 35.e Social / Emotional */}
-                    <Title level={5}>Social / Emotional</Title>
-                    <Form.Item name={['health_profile', 'social_emotional']}>
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <Checkbox value="Feeling Neglect/Rejection">Feeling Neglect / Rejection</Checkbox>
-                                <Checkbox value="Feeling Helplessness/Worthlessness">Feeling Helplessness / Worthlessness</Checkbox>
-                                <Checkbox value="Feeling Loneliness/Isolate">Feeling Loneliness / Isolate</Checkbox>
-                                <Checkbox value="Lack Leisure/Recreational Activities">Lack Leisure / Recreational Activities</Checkbox>
-                                <Checkbox value="Lack SC Friendly Environment">Lack SC Friendly Environment</Checkbox>
-                            </div>
-                        </Checkbox.Group>
-                    </Form.Item>
-                    <Form.Item name={['health_profile', 'social_emotional_other']} label="Others, Specify">
-                        <Input placeholder="Other social/emotional concerns" size="large" />
-                    </Form.Item>
-                </Col>
-
-                <Col xs={24} md={12}>
-                    {/* 35.f Area of Difficulty */}
-                    <Title level={5}>Area of Difficulty</Title>
-                    <Form.Item name={['health_profile', 'area_of_difficulty']}>
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <Checkbox value="High Cost of Medicines">High Cost of Medicines</Checkbox>
-                                <Checkbox value="Lack of Medicines">Lack of Medicines</Checkbox>
-                                <Checkbox value="Lack of Medical Attention">Lack of Medical Attention</Checkbox>
-                            </div>
-                        </Checkbox.Group>
-                    </Form.Item>
-                </Col>
-            </Row>
-
-            {/* 36. Maintenance Medicines */}
-            <Row gutter={16}>
-                <Col xs={24}>
-                    <Form.Item name={['health_profile', 'maintenance_medicines']} label="List of Medicines for Maintenance">
-                        <TextArea
-                            placeholder="Type all your maintenance medicines. Example: Amlodipine 10mg, Losartan 50mg, etc."
-                            rows={3}
-                            size="large"
-                        />
-                    </Form.Item>
-                </Col>
-            </Row>
-
-            {/* 37. Scheduled Checkup */}
-            <Row gutter={16}>
-                <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={['health_profile', 'has_scheduled_checkup']} label="Do you have a scheduled medical/physical check-up?">
-                        <Select placeholder="Select" size="large" allowClear>
-                            <Option value={true}>Yes</Option>
-                            <Option value={false}>No</Option>
-                        </Select>
-                    </Form.Item>
-                </Col>
-                <Col xs={24} sm={12} md={6}>
-                    <Form.Item name={['health_profile', 'checkup_frequency']} label="If Yes, when is it done?">
-                        <Select placeholder="Select frequency" size="large" allowClear>
-                            <Option value="monthly">Monthly</Option>
-                            <Option value="quarterly">Quarterly</Option>
-                            <Option value="semi_annual">Semi-Annual</Option>
-                            <Option value="annual">Annual</Option>
-                        </Select>
-                    </Form.Item>
-                </Col>
-            </Row>
 
             {duplicateCheck?.has_duplicate && (
                 <Alert
@@ -1217,7 +1062,211 @@ const NewApplication = () => {
         </div>
     );
 
-    // Step 2: Family Composition
+    // Step 2: Health Profile 
+    const renderHealthProfile = () => (
+        <div>
+            <Title level={4} style={{ color: '#1890ff', marginBottom: 8 }}>
+                <HeartOutlined style={{ marginRight: 8 }} />Health Profile
+            </Title>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 20 }}>
+                Please provide the senior citizen's health information. All fields are optional.
+            </Text>
+
+            {/* Medical Baseline */}
+            <Card
+                size="small"
+                title={<Text strong>Medical Baseline</Text>}
+                style={{ marginBottom: 16 }}
+            >
+                <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item name={['health_profile', 'blood_type']} label="Blood Type">
+                            <Select placeholder="Select Blood Type" size="large" allowClear>
+                                {['A', 'A+', 'A-', 'B', 'B+', 'B-', 'AB', 'AB+', 'AB-', 'O', 'O+', 'O-', 'Unknown'].map(bt => (
+                                    <Option key={bt} value={bt}>{bt}</Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item name={['health_profile', 'physical_disability']} label="Physical Disability">
+                            <Input placeholder="Type of physical disability" size="large" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item name={['health_profile', 'has_scheduled_checkup']} label="Scheduled Medical Check-up?">
+                            <Select placeholder="Select" size="large" allowClear>
+                                <Option value={true}>Yes</Option>
+                                <Option value={false}>No</Option>
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item name={['health_profile', 'checkup_frequency']} label="Check-up Frequency">
+                            <Select placeholder="Select frequency" size="large" allowClear>
+                                <Option value="monthly">Monthly</Option>
+                                <Option value="quarterly">Quarterly</Option>
+                                <Option value="semi_annual">Semi-Annual</Option>
+                                <Option value="annual">Annual</Option>
+                            </Select>
+                        </Form.Item>
+                    </Col>
+                </Row>
+            </Card>
+
+            {/* Health Conditions */}
+            <Card
+                size="small"
+                title={<Text strong>Health Conditions &amp; Concerns</Text>}
+                style={{ marginBottom: 16 }}
+            >
+                <Row gutter={24}>
+                    <Col xs={24} md={12}>
+                        <div style={{ padding: '12px 16px', background: '#fafafa', borderRadius: 8, marginBottom: 12 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#262626' }}>Health Problems / Ailments</Text>
+                            <Form.Item name={['health_profile', 'health_problems']} style={{ marginBottom: 8 }}>
+                                <Checkbox.Group style={{ width: '100%' }}>
+                                    <Row>
+                                        {[
+                                            'Hypertension',
+                                            'Arthritis/Gout',
+                                            'Coronary Heart Disease',
+                                            'Diabetes',
+                                            'Chronic Kidney Disease',
+                                            "Alzheimer's Disease",
+                                            'Chronic Obstructive Pulmonary Disease',
+                                        ].map(item => (
+                                            <Col xs={24} key={item}>
+                                                <Checkbox value={item} style={{ marginBottom: 4 }}>{item}</Checkbox>
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                </Checkbox.Group>
+                            </Form.Item>
+                            <Form.Item name={['health_profile', 'health_problems_other']} label="Others, Specify" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Other health problems" />
+                            </Form.Item>
+                        </div>
+                    </Col>
+
+                    <Col xs={24} md={12}>
+                        <div style={{ padding: '12px 16px', background: '#fafafa', borderRadius: 8, marginBottom: 12 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#262626' }}>Dental Concern</Text>
+                            <Form.Item name={['health_profile', 'dental_concerns']} style={{ marginBottom: 8 }}>
+                                <Checkbox.Group style={{ width: '100%' }}>
+                                    <Checkbox value="Needs Dental Care">Needs Dental Care</Checkbox>
+                                </Checkbox.Group>
+                            </Form.Item>
+                            <Form.Item name={['health_profile', 'dental_concerns_other']} label="Others, Specify" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Other dental concerns" />
+                            </Form.Item>
+                        </div>
+
+                        <div style={{ padding: '12px 16px', background: '#fafafa', borderRadius: 8, marginBottom: 12 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#262626' }}>Visual Concern</Text>
+                            <Form.Item name={['health_profile', 'visual_concerns']} style={{ marginBottom: 8 }}>
+                                <Checkbox.Group style={{ width: '100%' }}>
+                                    <Row>
+                                        <Col xs={24}><Checkbox value="Eye Impairment" style={{ marginBottom: 4 }}>Eye Impairment</Checkbox></Col>
+                                        <Col xs={24}><Checkbox value="Needs Eye Care" style={{ marginBottom: 4 }}>Needs Eye Care</Checkbox></Col>
+                                    </Row>
+                                </Checkbox.Group>
+                            </Form.Item>
+                            <Form.Item name={['health_profile', 'visual_concerns_other']} label="Others, Specify" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Other visual concerns" />
+                            </Form.Item>
+                        </div>
+
+                        <div style={{ padding: '12px 16px', background: '#fafafa', borderRadius: 8 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#262626' }}>Aural / Hearing Condition</Text>
+                            <Form.Item name={['health_profile', 'hearing_concerns']} style={{ marginBottom: 8 }}>
+                                <Checkbox.Group style={{ width: '100%' }}>
+                                    <Checkbox value="Aural Impairment">Aural Impairment</Checkbox>
+                                </Checkbox.Group>
+                            </Form.Item>
+                            <Form.Item name={['health_profile', 'hearing_concerns_other']} label="Others, Specify" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Other hearing concerns" />
+                            </Form.Item>
+                        </div>
+                    </Col>
+                </Row>
+            </Card>
+
+            {/* Social / Emotional & Area of Difficulty */}
+            <Card
+                size="small"
+                title={<Text strong>Social, Emotional &amp; Access to Care</Text>}
+                style={{ marginBottom: 16 }}
+            >
+                <Row gutter={24}>
+                    <Col xs={24} md={12}>
+                        <div style={{ padding: '12px 16px', background: '#fafafa', borderRadius: 8 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#262626' }}>Social / Emotional</Text>
+                            <Form.Item name={['health_profile', 'social_emotional']} style={{ marginBottom: 8 }}>
+                                <Checkbox.Group style={{ width: '100%' }}>
+                                    <Row>
+                                        {[
+                                            { value: 'Feeling Neglect/Rejection', label: 'Feeling Neglect / Rejection' },
+                                            { value: 'Feeling Helplessness/Worthlessness', label: 'Feeling Helplessness / Worthlessness' },
+                                            { value: 'Feeling Loneliness/Isolate', label: 'Feeling Loneliness / Isolate' },
+                                            { value: 'Lack Leisure/Recreational Activities', label: 'Lack Leisure / Recreational Activities' },
+                                            { value: 'Lack SC Friendly Environment', label: 'Lack SC Friendly Environment' },
+                                        ].map(item => (
+                                            <Col xs={24} key={item.value}>
+                                                <Checkbox value={item.value} style={{ marginBottom: 4 }}>{item.label}</Checkbox>
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                </Checkbox.Group>
+                            </Form.Item>
+                            <Form.Item name={['health_profile', 'social_emotional_other']} label="Others, Specify" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Other social/emotional concerns" />
+                            </Form.Item>
+                        </div>
+                    </Col>
+
+                    <Col xs={24} md={12}>
+                        <div style={{ padding: '12px 16px', background: '#fafafa', borderRadius: 8 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8, color: '#262626' }}>Area of Difficulty</Text>
+                            <Form.Item name={['health_profile', 'area_of_difficulty']} style={{ marginBottom: 0 }}>
+                                <Checkbox.Group style={{ width: '100%' }}>
+                                    <Row>
+                                        {[
+                                            'High Cost of Medicines',
+                                            'Lack of Medicines',
+                                            'Lack of Medical Attention',
+                                        ].map(item => (
+                                            <Col xs={24} key={item}>
+                                                <Checkbox value={item} style={{ marginBottom: 4 }}>{item}</Checkbox>
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                </Checkbox.Group>
+                            </Form.Item>
+                        </div>
+                    </Col>
+                </Row>
+            </Card>
+
+            {/* Maintenance Medicines */}
+            <Card
+                size="small"
+                title={<Text strong>Maintenance Medicines</Text>}
+            >
+                <Form.Item name={['health_profile', 'maintenance_medicines']} style={{ marginBottom: 0 }}>
+                    <TextArea
+                        placeholder="Type all your maintenance medicines. Example: Amlodipine 10mg, Losartan 50mg, etc."
+                        rows={3}
+                        size="large"
+                    />
+                </Form.Item>
+            </Card>
+        </div>
+    );
+
+    // Step 3: Family Composition
     const renderFamilyComposition = () => (
         <div>
             <Title level={4} style={{ color: '#1890ff', marginBottom: 16 }}>
@@ -1936,16 +1985,18 @@ const NewApplication = () => {
     );
 
     const renderStepContent = () => {
-        if (currentStep === 4) return renderSuccess();
+        if (currentStep === 5) return renderSuccess();
 
         switch (currentStep) {
             case 0:
                 return renderPersonalInfo();
             case 1:
-                return renderFamilyComposition();
+                return renderHealthProfile();
             case 2:
-                return renderAssociation();
+                return renderFamilyComposition();
             case 3:
+                return renderAssociation();
+            case 4:
                 return renderRequirements();
             default:
                 return null;
@@ -2005,7 +2056,7 @@ const NewApplication = () => {
                 </Form>
 
                 {/* Navigation Buttons */}
-                {currentStep < 4 && (
+                {currentStep < 5 && (
                     <>
                         <Divider />
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -2024,7 +2075,7 @@ const NewApplication = () => {
                                 >
                                     Save as Draft
                                 </Button>
-                                {currentStep === 3 ? (
+                                {currentStep === 4 ? (
                                     <Button
                                         type="primary"
                                         onClick={() => handleSubmit(false)}

@@ -56,7 +56,7 @@ class ExcelExportService
         // Add logo — floats over the merged header area
         $this->sheet->mergeCells('A1:A4');
 
-        $logoPath = storage_path('app/images/osca_logo.jpg');
+        $logoPath = resource_path('images/osca_logo.jpg');
         if (file_exists($logoPath)) {
             $drawing = new Drawing();
             $drawing->setName('OSCA Logo');
@@ -169,36 +169,11 @@ class ExcelExportService
                 $this->sheet->setCellValue("{$col}{$excelRow}", $value);
             }
 
-            // Alternating row colors: light yellow / white
-            $bgColor = ($rowIndex % 2 === 0) ? self::WHITE : self::YELLOW_LIGHT;
+            // Plain data rows — no fill, no borders, just vertical alignment
             $rowRange = "A{$excelRow}:{$lastCol}{$excelRow}";
             $this->sheet->getStyle($rowRange)->applyFromArray([
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['argb' => $bgColor],
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['argb' => 'E0E0E0'],
-                    ],
-                ],
                 'alignment' => [
                     'vertical' => Alignment::VERTICAL_CENTER,
-                ],
-            ]);
-        }
-
-        // Thin border for entire data range
-        $lastDataRow = $this->dataStartRow + count($data) - 1;
-        if ($lastDataRow >= $this->dataStartRow) {
-            $dataRange = "A{$this->dataStartRow}:{$lastCol}{$lastDataRow}";
-            $this->sheet->getStyle($dataRange)->applyFromArray([
-                'borders' => [
-                    'outline' => [
-                        'borderStyle' => Border::BORDER_MEDIUM,
-                        'color' => ['argb' => self::RED],
-                    ],
                 ],
             ]);
         }
