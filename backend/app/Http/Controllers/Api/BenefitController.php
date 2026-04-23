@@ -10,6 +10,7 @@ use App\Models\SeniorCitizen;
 use App\Traits\LogsAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class BenefitController extends Controller
@@ -137,7 +138,13 @@ class BenefitController extends Controller
         $user = $request->user();
         $perPage = $request->get('per_page', 10);
 
-        $query = BenefitClaim::with(['senior', 'senior.barangay', 'benefitType', 'processor', 'claimer', 'approver', 'releaser', 'rejecter'])
+        $claimRelations = ['senior', 'senior.barangay', 'benefitType', 'processor', 'claimer', 'approver', 'releaser', 'rejecter', 'releaseBranch'];
+        if (Schema::hasTable('payout_event_claims')) {
+            $claimRelations[] = 'payoutEventClaim.payoutEvent';
+            $claimRelations[] = 'payoutEventClaim.representative';
+        }
+
+        $query = BenefitClaim::with($claimRelations)
             ->accessibleBy($user);
 
         $this->applyClaimFilters($query, $request);
@@ -162,7 +169,13 @@ class BenefitController extends Controller
     {
         $user = $request->user();
 
-        $query = BenefitClaim::with(['senior', 'senior.barangay', 'benefitType', 'processor'])
+        $claimRelations = ['senior', 'senior.barangay', 'benefitType', 'processor', 'releaseBranch'];
+        if (Schema::hasTable('payout_event_claims')) {
+            $claimRelations[] = 'payoutEventClaim.payoutEvent';
+            $claimRelations[] = 'payoutEventClaim.representative';
+        }
+
+        $query = BenefitClaim::with($claimRelations)
             ->accessibleBy($user);
 
         $this->applyClaimFilters($query, $request);
@@ -171,7 +184,7 @@ class BenefitController extends Controller
 
         $headers = [
             'OSCA ID', 'Senior Name', 'Barangay', 'District', 'Benefit Type',
-            'Amount', 'Year', 'Status', 'Date Filed', 'Released At',
+            'Amount', 'Year', 'Status', 'Date Filed', 'Released At', 'Release Location', 'Claimed By',
         ];
 
         $data = $claims->map(fn($c) => [
@@ -185,6 +198,10 @@ class BenefitController extends Controller
             ucfirst($c->status),
             $c->created_at->format('m/d/Y'),
             $c->released_at?->format('m/d/Y') ?? '',
+            $c->release_location_label ?? '',
+            $c->payoutEventClaim?->release_mode === 'representative'
+                ? 'Representative: ' . ($c->payoutEventClaim?->representative?->full_name ?? '')
+                : 'Senior',
         ])->toArray();
 
         $label = $request->get('date_from') && $request->get('date_to')
@@ -848,7 +865,13 @@ class BenefitController extends Controller
         }
 
         $claim->save();
-        $claim->load(['senior', 'benefitType', 'processor', 'claimer', 'approver', 'releaser', 'rejecter']);
+        $claimRelations = ['senior', 'benefitType', 'processor', 'claimer', 'approver', 'releaser', 'rejecter', 'releaseBranch'];
+        if (Schema::hasTable('payout_event_claims')) {
+            $claimRelations[] = 'payoutEventClaim.payoutEvent';
+            $claimRelations[] = 'payoutEventClaim.representative';
+        }
+
+        $claim->load($claimRelations);
 
         $seniorName = "{$claim->senior->first_name} {$claim->senior->last_name}";
         $statusLabel = ucfirst($request->status);
@@ -873,7 +896,13 @@ class BenefitController extends Controller
      */
     public function seniorClaims($seniorId)
     {
-        $senior = SeniorCitizen::with(['benefitClaims.benefitType', 'benefitClaims.processor', 'benefitClaims.claimer', 'benefitClaims.approver', 'benefitClaims.rejecter', 'benefitClaims.releaser', 'barangay'])
+        $seniorRelations = ['benefitClaims.benefitType', 'benefitClaims.processor', 'benefitClaims.claimer', 'benefitClaims.approver', 'benefitClaims.rejecter', 'benefitClaims.releaser', 'benefitClaims.releaseBranch', 'barangay', 'familyMembers'];
+        if (Schema::hasTable('payout_event_claims')) {
+            $seniorRelations[] = 'benefitClaims.payoutEventClaim.payoutEvent';
+            $seniorRelations[] = 'benefitClaims.payoutEventClaim.representative';
+        }
+
+        $senior = SeniorCitizen::with($seniorRelations)
             ->find($seniorId);
 
         if (!$senior) {
@@ -927,6 +956,16 @@ class BenefitController extends Controller
 
         // Get detailed claim history
         $claims = $senior->benefitClaims->map(function ($claim) {
+            $releaseLocationLabel = $claim->release_location_label
+                ?? $claim->releaseBranch?->name
+                ?? $claim->payoutEventClaim?->payoutEvent?->release_location_label
+                ?? $claim->release_location_name;
+
+            $releaseLocationFullAddress = $claim->release_location_full_address
+                ?? $claim->releaseBranch?->address
+                ?? $claim->payoutEventClaim?->payoutEvent?->release_location_full_address
+                ?? $claim->release_location_address;
+
             return [
                 'id' => $claim->id,
                 'benefit_type_id' => $claim->benefit_type_id,
@@ -934,10 +973,20 @@ class BenefitController extends Controller
                 'amount' => $claim->amount,
                 'claim_year' => $claim->claim_year,
                 'status' => $claim->status,
-                'released_at' => $claim->released_at?->format('Y-m-d'),
+                'released_at' => $claim->released_at?->format('Y-m-d H:i:s'),
                 'filed_by' => $claim->claimer ? $claim->claimer->first_name . ' ' . $claim->claimer->last_name : null,
                 'processed_by' => $claim->approver ? $claim->approver->first_name . ' ' . $claim->approver->last_name : ($claim->rejecter ? $claim->rejecter->first_name . ' ' . $claim->rejecter->last_name : ($claim->processor ? $claim->processor->first_name . ' ' . $claim->processor->last_name : null)),
                 'released_by' => $claim->releaser ? $claim->releaser->first_name . ' ' . $claim->releaser->last_name : null,
+                'release_location_type' => $claim->release_location_type,
+                'release_branch_id' => $claim->release_branch_id,
+                'release_branch_name' => $claim->releaseBranch?->name,
+                'release_location_label' => $releaseLocationLabel,
+                'release_location_full_address' => $releaseLocationFullAddress,
+                'payout_event_location_label' => $claim->payoutEventClaim?->payoutEvent?->release_location_label,
+                'claimed_via' => $claim->payoutEventClaim?->release_mode ?? 'self',
+                'representative_name' => $claim->payoutEventClaim?->representative?->full_name,
+                'representative_relationship' => $claim->payoutEventClaim?->representative?->relationship,
+                'payout_event_reference' => $claim->payoutEventClaim?->payoutEvent?->reference_code,
                 'notes' => $claim->notes,
                 'created_at' => $claim->created_at->format('Y-m-d'),
             ];
@@ -953,6 +1002,7 @@ class BenefitController extends Controller
                     'age' => $age,
                     'barangay' => $senior->barangay?->name,
                 ],
+                'family_members' => $senior->familyMembers,
                 'eligibility' => $eligibility,
                 'claims' => $claims,
             ],
@@ -983,7 +1033,12 @@ class BenefitController extends Controller
             
             // Only load new relationships if columns exist
             if ($hasNewColumns) {
-                $query->with(['barangays', 'branch', 'district', 'creator']);
+                $typeRelations = ['barangays', 'branch', 'district', 'creator'];
+                if (Schema::hasTable('benefit_payout_requirements')) {
+                    $typeRelations[] = 'payoutRequirements';
+                }
+
+                $query->with($typeRelations);
             }
             
             $query->orderBy('min_age');
@@ -1023,6 +1078,15 @@ class BenefitController extends Controller
                         $data['barangays'] = $type->barangays ?? [];
                         $data['created_by'] = $type->created_by ?? null;
                         $data['creator'] = $type->creator ?? null;
+                        $data['allow_representative_claim'] = array_key_exists('allow_representative_claim', $type->getAttributes())
+                            ? (bool) $type->allow_representative_claim
+                            : true;
+                        $data['require_proof_of_life'] = (bool) ($type->require_proof_of_life ?? false);
+                        $data['proof_of_life_type'] = $type->proof_of_life_type ?? null;
+                        $data['proof_of_life_instructions'] = $type->proof_of_life_instructions ?? null;
+                        $data['payout_requirements'] = Schema::hasTable('benefit_payout_requirements')
+                            ? ($type->payoutRequirements ?? [])
+                            : [];
                     }
                     
                     return $data;
@@ -1091,6 +1155,10 @@ class BenefitController extends Controller
             'required_sub_categories' => 'nullable|array',
             'required_sub_categories.*' => 'string',
             'association_mode' => 'sometimes|in:any,all',
+            'allow_representative_claim' => 'sometimes|boolean',
+            'require_proof_of_life' => 'sometimes|boolean',
+            'proof_of_life_type' => 'nullable|string|max:100',
+            'proof_of_life_instructions' => 'nullable|string|max:1000',
         ]);
 
         // Validate max_age >= min_age if provided
@@ -1142,6 +1210,7 @@ class BenefitController extends Controller
         
         // Set creator
         $validated['created_by'] = $user->id;
+        $validated['allow_representative_claim'] = $validated['allow_representative_claim'] ?? true;
 
         $type = BenefitType::create($validated);
         
@@ -1150,7 +1219,11 @@ class BenefitController extends Controller
             $type->barangays()->sync($barangayIds);
         }
 
-        $type->load('barangays', 'branch', 'district');
+        $typeRelations = ['barangays', 'branch', 'district'];
+        if (Schema::hasTable('benefit_payout_requirements')) {
+            $typeRelations[] = 'payoutRequirements';
+        }
+        $type->load($typeRelations);
 
         return response()->json([
             'success' => true,
@@ -1200,6 +1273,10 @@ class BenefitController extends Controller
             'required_sub_categories' => 'nullable|array',
             'required_sub_categories.*' => 'string',
             'association_mode' => 'sometimes|in:any,all',
+            'allow_representative_claim' => 'sometimes|boolean',
+            'require_proof_of_life' => 'sometimes|boolean',
+            'proof_of_life_type' => 'nullable|string|max:100',
+            'proof_of_life_instructions' => 'nullable|string|max:1000',
         ]);
 
         // Validate max_age >= min_age if both are set
@@ -1235,7 +1312,11 @@ class BenefitController extends Controller
             $type->barangays()->sync($barangayIds);
         }
 
-        $type->load('barangays', 'branch', 'district');
+        $typeRelations = ['barangays', 'branch', 'district'];
+        if (Schema::hasTable('benefit_payout_requirements')) {
+            $typeRelations[] = 'payoutRequirements';
+        }
+        $type->load($typeRelations);
 
         return response()->json([
             'success' => true,
@@ -1315,4 +1396,3 @@ class BenefitController extends Controller
         ]);
     }
 }
-

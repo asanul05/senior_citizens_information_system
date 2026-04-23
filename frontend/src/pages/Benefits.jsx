@@ -45,6 +45,7 @@ import {
 } from '@ant-design/icons';
 import { benefitsApi } from '../services/api';
 import dayjs from 'dayjs';
+import PayoutEventManager from '../components/PayoutEventManager';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -235,7 +236,7 @@ const Benefits = () => {
     useEffect(() => {
         if (activeTab === 'claims') {
             fetchClaims();
-        } else {
+        } else if (activeTab === 'eligible') {
             fetchEligible();
         }
     }, [activeTab, statusFilter, typeFilter, barangayFilter, districtFilter, genderFilter, dateRange, searchText, pagination.current, pagination.pageSize, eligiblePagination.current, eligibleSearch, eligibleTypeFilter, eligibleBarangayFilter, eligibleGenderFilter, eligibleMinAge, eligibleMaxAge, eligibleMinAmount, eligibleMaxAmount]);
@@ -665,6 +666,31 @@ const Benefits = () => {
             },
         },
         {
+            title: 'Release Location',
+            key: 'release_location',
+            width: 180,
+            render: (_, record) => record.release_location_label || <Text type="secondary">—</Text>,
+        },
+        {
+            title: 'Released At',
+            key: 'released_at',
+            width: 170,
+            render: (_, record) => record.released_at
+                ? dayjs(record.released_at).format('MMM D, YYYY h:mm A')
+                : <Text type="secondary">—</Text>,
+        },
+        {
+            title: 'Claimed By',
+            key: 'claimed_via',
+            width: 180,
+            render: (_, record) => {
+                if (record.payout_event_claim?.release_mode === 'representative') {
+                    return record.payout_event_claim?.representative?.full_name || 'Representative';
+                }
+                return 'Senior';
+            },
+        },
+        {
             title: 'Actions',
             key: 'actions',
             width: 200,
@@ -1039,6 +1065,18 @@ const Benefits = () => {
                     <TabPane
                         tab={
                             <span>
+                                <DollarOutlined />
+                                Payout Events
+                            </span>
+                        }
+                        key="payout-events"
+                    >
+                        <PayoutEventManager benefitTypes={benefitTypes} />
+                    </TabPane>
+
+                    <TabPane
+                        tab={
+                            <span>
                                 <UserOutlined />
                                 Eligible Seniors ({eligiblePagination.total})
                             </span>
@@ -1351,6 +1389,23 @@ const Benefits = () => {
                                         {
                                             title: 'Released By', dataIndex: 'released_by', key: 'released_by',
                                             render: (text) => text || '—',
+                                        },
+                                        {
+                                            title: 'Released Date',
+                                            dataIndex: 'released_at',
+                                            key: 'released_at',
+                                            render: (text) => text ? dayjs(text).format('MMM D, YYYY h:mm A') : '—',
+                                        },
+                                        {
+                                            title: 'Release Location', dataIndex: 'release_location_label', key: 'release_location_label',
+                                            render: (text) => text || '—',
+                                        },
+                                        {
+                                            title: 'Claimed Via',
+                                            key: 'claimed_via',
+                                            render: (_, record) => record.claimed_via === 'representative'
+                                                ? `${record.representative_name || 'Representative'}${record.representative_relationship ? ` (${record.representative_relationship})` : ''}`
+                                                : 'Senior',
                                         },
                                     ]}
                                     dataSource={seniorHistory.claims}

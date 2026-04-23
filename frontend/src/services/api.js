@@ -325,6 +325,37 @@ export const benefitsApi = {
 
   getFilterOptions: () => api.get('/benefits/filter-options'),
 
+  getReleaseLocationOptions: () => api.get('/benefits/release-location-options'),
+
+  getPayoutEvents: (params) => api.get('/benefits/payout-events', { params }),
+
+  exportPayoutEventsSummary: (params) =>
+    api.get('/benefits/payout-events/export', { params, responseType: 'blob' }),
+
+  getPayoutEvent: (id) => api.get(`/benefits/payout-events/${id}`),
+
+  exportPayoutEventRoster: (id) =>
+    api.get(`/benefits/payout-events/${id}/export`, { responseType: 'blob' }),
+
+  createPayoutEvent: (data) => api.post('/benefits/payout-events', data),
+
+  updatePayoutEvent: (id, data) => api.put(`/benefits/payout-events/${id}`, data),
+
+  updatePayoutEventStatus: (id, data) => api.patch(`/benefits/payout-events/${id}/status`, data),
+
+  getAvailableEventClaims: (id, params) => api.get(`/benefits/payout-events/${id}/available-claims`, { params }),
+
+  attachEventClaims: (id, data) => api.post(`/benefits/payout-events/${id}/claims`, data),
+
+  removeEventClaim: (id, eventClaimId) => api.delete(`/benefits/payout-events/${id}/claims/${eventClaimId}`),
+
+  processEventClaim: (id, eventClaimId, data) => api.patch(`/benefits/payout-events/${id}/claims/${eventClaimId}/process`, data),
+
+  uploadEventClaimDocument: (id, eventClaimId, formData) =>
+    api.post(`/benefits/payout-events/${id}/claims/${eventClaimId}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
   createClaim: (data) => api.post('/benefits/claims', data),
 
   updateStatus: (id, data) => api.patch(`/benefits/claims/${id}/status`, data),
@@ -430,7 +461,17 @@ export const benefitTypesApi = {
   delete: (id) => api.delete(`/admin/benefit-types/${id}`),
 
   toggle: (id) => api.patch(`/admin/benefit-types/${id}/toggle`),
-};
+
+  getPayoutRequirements: (benefitTypeId) => api.get(`/admin/benefit-types/${benefitTypeId}/payout-requirements`),
+
+  createPayoutRequirement: (benefitTypeId, data) => api.post(`/admin/benefit-types/${benefitTypeId}/payout-requirements`, data),
+
+  updatePayoutRequirement: (benefitTypeId, id, data) => api.put(`/admin/benefit-types/${benefitTypeId}/payout-requirements/${id}`, data),
+
+  togglePayoutRequirement: (benefitTypeId, id) => api.patch(`/admin/benefit-types/${benefitTypeId}/payout-requirements/${id}/toggle`),
+
+  reorderPayoutRequirements: (benefitTypeId, items) => api.post(`/admin/benefit-types/${benefitTypeId}/payout-requirements/reorder`, { items }),
+  };
 
 // Benefit Complaints API (admin)
 export const benefitComplaintsApi = {

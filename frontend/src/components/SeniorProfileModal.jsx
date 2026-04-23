@@ -663,15 +663,30 @@ function SeniorProfileModal({ visible, seniorId, onClose }) {
                                 key: 'processed_by',
                                 render: (text) => text || '—',
                             },
-                            {
-                                title: 'Released By',
-                                dataIndex: 'released_by',
-                                key: 'released_by',
-                                render: (text) => text || '—',
-                            },
-                        ]}
-                    />
-                ) : (
+                                {
+                                    title: 'Released By',
+                                    dataIndex: 'released_by',
+                                    key: 'released_by',
+                                    render: (text) => text || '-',
+                                },
+                                {
+                                    title: 'Released Date',
+                                    dataIndex: 'released_at',
+                                    key: 'released_at',
+                                    render: (text) => text ? dayjs(text).format('MMM D, YYYY') : '-',
+                                },
+                                {
+                                    title: 'Location Released',
+                                    key: 'release_location_label',
+                                    render: (_, record) => record.release_location_label
+                                        || record.release_branch_name
+                                        || record.payout_event_location_label
+                                        || record.release_location_full_address
+                                        || '-',
+                                },
+                            ]}
+                        />
+                    ) : (
                     <Empty description="No benefits claimed yet" />
                 )}
             </Card>

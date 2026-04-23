@@ -30,9 +30,11 @@ import {
     CheckCircleOutlined,
     StopOutlined,
     TeamOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
 import { benefitTypesApi, registrationApi, districtApi, barangayManagementApi } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import BenefitPayoutRequirementsModal from '../../components/BenefitPayoutRequirementsModal';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -51,6 +53,8 @@ function BenefitSettings() {
     const [districts, setDistricts] = useState([]);
     const [targetScope, setTargetScope] = useState('all');
     const [scopeBarangayMode, setScopeBarangayMode] = useState('all');
+    const [requirementsModalOpen, setRequirementsModalOpen] = useState(false);
+    const [requirementsBenefitType, setRequirementsBenefitType] = useState(null);
 
     const isMainAdmin = user?.role_id === 1;
     const isFOAdmin = user?.role_id === 2;
@@ -68,7 +72,7 @@ function BenefitSettings() {
         try {
             const response = await benefitTypesApi.getAll();
             setBenefitTypes(response.data.data);
-        } catch (error) {
+        } catch {
             message.error('Failed to load benefit types');
         } finally {
             setLoading(false);
@@ -122,6 +126,7 @@ function BenefitSettings() {
             form.setFieldsValue({
                 is_one_time: false,
                 target_scope: isMainAdmin ? 'all' : isBarangayAdmin ? 'barangays' : 'branch',
+                allow_representative_claim: true,
             });
             setTargetScope(isMainAdmin ? 'all' : isBarangayAdmin ? 'barangays' : 'branch');
             setScopeBarangayMode('all');
@@ -161,7 +166,7 @@ function BenefitSettings() {
             await benefitTypesApi.toggle(record.id);
             message.success(record.is_active ? 'Benefit type deactivated' : 'Benefit type activated');
             loadBenefitTypes();
-        } catch (error) {
+        } catch {
             message.error('Failed to toggle status');
         }
     };
@@ -188,7 +193,7 @@ function BenefitSettings() {
             title: 'Benefit',
             dataIndex: 'name',
             key: 'name',
-            render: (name, record) => (
+            render: (name) => (
                 <Space>
                     <GiftOutlined style={{ color: '#1890ff' }} />
                     <span>{name}</span>
@@ -292,6 +297,16 @@ function BenefitSettings() {
                             type="text"
                             icon={<EditOutlined />}
                             onClick={() => openModal('edit', record)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Payout Requirements">
+                        <Button
+                            type="text"
+                            icon={<SettingOutlined />}
+                            onClick={() => {
+                                setRequirementsBenefitType(record);
+                                setRequirementsModalOpen(true);
+                            }}
                         />
                     </Tooltip>
                     <Tooltip title={record.is_active ? 'Deactivate' : 'Activate'}>
@@ -680,8 +695,67 @@ function BenefitSettings() {
                             <Radio.Button value="all">Must match ALL</Radio.Button>
                         </Radio.Group>
                     </Form.Item>
+
+                    <Divider orientation="left">Payout Policy</Divider>
+
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="allow_representative_claim"
+                                label="Allow Representative Claim"
+                                valuePropName="checked"
+                                initialValue={true}
+                            >
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                name="require_proof_of_life"
+                                label="Require Proof of Life"
+                                valuePropName="checked"
+                            >
+                                <Switch />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item shouldUpdate noStyle>
+                        {({ getFieldValue }) => getFieldValue('require_proof_of_life') && (
+                            <>
+                                <Form.Item
+                                    name="proof_of_life_type"
+                                    label="Proof of Life Type"
+                                    rules={[{ required: true, message: 'Required when proof of life is enabled' }]}
+                                >
+                                    <Select>
+                                        <Option value="photo_with_current_year">Photo with Current Calendar Year</Option>
+                                    </Select>
+                                </Form.Item>
+                                <Form.Item
+                                    name="proof_of_life_instructions"
+                                    label="Proof of Life Instructions"
+                                >
+                                    <Input.TextArea
+                                        rows={3}
+                                        placeholder="Example: Recent photo of the senior holding/displaying the current calendar year."
+                                    />
+                                </Form.Item>
+                            </>
+                        )}
+                    </Form.Item>
                 </Form>
             </Modal>
+
+            <BenefitPayoutRequirementsModal
+                open={requirementsModalOpen}
+                benefitType={requirementsBenefitType}
+                onClose={() => {
+                    setRequirementsModalOpen(false);
+                    setRequirementsBenefitType(null);
+                    loadBenefitTypes();
+                }}
+            />
         </div>
     );
 }

@@ -25,6 +25,10 @@ class BenefitType extends Model
         'required_sectors',
         'required_sub_categories',
         'association_mode',
+        'allow_representative_claim',
+        'require_proof_of_life',
+        'proof_of_life_type',
+        'proof_of_life_instructions',
     ];
 
     protected $casts = [
@@ -34,6 +38,8 @@ class BenefitType extends Model
         'claim_interval_days' => 'integer',
         'required_sectors' => 'array',
         'required_sub_categories' => 'array',
+        'allow_representative_claim' => 'boolean',
+        'require_proof_of_life' => 'boolean',
     ];
 
     /**
@@ -42,6 +48,16 @@ class BenefitType extends Model
     public function claims()
     {
         return $this->hasMany(BenefitClaim::class);
+    }
+
+    public function payoutRequirements()
+    {
+        return $this->hasMany(BenefitPayoutRequirement::class, 'benefit_type_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function payoutEvents()
+    {
+        return $this->hasMany(PayoutEvent::class, 'benefit_type_id');
     }
 
     /**

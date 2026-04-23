@@ -175,6 +175,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/filter-options', [\App\Http\Controllers\Api\BenefitController::class, 'filterOptions']);
         Route::get('/statistics', [\App\Http\Controllers\Api\BenefitController::class, 'statistics']);
         Route::get('/distribution', [\App\Http\Controllers\Api\BenefitController::class, 'typeDistribution']);
+        Route::get('/release-location-options', [\App\Http\Controllers\Api\PayoutEventController::class, 'options']);
+        Route::get('/payout-events', [\App\Http\Controllers\Api\PayoutEventController::class, 'index']);
+        Route::get('/payout-events/export', [\App\Http\Controllers\Api\PayoutEventController::class, 'exportSummary']);
+        Route::post('/payout-events', [\App\Http\Controllers\Api\PayoutEventController::class, 'store']);
+        Route::get('/payout-events/{id}', [\App\Http\Controllers\Api\PayoutEventController::class, 'show']);
+        Route::get('/payout-events/{id}/export', [\App\Http\Controllers\Api\PayoutEventController::class, 'exportRoster']);
+        Route::put('/payout-events/{id}', [\App\Http\Controllers\Api\PayoutEventController::class, 'update']);
+        Route::patch('/payout-events/{id}/status', [\App\Http\Controllers\Api\PayoutEventController::class, 'updateStatus']);
+        Route::get('/payout-events/{id}/available-claims', [\App\Http\Controllers\Api\PayoutEventController::class, 'availableClaims']);
+        Route::post('/payout-events/{id}/claims', [\App\Http\Controllers\Api\PayoutEventController::class, 'attachClaims']);
+        Route::delete('/payout-events/{id}/claims/{eventClaimId}', [\App\Http\Controllers\Api\PayoutEventController::class, 'removeClaim']);
+        Route::patch('/payout-events/{id}/claims/{eventClaimId}/process', [\App\Http\Controllers\Api\PayoutEventController::class, 'processClaim']);
+        Route::post('/payout-events/{id}/claims/{eventClaimId}/documents', [\App\Http\Controllers\Api\PayoutEventController::class, 'uploadDocument']);
         Route::post('/claims', [\App\Http\Controllers\Api\BenefitController::class, 'store']);
         Route::patch('/claims/{id}/status', [\App\Http\Controllers\Api\BenefitController::class, 'updateStatus']);
 
@@ -254,6 +267,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{id}', [\App\Http\Controllers\Api\BenefitController::class, 'updateBenefitType']);
             Route::delete('/{id}', [\App\Http\Controllers\Api\BenefitController::class, 'destroyBenefitType']);
             Route::patch('/{id}/toggle', [\App\Http\Controllers\Api\BenefitController::class, 'toggleBenefitType']);
+            Route::get('/{benefitTypeId}/payout-requirements', [\App\Http\Controllers\Api\BenefitPayoutRequirementController::class, 'index']);
+            Route::post('/{benefitTypeId}/payout-requirements', [\App\Http\Controllers\Api\BenefitPayoutRequirementController::class, 'store']);
+            Route::put('/{benefitTypeId}/payout-requirements/{id}', [\App\Http\Controllers\Api\BenefitPayoutRequirementController::class, 'update']);
+            Route::patch('/{benefitTypeId}/payout-requirements/{id}/toggle', [\App\Http\Controllers\Api\BenefitPayoutRequirementController::class, 'toggle']);
+            Route::post('/{benefitTypeId}/payout-requirements/reorder', [\App\Http\Controllers\Api\BenefitPayoutRequirementController::class, 'reorder']);
         });
         // Audit Log
         Route::prefix('admin/audit-logs')->group(function () {

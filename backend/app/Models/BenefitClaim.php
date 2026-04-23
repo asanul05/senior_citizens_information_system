@@ -22,12 +22,25 @@ class BenefitClaim extends Model
         'released_by',
         'rejected_by',
         'notes',
+        'release_location_type',
+        'release_branch_id',
+        'release_location_name',
+        'release_location_address',
+        'release_location_latitude',
+        'release_location_longitude',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'claim_year' => 'integer',
         'released_at' => 'datetime',
+        'release_location_latitude' => 'float',
+        'release_location_longitude' => 'float',
+    ];
+
+    protected $appends = [
+        'release_location_label',
+        'release_location_full_address',
     ];
 
     // Status constants
@@ -72,10 +85,20 @@ class BenefitClaim extends Model
         return $this->belongsTo(User::class, 'released_by');
     }
 
+    public function releaseBranch()
+    {
+        return $this->belongsTo(Branch::class, 'release_branch_id');
+    }
+
     // Get the user who rejected this claim.
     public function rejecter()
     {
         return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function payoutEventClaim()
+    {
+        return $this->hasOne(PayoutEventClaim::class, 'benefit_claim_id');
     }
 
     // Scope to filter by status.
@@ -114,5 +137,23 @@ class BenefitClaim extends Model
             self::STATUS_REJECTED => 'red',
             default => 'default',
         };
+    }
+
+    public function getReleaseLocationLabelAttribute(): ?string
+    {
+        if ($this->release_location_type === 'branch') {
+            return $this->releaseBranch?->name;
+        }
+
+        return $this->release_location_name;
+    }
+
+    public function getReleaseLocationFullAddressAttribute(): ?string
+    {
+        if ($this->release_location_type === 'branch') {
+            return $this->releaseBranch?->address;
+        }
+
+        return $this->release_location_address;
     }
 }
