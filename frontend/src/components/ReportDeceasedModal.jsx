@@ -51,8 +51,27 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
     const relationship = Form.useWatch('relationship_to_deceased', form);
     const supportingDocType = Form.useWatch('supporting_doc_type', form);
 
-    // Get family members from senior record
-    const familyMembers = senior?.family_members || [];
+    const getApplicantData = () => {
+        if (!senior?.applications?.length) return null;
+
+        const latestApplication = [...senior.applications]
+            .filter((application) => application?.applicant_data)
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+        return latestApplication?.applicant_data || null;
+    };
+
+    const normalizeFamilyMember = (member, index) => ({
+        ...member,
+        reporter_option_id: member?.id ?? `application-family-${index}`,
+    });
+
+    // Prefer saved family members, but fall back to application JSON for older production records.
+    const familyMembers =
+        (senior?.family_members?.length
+            ? senior.family_members
+            : getApplicantData()?.family_members || []
+        ).map(normalizeFamilyMember);
 
     // Build full name from family member record
     const buildFamilyMemberName = (member) => {
@@ -87,7 +106,7 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
             });
             return;
         }
-        const member = familyMembers.find((m) => m.id === memberId);
+        const member = familyMembers.find((m) => m.reporter_option_id === memberId);
         if (!member) return;
 
         const fullName = buildFamilyMemberName(member);
@@ -98,7 +117,7 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
             relationship_to_deceased: mappedRel,
             relationship_other: mappedRel === 'other' ? member.relationship : undefined,
             reporter_contact_number: member.mobile_number || member.telephone_number || '',
-            reporter_address: '',
+            reporter_address: member.address || member.full_address || '',
         });
     };
 
@@ -408,7 +427,7 @@ function ReportDeceasedModal({ visible, senior, onClose, onSuccess }) {
                             showSearch
                             optionFilterProp="label"
                             options={familyMembers.map((m) => ({
-                                value: m.id,
+                                value: m.reporter_option_id,
                                 label: `${buildFamilyMemberName(m)}${m.relationship ? ` (${m.relationship})` : ''}`,
                             }))}
                         />
